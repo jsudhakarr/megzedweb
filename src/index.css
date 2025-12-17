@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    font-family: 'Ubuntu', system-ui, sans-serif;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.html-content {
+  @apply text-slate-700;
+}
+
+.html-content h1,
+.html-content h2,
+.html-content h3,
+.html-content h4,
+.html-content h5,
+.html-content h6 {
+  @apply font-bold text-slate-900 mb-4 mt-8;
+}
+
+.html-content h1 {
+  @apply text-4xl;
+}
+
+.html-content h2 {
+  @apply text-3xl;
+}
+
+.html-content h3 {
+  @apply text-2xl;
+}
+
+.html-content h4 {
+  @apply text-xl;
+}
+
+.html-content h5 {
+  @apply text-lg;
+}
+
+.html-content h6 {
+  @apply text-base;
+}
+
+.html-content p {
+  @apply mb-6;
+}
+
+.html-content a {
+  @apply text-blue-600 hover:text-blue-800 underline transition-colors;
+}
+
+.html-content strong,
+.html-content b {
+  @apply font-semibold text-slate-900;
+}
+
+.html-content em,
+.html-content i {
+  @apply italic;
+}
+
+.html-content ul,
+.html-content ol {
+  @apply mb-6 pl-6;
+}
+
+.html-content ul {
+  @apply list-disc;
+}
+
+.html-content ol {
+  @apply list-decimal;
+}
+
+.html-content li {
+  @apply mb-2;
+}
+
+.html-content blockquote {
+  @apply border-l-4 border-slate-300 pl-4 py-2 my-6 italic text-slate-600 bg-slate-50 rounded-r;
+}
+
+.html-content code {
+  @apply bg-slate-100 text-red-600 px-2 py-1 rounded text-sm font-mono;
+}
+
+.html-content pre {
+  @apply bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto mb-6;
+}
+
+.html-content pre code {
+  @apply bg-transparent text-slate-100 p-0;
+}
+
+.html-content img {
+  @apply max-w-full h-auto rounded-lg my-6 shadow-md;
+}
+
+.html-content table {
+  @apply w-full border-collapse mb-6;
+}
+
+.html-content th,
+.html-content td {
+  @apply border border-slate-300 px-4 py-2;
+}
+
+.html-content th {
+  @apply bg-slate-100 font-semibold text-slate-900;
+}
+
+.html-content tr:nth-child(even) {
+  @apply bg-slate-50;
+}
+
+.html-content hr {
+  @apply border-t-2 border-slate-200 my-8;
+}
+
+.html-content iframe,
+.html-content video {
+  @apply w-full rounded-lg my-6;
+}
