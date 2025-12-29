@@ -430,7 +430,7 @@ export default function ItemDetail() {
                     style={{ backgroundColor: primaryColor }}
                   >
                     <Phone className="w-5 h-5" />
-                    Call {hasShop ? "Shop" : "Seller"}
+                    Call {hasShop ? "Business" : "Seller"}
                   </a>
 
                   <button className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-slate-100 rounded-xl font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-200 active:scale-95 transition-all">
@@ -440,11 +440,11 @@ export default function ItemDetail() {
                 </div>
               </div>
 
-              {/* Seller / Shop Info Card */}
+              {/* Seller / Business Info Card */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                 <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-green-500" />
-                  {hasShop ? "Shop Information" : "Seller Information"}
+                  {hasShop ? "Business Information" : "Seller Information"}
                 </h3>
 
                 <div className="flex items-center gap-4 mb-6">
@@ -497,14 +497,14 @@ export default function ItemDetail() {
                   </div>
                 </div>
 
-                {/* Shop Navigation Button */}
+                {/* Business Navigation Button */}
                 {hasShop && (
                   <button
                     onClick={handleVisitShop}
                     className="w-full mt-6 flex items-center justify-center gap-2 text-sm font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 py-3 rounded-xl border border-slate-100 transition-all"
                   >
                     <Store className="w-4 h-4" />
-                    Visit Shop Profile
+                    Visit Business Profile
                   </button>
                 )}
               </div>

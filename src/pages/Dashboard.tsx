@@ -122,7 +122,7 @@ export default function Dashboard() {
     // --------------------------
 
     { path: "/dashboard/items", label: "My Items", icon: <ShoppingBag className="w-5 h-5" /> },
-    { path: "/dashboard/shops", label: "My Shops", icon: <Store className="w-5 h-5" /> },
+    { path: "/dashboard/shops", label: "My Businesses", icon: <Store className="w-5 h-5" /> },
     { path: "/dashboard/likes", label: "Favorites", icon: <Heart className="w-5 h-5" /> },
     { path: "/dashboard/bookings", label: "Bookings", icon: <Calendar className="w-5 h-5" /> },
 

@@ -384,7 +384,7 @@ export default function Step1PostAsCategory({
     <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 shadow-sm">
       <div className="mb-5">
         <h2 className="text-xl font-bold text-slate-900">Category · Key details</h2>
-        <p className="text-sm text-slate-500">Select a shop or post as individual.</p>
+        <p className="text-sm text-slate-500">Select a business or post as individual.</p>
       </div>
 
       {/* ✅ POST FROM */}
@@ -394,7 +394,7 @@ export default function Step1PostAsCategory({
             <Store className="w-5 h-5" />
             Post from
           </div>
-          <div className="text-sm text-slate-500 mt-1">Select a shop or post as individual.</div>
+          <div className="text-sm text-slate-500 mt-1">Select a business or post as individual.</div>
         </div>
 
         <div className="p-5">
@@ -406,7 +406,7 @@ export default function Step1PostAsCategory({
                 </div>
                 <div className="min-w-0">
                   <div className="font-semibold text-slate-900">Post as individual</div>
-                  <div className="text-sm text-slate-500">Continue without a shop</div>
+                  <div className="text-sm text-slate-500">Continue without a business</div>
                 </div>
 
                 <button
@@ -425,12 +425,12 @@ export default function Step1PostAsCategory({
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 font-semibold hover:bg-slate-50"
               >
                 <Plus className="w-5 h-5" />
-                Create Shop
+                Create Business
               </button>
 
               {!onCreateShop && (
                 <div className="text-xs text-slate-500">
-                  (Parent: pass <code>onCreateShop</code> to open create shop page)
+                  (Parent: pass <code>onCreateShop</code> to open create business page)
                 </div>
               )}
             </div>

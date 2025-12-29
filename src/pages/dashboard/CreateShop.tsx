@@ -242,7 +242,7 @@ export default function CreateShop() {
         else if (shop.images?.[0]?.url) setImagePreview(shop.images[0].url);
       }
     } catch (error) {
-      console.error("Error fetching shop details", error);
+      console.error("Error fetching business details", error);
     } finally {
       setLoading(false);
     }
@@ -327,15 +327,15 @@ export default function CreateShop() {
       navigate('/dashboard/shops');
       
     } catch (error: any) {
-      console.error('Failed to save shop:', error);
-      alert(error.message || 'Failed to save shop.');
+      console.error('Failed to save business:', error);
+      alert(error.message || 'Failed to save business.');
     } finally {
       setLoading(false);
     }
   };
 
-  const title = editId ? 'Edit Shop' : 'New Shop';
-  const subtitle = editId ? 'Update your shop details' : 'Create a new shop profile';
+  const title = editId ? 'Edit Business' : 'New Business';
+  const subtitle = editId ? 'Update your business details' : 'Create a new business profile';
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-12 sm:px-6 space-y-4">
@@ -371,7 +371,7 @@ export default function CreateShop() {
             
             {/* Logo Upload */}
             <div className="md:col-span-1 space-y-2">
-              <label className="block text-xs font-semibold text-slate-700">Shop Logo</label>
+              <label className="block text-xs font-semibold text-slate-700">Business Logo</label>
               <div 
                 onClick={() => fileInputRef.current?.click()}
                 className={`relative h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all ${
@@ -398,7 +398,7 @@ export default function CreateShop() {
             {/* Inputs */}
             <div className="md:col-span-2 space-y-3">
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">Shop Name <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold text-slate-700">Business Name <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   name="shop_name" 
@@ -406,7 +406,7 @@ export default function CreateShop() {
                   value={formData.shop_name} 
                   onChange={handleInputChange} 
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" 
-                  placeholder="Enter shop name"
+                  placeholder="Enter business name"
                 />
               </div>
 
@@ -455,7 +455,7 @@ export default function CreateShop() {
                   value={formData.description} 
                   onChange={handleInputChange} 
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" 
-                  placeholder="Tell us about your shop..."
+                  placeholder="Tell us about your business..."
                 />
               </div>
             </div>
@@ -525,7 +525,7 @@ export default function CreateShop() {
             style={{ backgroundColor: primaryColor }}
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-            {editId ? 'Update Shop' : 'Create Shop'}
+            {editId ? 'Update Business' : 'Create Business'}
           </button>
         </div>
 

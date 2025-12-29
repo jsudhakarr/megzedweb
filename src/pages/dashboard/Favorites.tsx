@@ -61,6 +61,8 @@ export default function Favorites() {
     (shop.shop_name || shop.name)?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const searchLabel = activeTab === 'shops' ? 'businesses' : activeTab;
+
   // Helper to get item image
   const getItemImage = (item: any) => {
     if (item.feature_photo?.url) return item.feature_photo.url;
@@ -101,7 +103,7 @@ export default function Favorites() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div>
             <h1 className="text-lg font-bold text-slate-900">Favorites</h1>
-            <p className="text-xs text-slate-500">Saved items & shops</p>
+            <p className="text-xs text-slate-500">Saved items & businesses</p>
           </div>
 
           {/* Tabs */}
@@ -126,7 +128,7 @@ export default function Favorites() {
               }`}
             >
               <Store className="w-3.5 h-3.5" />
-              Shops
+              Businesses
             </button>
           </div>
         </div>
@@ -137,7 +139,7 @@ export default function Favorites() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
-              placeholder={`Search ${activeTab}...`}
+              placeholder={`Search ${searchLabel}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 pr-3 py-1.5 text-sm w-full sm:w-56 bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-200 transition-all"
@@ -170,7 +172,7 @@ export default function Favorites() {
             <Heart className="w-6 h-6" style={{ color: primaryColor }} />
           </div>
           <h3 className="text-sm font-semibold text-slate-900">
-            No favorite {activeTab} found
+            No favorite {searchLabel} found
           </h3>
           <p className="text-xs text-slate-500 mt-1">
             {searchQuery ? 'Try adjusting your search' : 'Go explore and save things you like!'}
@@ -282,7 +284,7 @@ export default function Favorites() {
                 <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                    <span className="flex items-center gap-1 text-xs text-slate-600 font-medium">
                     <Package className="w-3 h-3" />
-                    {shop.items_count || 0} Items
+                    {shop.items_count || 0} Listings
                   </span>
                 </div>
               </div>

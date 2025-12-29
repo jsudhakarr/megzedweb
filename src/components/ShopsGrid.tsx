@@ -29,7 +29,7 @@ export default function ShopsGrid({ primaryColor }: ShopsGridProps) {
     }
   };
 
-  const shopTypeLabel = (shop: any) => shop?.shop_type || shop?.type || 'Shop';
+  const shopTypeLabel = (shop: any) => shop?.shop_type || shop?.type || 'Business';
 
   const shopLocation = (shop: any) => {
     const parts = [shop.city, shop.state, shop.country].filter(Boolean);
@@ -86,7 +86,7 @@ export default function ShopsGrid({ primaryColor }: ShopsGridProps) {
                     e.stopPropagation();
                   }}
                   className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 border border-slate-200 shadow-sm flex items-center justify-center"
-                  aria-label="Favourite shop"
+                  aria-label="Favourite business"
                 >
                   <Heart className="w-4.5 h-4.5 text-slate-700" />
                 </button>

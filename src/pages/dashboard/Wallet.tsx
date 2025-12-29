@@ -28,8 +28,8 @@ function typeLabel(t: string) {
     case "purchase": return "Coins Purchased";
     case "post_item": return "Item Posting Fee";
     case "promote_item": return "Item Promotion";
-    case "post_shop": return "Shop Listing Fee";
-    case "promote_shop": return "Shop Promotion";
+    case "post_shop": return "Business Listing Fee";
+    case "promote_shop": return "Business Promotion";
     case "bonus": return "System Bonus";
     case "mobile_view": return "Contact View Unlock";
     default: return (t || "").split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");

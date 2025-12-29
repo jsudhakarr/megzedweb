@@ -9,7 +9,6 @@ import {
   Star,
   Package,
   Share2,
-  Phone,
   MessageCircle,
   Clock,
   Loader2,
@@ -17,18 +16,17 @@ import {
   Store,
   Globe,
   Search,
-  CheckCircle2,
   User,
   Heart,
-  Grid, 
-  Info   
+  Grid,
+  Info
 } from 'lucide-react';
 
 // ✅ Your 2 icons
 import userVerifiedIcon from '../assets/icons/verified.png';
 import shopVerifiedIcon from '../assets/icons/storeverified.png';
 
-type TabKey = 'items' | 'reviews' | 'about';
+type TabKey = 'listings' | 'reviews' | 'details';
 
 function normalizeItems(input: any): Item[] {
   if (Array.isArray(input)) return input;
@@ -61,7 +59,7 @@ export default function ShopDetail() {
   const [q, setQ] = useState('');
 
   // Tabs
-  const [tab, setTab] = useState<TabKey>('items');
+  const [tab, setTab] = useState<TabKey>('listings');
 
   const primaryColor = settings?.primary_color || '#0ea5e9';
   const isLoggedIn = !!localStorage.getItem('auth_token');
@@ -150,7 +148,7 @@ export default function ShopDetail() {
     } catch (e) {
       console.error(e);
       setShop(null);
-      setError('Failed to load shop details');
+      setError('Failed to load business details');
     } finally {
       setLoading(false);
       setItemsLoading(false);
@@ -169,7 +167,7 @@ export default function ShopDetail() {
 
   const handleShare = async () => {
     if (!shop) return;
-    const title = (shop as any).shop_name || (shop as any).name || 'Shop';
+    const title = (shop as any).shop_name || (shop as any).name || 'Business';
     if (navigator.share) {
       try {
         await navigator.share({
@@ -181,7 +179,7 @@ export default function ShopDetail() {
       return;
     }
     await navigator.clipboard.writeText(window.location.href);
-    alert('Shop link copied!');
+    alert('Business link copied!');
   };
 
   const toggleShopFav = async () => {
@@ -239,7 +237,7 @@ export default function ShopDetail() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-12 h-12 animate-spin" style={{ color: primaryColor }} />
-        <p className="text-slate-500 font-medium tracking-wide">Loading shop profile...</p>
+        <p className="text-slate-500 font-medium tracking-wide">Loading business profile...</p>
       </div>
     );
   }
@@ -249,9 +247,9 @@ export default function ShopDetail() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center bg-white p-10 rounded-3xl shadow-xl max-w-sm w-full border border-slate-100">
           <Store className="w-20 h-20 text-slate-200 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-3">Shop Unavailable</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Business Unavailable</h2>
           <p className="text-slate-500 mb-8 leading-relaxed">
-            The shop you are looking for does not exist or has been removed from our platform.
+            The business you are looking for does not exist or has been removed from our platform.
           </p>
           <button
             onClick={() => navigate('/')}
@@ -266,20 +264,17 @@ export default function ShopDetail() {
 
   const coverImage = (shop as any)?.photo?.url || null;
   const profileImage = (shop as any)?.user?.profile_photo || null;
-  const shopName = (shop as any).shop_name || (shop as any).name || 'Shop';
+  const shopName = (shop as any).shop_name || (shop as any).name || 'Business';
   const shopRating = (shop as any)?.avg_rating ? parseFloat((shop as any).avg_rating).toFixed(1) : 'New';
   const itemsCount = (shop as any).items_count ?? shopItems.length;
   const reviewsCount = (shop as any).reviews_count ?? reviews.length ?? 0;
-
-  const ownerMobile = (shop as any)?.user?.mobile || '';
-  const hasPhone = String(ownerMobile || '').trim().length > 0;
 
   // ✅ VERIFIED FLAGS (correct keys)
   const isShopVerified = (shop as any)?.is_verified === true;
   const isUserVerified = (shop as any)?.user?.is_verified === true;
 
   const verifiedIconToUse = isUserVerified ? userVerifiedIcon : shopVerifiedIcon;
-  const verifiedTitle = isUserVerified ? 'Verified User' : 'Verified Shop';
+  const verifiedTitle = isUserVerified ? 'Verified User' : 'Verified Business';
 
 
 const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => {
@@ -430,15 +425,15 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
           
         </div>
 
-        {/* SHOP NAME + LOCATION + VERIFIED ICON */}
+        {/* BUSINESS NAME + LOCATION + VERIFIED ICON */}
         <div>
           {/* Added 'flex items-center gap-2' to align text and icon */}
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
             {shopName}
             
-            {/* 🏪 SHOP VERIFIED ICON - Moved here */}
+            {/* 🏪 BUSINESS VERIFIED ICON - Moved here */}
             {isShopVerified && (
-              <div title="Verified Shop" className="mt-1"> 
+              <div title="Verified Business" className="mt-1"> 
                 {/* Slightly increased size to match header text weight */}
                 <TintedIcon src={shopVerifiedIcon} size={24} />
               </div>
@@ -447,7 +442,7 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
 
           <p className="text-sm text-slate-600 mt-1 flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            {(shop as any).city || (shop as any).address || 'Online Store'}
+            {(shop as any).city || (shop as any).address || 'Online Business'}
           </p>
         </div>
       </div>
@@ -473,7 +468,7 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
             {itemsCount}
           </div>
           <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-            Items
+            Listings
           </div>
         </div>
 
@@ -515,8 +510,8 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
               {/* ✅ NEW TABS SECTION */}
               <div className="bg-slate-50/50 p-2 rounded-3xl border border-slate-100 inline-flex flex-wrap gap-2">
                 <TabButton 
-                  k="items" 
-                  label="Items" 
+                  k="listings" 
+                  label="Listings" 
                   icon={Grid} 
                   count={filteredShopItems.length} 
                   currentTab={tab} // Pass the current tab state
@@ -531,23 +526,23 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
                   setTab={setTab}
                 />
                 <TabButton 
-                  k="about" 
-                  label="About" 
+                  k="details" 
+                  label="Details" 
                   icon={Info} 
                   currentTab={tab}
                   setTab={setTab}
                 />
               </div>
 
-              {/* ✅ ITEMS TAB (LIST VIEW) */}
-              {tab === 'items' && (
+              {/* ✅ LISTINGS TAB (LIST VIEW) */}
+              {tab === 'listings' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     
                     {/* Title */}
                     <div>
                       <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        Shop Items
+                        Business Listings
                       </h2>
                       <p className="text-slate-500 text-sm mt-1">
                         Browse our latest collection
@@ -722,7 +717,7 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
                       <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Package className="w-8 h-8 text-slate-400" />
                       </div>
-                      <h3 className="text-lg font-extrabold text-slate-900 mb-1">No items found</h3>
+                      <h3 className="text-lg font-extrabold text-slate-900 mb-1">No listings found</h3>
                       <p className="text-slate-500">Try a different search.</p>
                     </div>
                   )}
@@ -762,15 +757,15 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
                 </div>
               )}
 
-              {/* About TAB */}
-              {tab === 'about' && (
+              {/* Details TAB */}
+              {tab === 'details' && (
                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                  <h2 className="text-xl font-extrabold text-slate-900 mb-4">About the Shop</h2>
+                  <h2 className="text-xl font-extrabold text-slate-900 mb-4">About the Business</h2>
                   <div className="text-slate-600 leading-relaxed">
                     {(shop as any).description ? (
                       (shop as any).description
                     ) : (
-                      <p className="italic text-slate-400">No description provided by the shop owner.</p>
+                      <p className="italic text-slate-400">No description provided by the business owner.</p>
                     )}
                   </div>
                 </div>
@@ -786,7 +781,7 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
   <h3 className="font-extrabold text-slate-900 mb-4 flex items-center gap-2">
     <MapPin className="w-5 h-5 text-slate-400" />
-    Location
+    Business Location
   </h3>
 
   <p className="text-slate-600 text-sm leading-relaxed mb-4">
@@ -841,7 +836,7 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
     <div className="space-y-3">
       <div className="h-56 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
         <iframe
-          title="Shop Location"
+          title="Business Location"
           src={embedUrl}
           className="w-full h-full"
           loading="lazy"
@@ -905,10 +900,10 @@ const TabButton = ({ k, label, icon: Icon, count, currentTab, setTab }: any) => 
     </div>
 
     {/* User Details */}
-    <div className="min-w-0 flex-1">
-      <h3 className="font-extrabold text-slate-900 text-lg truncate leading-tight">
-        {(shop as any)?.user?.name || 'Shop Owner'}
-      </h3>
+  <div className="min-w-0 flex-1">
+    <h3 className="font-extrabold text-slate-900 text-lg truncate leading-tight">
+        {(shop as any)?.user?.name || 'Business Owner'}
+    </h3>
 
       {/* Location */}
       <div className="flex items-center gap-1.5 mt-1 text-slate-500">

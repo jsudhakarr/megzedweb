@@ -66,7 +66,7 @@ export default function ShopsSlider({ themeColor }: Props) {
       </div>
 
       <p className="text-center text-xs text-white/70 mt-2">
-        Swipe to explore more shops
+        Swipe to explore more businesses
       </p>
     </div>
   );
