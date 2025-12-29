@@ -12,6 +12,7 @@ import type {
   ShopsResponse,
   PagesResponse,
 } from '../types/category';
+import type { PublicUser, PublicUserDetails } from '../types/user';
 
 const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
@@ -709,6 +710,38 @@ class ApiService {
     return response.json();
   }
 
+  async getPublicUsers(): Promise<PublicUser[]> {
+    const response = await fetch(`${API_BASE_URL}/users/public`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+  }
+
+  async getPublicUser(userId: number): Promise<PublicUserDetails> {
+    const response = await fetch(`${API_BASE_URL}/users/public/${userId}`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return (data?.data as PublicUserDetails) ?? (data as PublicUserDetails);
+  }
+
+  async getPublicUserShops(userId: number): Promise<Shop[]> {
+    const response = await fetch(`${API_BASE_URL}/shops/by-user/${userId}`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data: any = await response.json();
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.shops)) return data.shops;
+    if (Array.isArray(data)) return data;
+    return [];
+  }
+
   async getAppSettings(): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/appsettings`, {
       headers: this.getHeaders(),
@@ -1361,3 +1394,4 @@ export const sendMessage = (id: number, message: string) => apiService.sendMessa
 export const markConversationRead = (id: number) => apiService.markConversationRead(id);
 
 export type { Category, Subcategory, Item, Shop, ContentPage } from '../types/category';
+export type { PublicUser, PublicUserDetails } from '../types/user';
