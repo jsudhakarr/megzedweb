@@ -1,21 +1,40 @@
 const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
-// 1. Define the Interface here and export it so Context can use it
+export interface AppSettingsLogo {
+  url: string;
+  thumbnail: string;
+  preview: string;
+  // optionally keep extra API fields if you want:
+  original_url?: string;
+  preview_url?: string;
+}
+
 export interface AppSettings {
   id: number;
   appname: string;
+
   maintenance_mode: string;
+  maintenance_title?: string;
+  maintenance_message?: string;
+
   force_update: string;
+  android_min_version_code?: string;
+  ios_min_build_number?: string;
+
+  android_store_url?: string;
+  ios_store_url?: string | null;
+
   primary_color: string;
   secondary_color: string;
   currency: string;
   language: string;
-  logo: {
-    url: string;
-    thumbnail: string;
-    preview: string;
-  } | null;
+
+  logo: AppSettingsLogo | null;
+  placeholder_image?: string | null;
 }
+
+
+
 
 // 2. The Fixed Fetch Function
 export async function fetchAppSettings(): Promise<AppSettings> {

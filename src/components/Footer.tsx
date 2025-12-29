@@ -2,17 +2,16 @@ import { Link } from 'react-router-dom';
 import { Store, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 
 interface FooterProps {
-  settings: {
+  // Fix: Added "| null" to allow the settings prop to be null coming from the parent
+  settings?: {
     appname?: string;
-    logo?: {
-      thumbnail: string;
-    };
+    logo?: { thumbnail: string } | null;
     primary_color?: string;
     currency?: string;
     language?: string;
     contact_email?: string;
     contact_phone?: string;
-  };
+  } | null; 
   primaryColor: string;
 }
 
@@ -28,7 +27,7 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
               {settings?.logo?.thumbnail ? (
                 <img
                   src={settings.logo.thumbnail}
-                  alt={settings.appname}
+                  alt={settings?.appname}
                   className="h-8 w-auto object-contain"
                 />
               ) : (

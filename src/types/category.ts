@@ -27,6 +27,7 @@ export interface Subcategory {
   updated_at: string;
 }
 
+/** ✅ UPDATED (API shop.user can be missing fields, and mobile may be needed) */
 export interface ItemUser {
   id: number;
   name: string;
@@ -34,6 +35,9 @@ export interface ItemUser {
   verified: boolean;
   member_since: string;
   city: string | null;
+
+  // ✅ add (ItemDetail uses mobile sometimes)
+  mobile?: string | null;
 }
 
 export interface ItemPhoto {
@@ -47,12 +51,14 @@ export interface ItemCategory {
   name: string;
 }
 
+/** ✅ icon can be null (your API shows subcategory.icon = null) */
 export interface ItemSubcategory {
   id: number;
   name: string;
-  icon: CategoryIcon;
+  icon: CategoryIcon | null;
 }
 
+/** ✅ options is array in API (sometimes [null]) */
 export interface DynamicField {
   field_id: number;
   label: string;
@@ -60,7 +66,36 @@ export interface DynamicField {
   value: string;
   type_of_parameter: string;
   is_required: boolean;
-  options: string | null | (null)[];
+
+  // ✅ API example: ["1 Bedrooms", ...] or [null]
+  options: Array<string | null>;
+}
+
+/** ✅ NEW: item.shop object type (your API returns full shop object) */
+export interface ItemShopPhoto {
+  url: string;
+  thumbnail: string;
+  preview?: string;
+}
+
+export interface ItemShop {
+  id: number;
+  shop_name: string;
+  description?: string;
+  address: string;
+
+  latitude: string;
+  longitude: string;
+
+  shop_type: string;
+  is_verified: boolean;
+  kyc_status?: string;
+
+  user?: ItemUser | null;
+  photo?: ItemShopPhoto | null;
+
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Item {
@@ -81,8 +116,11 @@ export interface Item {
   state: string;
   city: string;
   country: string;
+
+  // ✅ keep (item coords)
   latitude: string;
   longitude: string;
+
   total_view: string;
   is_verified: boolean;
   qr_code: string;
@@ -92,11 +130,19 @@ export interface Item {
   created_at: string;
   updated_at: string;
   category: ItemCategory;
+
+  // ✅ updated
   subcategory: ItemSubcategory;
+
   feature_photo: ItemPhoto | null;
   item_photos: ItemPhoto[];
-  shop: null;
-  user: ItemUser;
+
+  // ✅ FIX: was null, must be object or null
+  shop: ItemShop | null;
+
+  // ✅ FIX: API can return null (your JSON shows "user": null)
+  user: ItemUser | null;
+
   dynamic_fields: DynamicField[];
 }
 

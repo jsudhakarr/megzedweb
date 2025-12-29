@@ -28,7 +28,9 @@ import ShopsSlider from '../components/ShopsSlider';
 import LanguageButton from '../components/LanguageButton';
 import ScanQrModal from '../components/ScanQrModal';
 
-import type { Category, Subcategory } from '../services/api';
+import type { Category, Subcategory } from '../types/category';
+
+
 
 interface FilterState {
   category: number | null;
