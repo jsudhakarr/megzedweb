@@ -27,6 +27,7 @@ import LoginModal from '../components/LoginModal';
 import ShopsSlider from '../components/ShopsSlider';
 import LanguageButton from '../components/LanguageButton';
 import ScanQrModal from '../components/ScanQrModal';
+import UsersSlider from '../components/UsersSlider';
 
 import type { Category, Subcategory } from '../types/category';
 
@@ -378,6 +379,9 @@ export default function Home() {
           <ShopsSlider themeColor={primaryColor} />
         </div>
       </section>
+
+      {/* USERS SLIDER */}
+      <UsersSlider primaryColor={primaryColor} />
 
       {/* BACK TO MAIN WIDTH CONTENT */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-10">

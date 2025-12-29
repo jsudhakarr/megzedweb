@@ -10,6 +10,8 @@ import ItemDetail from './pages/ItemDetail';
 import ShopDetail from './pages/ShopDetail';
 import Blog from './pages/Blog';
 import PageDetail from './pages/PageDetail';
+import UsersDirectory from './pages/UsersDirectory';
+import PublicUserProfile from './pages/PublicUserProfile';
 
 // Dashboard Pages
 import Dashboard from './pages/Dashboard';
@@ -103,6 +105,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/item/:id" element={<ItemDetail />} />
             <Route path="/shop/:id" element={<ShopDetail />} />
+            <Route path="/users" element={<UsersDirectory />} />
+            <Route path="/users/:id" element={<PublicUserProfile />} />
             <Route path="/blog" element={<BlogWrapper />} />
             <Route path="/blog/:slug" element={<PageDetailWrapper />} />
             <Route path="/pages/:slug" element={<PageDetailWrapper />} />
