@@ -51,7 +51,7 @@ export default function MyShops() {
         setShops([]);
       }
     } catch (error) {
-      console.error("Failed to fetch shops:", error);
+      console.error("Failed to fetch businesses:", error);
       setShops([]);
     } finally {
       setLoading(false);
@@ -61,14 +61,14 @@ export default function MyShops() {
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
 
-    if (!window.confirm("Are you sure you want to delete this shop?")) return;
+    if (!window.confirm("Are you sure you want to delete this business?")) return;
 
     try {
       await apiService.deleteShop(id);
       setShops((prev) => prev.filter((s: any) => s.id !== id));
     } catch (error) {
-      console.error("Failed to delete shop", error);
-      alert("Failed to delete shop. Please try again.");
+      console.error("Failed to delete business", error);
+      alert("Failed to delete business. Please try again.");
     }
   };
 
@@ -137,7 +137,7 @@ export default function MyShops() {
       {/* Top Bar */}
       <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold text-slate-900">My Shops</h1>
+          <h1 className="text-lg font-bold text-slate-900">My Businesses</h1>
           <p className="text-xs text-slate-500">Manage your business profiles</p>
         </div>
 
@@ -146,7 +146,7 @@ export default function MyShops() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search shops..."
+              placeholder="Search businesses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-3 py-2 text-sm w-64 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-200"
@@ -168,7 +168,7 @@ export default function MyShops() {
             style={{ backgroundColor: primaryColor }}
           >
             <Plus className="w-4 h-4" />
-            <span>Add Shop</span>
+            <span>Add Business</span>
           </button>
         </div>
       </div>
@@ -198,8 +198,8 @@ export default function MyShops() {
           >
             <Store className="w-6 h-6" style={{ color: primaryColor }} />
           </div>
-          <h3 className="text-sm font-bold text-slate-900">No shops found</h3>
-          <p className="text-xs text-slate-500 mt-1">Create a shop to start selling.</p>
+          <h3 className="text-sm font-bold text-slate-900">No businesses found</h3>
+          <p className="text-xs text-slate-500 mt-1">Create a business to start selling.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -214,11 +214,11 @@ export default function MyShops() {
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden"
               >
                 {/* Image */}
-                <div
-                  className="relative aspect-[16/9] bg-slate-100 cursor-pointer"
-                  onClick={() => navigate(`/shop/${shop.id}`)}
-                  title="Open shop"
-                >
+              <div
+                className="relative aspect-[16/9] bg-slate-100 cursor-pointer"
+                onClick={() => navigate(`/shop/${shop.id}`)}
+                title="Open business"
+              >
                   <div className="absolute top-3 left-3 flex gap-2 z-10">
                     <span
                       className={`px-2.5 py-1 text-[11px] font-bold uppercase rounded-lg border ${
@@ -238,7 +238,7 @@ export default function MyShops() {
                   </div>
 
                   {img ? (
-                    <img src={img} alt={shop.shop_name || "Shop"} className="w-full h-full object-cover" />
+                  <img src={img} alt={shop.shop_name || "Business"} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300">
                       <Store className="w-10 h-10" />
@@ -251,7 +251,7 @@ export default function MyShops() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-base font-bold text-slate-900 truncate">
-                        {shop.shop_name || shop.name || "Untitled Shop"}
+                        {shop.shop_name || shop.name || "Untitled Business"}
                       </div>
 
                       <div className="mt-1 text-sm text-slate-500 flex items-center gap-1 truncate">
@@ -279,7 +279,7 @@ export default function MyShops() {
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                     <span className="flex items-center gap-1">
                       <Package className="w-4 h-4" />
-                      {shop.items_count || 0} items
+                      {shop.items_count || 0} listings
                     </span>
                     <span>{shop.created_at ? new Date(shop.created_at).toLocaleDateString() : ""}</span>
                   </div>

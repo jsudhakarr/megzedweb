@@ -29,7 +29,7 @@ import LanguageButton from '../components/LanguageButton';
 import ScanQrModal from '../components/ScanQrModal';
 import UsersSlider from '../components/UsersSlider';
 
-import type { Category, Subcategory } from '../types/category';
+import type { Subcategory } from '../types/category';
 
 
 
@@ -74,7 +74,7 @@ export default function Home() {
     distance: undefined,
   });
 
-  const handleSubcategorySelect = (subcategory: Subcategory, _category: Category) => {
+  const handleSubcategorySelect = (subcategory: Subcategory) => {
     setSelectedSubcategory(subcategory);
   };
 
@@ -117,6 +117,20 @@ export default function Home() {
   const primaryColor = settings?.primary_color || '#0073f0';
   const appName = settings?.appname ? settings.appname.split(' - ')[0] : 'Megzed';
   const appLogoUrl = settings?.logo?.url || null;
+
+  const replaceShopWithBusiness = (text: string, fallback: string) => {
+    if (!text) return fallback;
+    if (text.includes('_')) return fallback;
+    const replaced = text.replace(/shop/gi, 'business');
+    return replaced.trim() || fallback;
+  };
+
+  const featuredHeading = replaceShopWithBusiness(t('featured_shops'), 'Featured Businesses');
+  const addBusinessAction = replaceShopWithBusiness(t('add_shop'), 'Add Business');
+  const createBusinessAction = replaceShopWithBusiness(
+    t('create_new_shop'),
+    'Create a new business'
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
@@ -364,7 +378,7 @@ export default function Home() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">
-              {t('featured_shops')}
+              {featuredHeading}
             </h2>
 
             <button
@@ -436,9 +450,9 @@ export default function Home() {
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
-                <Store className="w-6 h-6 mb-2" style={{ color: primaryColor }} />
-                <p className="font-semibold text-slate-900">{t('add_shop')}</p>
-                <p className="text-sm text-slate-500 mt-1">{t('create_new_shop')}</p>
+              <Store className="w-6 h-6 mb-2" style={{ color: primaryColor }} />
+                <p className="font-semibold text-slate-900">{addBusinessAction}</p>
+                <p className="text-sm text-slate-500 mt-1">{createBusinessAction}</p>
               </button>
 
               <button

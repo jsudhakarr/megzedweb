@@ -205,9 +205,9 @@ export default function DashboardOverview() {
       onClick: () => navigate("/dashboard/items"),
     },
     {
-      title: "My Shops",
+      title: "My Businesses",
       value: loading ? "..." : String(shopsCount),
-      subtitle: "Active shops",
+      subtitle: "Active businesses",
       icon: <Store className="w-6 h-6" />,
       bgColor: "#fed7aa",
       iconColor: "#ea580c",
@@ -287,7 +287,7 @@ export default function DashboardOverview() {
         <div className="text-center py-8 sm:py-12">
           <p className="text-sm sm:text-base text-slate-500">No recent activity to display</p>
           <p className="text-xs sm:text-sm text-slate-400 mt-2">
-            Start by creating items or shops to see activity here
+            Start by creating items or businesses to see activity here
           </p>
         </div>
       </div>
