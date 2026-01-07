@@ -522,6 +522,7 @@ export default function Home() {
 
                 if (section.type === 'items') {
                   const items = (sectionData[section.id] || []) as Item[];
+                  const useSliderLayout = section.layout === 'list' || items.length > 5;
                   return (
                     <section
                       key={section.id}
@@ -559,7 +560,7 @@ export default function Home() {
                           primaryColor={primaryColor}
                           items={items}
                           limit={itemCount}
-                          layout={section.layout === 'list' ? 'list' : 'grid'}
+                          layout={useSliderLayout ? 'list' : 'grid'}
                         />
                       </div>
                     </section>

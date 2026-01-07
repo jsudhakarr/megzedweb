@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, Grid3X3 } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
 
@@ -20,6 +20,12 @@ export default function CategoryGrid({
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
   const [loading, setLoading] = useState(!categoriesOverride);
   const [loadingSubcategories, setLoadingSubcategories] = useState<number | null>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
     if (categoriesOverride) {
@@ -60,6 +66,59 @@ export default function CategoryGrid({
     }
   };
 
+  const useSliderLayout = useMemo(() => categories.length > 6, [categories.length]);
+
+  useEffect(() => {
+    if (!useSliderLayout) return;
+    const el = sliderRef.current;
+    if (!el) return;
+
+    const updateScrollState = () => {
+      const maxScrollLeft = el.scrollWidth - el.clientWidth;
+      setCanScrollLeft(el.scrollLeft > 0);
+      setCanScrollRight(el.scrollLeft < maxScrollLeft - 1);
+    };
+
+    updateScrollState();
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+    };
+  }, [useSliderLayout, categories.length]);
+
+  const scrollByAmount = (direction: 'left' | 'right') => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!useSliderLayout) return;
+    const el = sliderRef.current;
+    if (!el) return;
+    setIsDragging(true);
+    dragStartX.current = event.pageX - el.offsetLeft;
+    dragScrollLeft.current = el.scrollLeft;
+  };
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!useSliderLayout || !isDragging) return;
+    const el = sliderRef.current;
+    if (!el) return;
+    event.preventDefault();
+    const x = event.pageX - el.offsetLeft;
+    const walk = (x - dragStartX.current) * 1.1;
+    el.scrollLeft = dragScrollLeft.current - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -70,48 +129,81 @@ export default function CategoryGrid({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {categories.map((category) => (
+      <div className={useSliderLayout ? 'relative' : ''}>
+        {useSliderLayout && canScrollLeft && (
           <button
-            key={category.id}
-            onClick={() => loadSubcategories(category.id)}
-            className={`flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-200 ${
-              expandedCategory === category.id
-                ? 'bg-white shadow-xl border-2'
-                : 'bg-slate-50 hover:bg-white hover:shadow-lg border-2 border-transparent'
-            }`}
-            style={{
-              borderColor: expandedCategory === category.id ? primaryColor : undefined,
-            }}
+            type="button"
+            onClick={() => scrollByAmount('left')}
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-900 shadow-md backdrop-blur"
+            aria-label="Scroll categories left"
           >
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center mb-4 bg-white shadow-md"
-            >
-              {category.icon?.url ? (
-                <img
-                  src={category.icon.url}
-                  alt={category.name}
-                  className="w-12 h-12 object-contain"
-                />
-              ) : (
-                <Grid3X3
-                  className="w-8 h-8"
-                  style={{ color: primaryColor }}
-                />
-              )}
-            </div>
-            <span
-              className={`font-semibold text-center text-sm leading-tight ${
-                expandedCategory === category.id ? 'text-slate-900' : 'text-slate-700'
-              }`}
-            >
-              {category.name}
-            </span>
-            {loadingSubcategories === category.id && (
-              <Loader2 className="w-4 h-4 animate-spin mt-2" style={{ color: primaryColor }} />
-            )}
+            ‹
           </button>
-        ))}
+        )}
+        {useSliderLayout && canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollByAmount('right')}
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-900 shadow-md backdrop-blur"
+            aria-label="Scroll categories right"
+          >
+            ›
+          </button>
+        )}
+        <div
+          ref={useSliderLayout ? sliderRef : undefined}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          className={
+            useSliderLayout
+              ? `flex gap-4 overflow-x-auto pb-3 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
+              : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4'
+          }
+        >
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => loadSubcategories(category.id)}
+              className={`flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-200 ${
+                expandedCategory === category.id
+                  ? 'bg-white shadow-xl border-2'
+                  : 'bg-slate-50 hover:bg-white hover:shadow-lg border-2 border-transparent'
+              } ${useSliderLayout ? 'min-w-[150px] flex-shrink-0' : ''}`}
+              style={{
+                borderColor: expandedCategory === category.id ? primaryColor : undefined,
+              }}
+            >
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center mb-4 bg-white shadow-md"
+              >
+                {category.icon?.url ? (
+                  <img
+                    src={category.icon.url}
+                    alt={category.name}
+                    className="w-12 h-12 object-contain"
+                  />
+                ) : (
+                  <Grid3X3
+                    className="w-8 h-8"
+                    style={{ color: primaryColor }}
+                  />
+                )}
+              </div>
+              <span
+                className={`font-semibold text-center text-sm leading-tight ${
+                  expandedCategory === category.id ? 'text-slate-900' : 'text-slate-700'
+                }`}
+              >
+                {category.name}
+              </span>
+              {loadingSubcategories === category.id && (
+                <Loader2 className="w-4 h-4 animate-spin mt-2" style={{ color: primaryColor }} />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {expandedCategory && subcategories[expandedCategory] && (
