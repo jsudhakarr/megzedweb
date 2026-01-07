@@ -1,22 +1,42 @@
 import { Link } from 'react-router-dom';
-import { Store, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import {
+  Store,
+  Mail,
+  Phone,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Globe,
+  MessageCircle,
+} from 'lucide-react';
+import type { AppSettings } from '../services/appSettings';
 
 interface FooterProps {
-  // Fix: Added "| null" to allow the settings prop to be null coming from the parent
-  settings?: {
-    appname?: string;
-    logo?: { thumbnail: string } | null;
-    primary_color?: string;
-    currency?: string;
-    language?: string;
-    contact_email?: string;
-    contact_phone?: string;
-  } | null; 
+  settings?: AppSettings | null;
   primaryColor: string;
 }
 
 export default function Footer({ settings, primaryColor }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const appName = settings?.appname || settings?.sitename || 'Megzed';
+  const contactEmail = settings?.contact_email || 'support@megzed.com';
+  const contactPhone =
+    settings?.contact_phone || settings?.contact_number || '+1 (234) 567-890';
+  const languageCode =
+    (settings?.language || settings?.default_language || 'EN').toUpperCase();
+  const currencyCode = settings?.currency || 'USD';
+  const footerText = settings?.footer_text
+    ? `${currentYear} ${settings.footer_text}`
+    : `${currentYear} ${appName}. All rights reserved.`;
+  const socialLinks = [
+    { href: settings?.facebook_url, label: 'Facebook', icon: Facebook },
+    { href: settings?.x_url, label: 'X', icon: Twitter },
+    { href: settings?.instagram_url, label: 'Instagram', icon: Instagram },
+    { href: settings?.youtube_url, label: 'YouTube', icon: Youtube },
+    { href: settings?.whatsapp_url, label: 'WhatsApp', icon: MessageCircle },
+  ].filter((link) => Boolean(link.href));
 
   return (
     <footer className="bg-slate-900 text-slate-300 mt-auto">
@@ -27,48 +47,40 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
               {settings?.logo?.thumbnail ? (
                 <img
                   src={settings.logo.thumbnail}
-                  alt={settings?.appname}
+                  alt={appName}
                   className="h-8 w-auto object-contain"
                 />
               ) : (
                 <Store className="w-6 h-6" style={{ color: primaryColor }} />
               )}
               <span className="text-lg font-bold text-white">
-                {settings?.appname?.split(' - ')[0] || 'Megzed'}
+                {appName.split(' - ')[0]}
               </span>
             </div>
             <p className="text-sm text-slate-400 mb-4">
-              Your trusted marketplace for buying and selling. Find great deals and list your items today.
+              {settings?.description ||
+                'Your trusted marketplace for buying and selling. Find great deals and list your items today.'}
             </p>
             <div className="flex gap-3">
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
-                aria-label="Facebook"
-              >
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
-                aria-label="Twitter"
-              >
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="w-4 h-4" />
-              </a>
+              {socialLinks.length > 0 ? (
+                socialLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
+                      aria-label={link.label}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Icon className="w-4 h-4" />
+                    </a>
+                  );
+                })
+              ) : (
+                <span className="text-xs text-slate-500">No social links</span>
+              )}
             </div>
           </div>
 
@@ -135,25 +147,31 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
               <li className="flex items-start gap-3">
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                 <a
-                  href={`mailto:${settings?.contact_email || 'support@megzed.com'}`}
+                  href={`mailto:${contactEmail}`}
                   className="text-sm hover:text-white transition-colors break-all"
                 >
-                  {settings?.contact_email || 'support@megzed.com'}
+                  {contactEmail}
                 </a>
               </li>
               <li className="flex items-start gap-3">
                 <Phone className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                 <a
-                  href={`tel:${settings?.contact_phone || '+1234567890'}`}
+                  href={`tel:${contactPhone}`}
                   className="text-sm hover:text-white transition-colors"
                 >
-                  {settings?.contact_phone || '+1 (234) 567-890'}
+                  {contactPhone}
                 </a>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                 <span className="text-sm">
-                  {settings?.currency || 'USD'} | {settings?.language?.toUpperCase() || 'EN'}
+                  {settings?.contact_address || 'Contact address available on request.'}
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <Globe className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
+                <span className="text-sm">
+                  {currencyCode} | {languageCode}
                 </span>
               </li>
             </ul>
@@ -161,9 +179,7 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
         </div>
 
         <div className="border-t border-slate-800 mt-8 pt-8 text-center">
-          <p className="text-sm text-slate-400">
-            {currentYear} {settings?.appname?.split(' - ')[0] || 'Megzed'}. All rights reserved.
-          </p>
+          <p className="text-sm text-slate-400">{footerText}</p>
         </div>
       </div>
     </footer>

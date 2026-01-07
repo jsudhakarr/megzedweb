@@ -6,6 +6,8 @@ import React, {
   useState,
 } from "react";
 import { getLanguages, getTranslations } from "../services/api";
+import enTranslations from "../assets/translations/en.json";
+import teTranslations from "../assets/translations/te.json";
 
 /* ---------------- TYPES ---------------- */
 
@@ -35,6 +37,10 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const localTranslations: Record<string, Record<string, string>> = {
+    en: enTranslations,
+    te: teTranslations,
+  };
 
   /* ---------- change language ---------- */
   const setLang = (l: string) => {
@@ -62,11 +68,19 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
 
     // ✅ 2. Fetch from API only once
     setLoading(true);
+    const fallbackTranslations = localTranslations[lang] ?? {};
+    if (Object.keys(fallbackTranslations).length > 0) {
+      setTranslations(fallbackTranslations);
+    }
     getTranslations(lang)
       .then((keys) => {
-        const data = keys || {};
-        setTranslations(data);
-        localStorage.setItem(cacheKey, JSON.stringify(data));
+        const data = keys?.data ?? keys ?? {};
+        const normalized =
+          data && typeof data === "object" ? (data as Record<string, string>) : {};
+        const finalTranslations =
+          Object.keys(normalized).length > 0 ? normalized : fallbackTranslations;
+        setTranslations(finalTranslations);
+        localStorage.setItem(cacheKey, JSON.stringify(finalTranslations));
       })
       .catch(() => setTranslations({}))
       .finally(() => setLoading(false));

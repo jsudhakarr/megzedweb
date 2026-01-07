@@ -1060,7 +1060,7 @@ class ApiService {
   }
 
   async getAppSettings(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/appsettings`, {
+    const response = await fetch(`${API_BASE_URL}/front-web`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1077,8 +1077,8 @@ class ApiService {
 
   async getTranslations(lang?: string): Promise<any> {
     const url = lang
-      ? `${API_BASE_URL}/translations?lang=${encodeURIComponent(lang)}`
-      : `${API_BASE_URL}/translations`;
+      ? `${API_BASE_URL}/front-web/translations?lang=${encodeURIComponent(lang)}`
+      : `${API_BASE_URL}/front-web/translations`;
 
     const response = await fetch(url, { headers: this.getHeaders() });
     if (!response.ok) throw new Error(await this.readError(response));

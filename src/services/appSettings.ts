@@ -11,7 +11,9 @@ export interface AppSettingsLogo {
 
 export interface AppSettings {
   id: number;
-  appname: string;
+  appname?: string;
+  sitename?: string;
+  description?: string;
 
   maintenance_mode: string;
   maintenance_title?: string;
@@ -28,17 +30,51 @@ export interface AppSettings {
   secondary_color: string;
   currency: string;
   language: string;
+  default_language?: string;
 
   logo: AppSettingsLogo | null;
-  placeholder_image?: string | null;
+  placeholder_image?: AppSettingsLogo | null;
+  footer_logo?: string | null;
+  favicon?: string | null;
+
+  footer_text?: string;
+  youtube_url?: string | null;
+  facebook_url?: string | null;
+  x_url?: string | null;
+  instagram_url?: string | null;
+  whatsapp_url?: string | null;
+  play_store_link?: string | null;
+  app_store_link?: string | null;
+
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_number?: string | null;
+  contact_address?: string | null;
+  map_lat?: string | null;
+  map_lng?: string | null;
 }
 
+const normalizeAppSettings = (data: AppSettings): AppSettings => {
+  const appname =
+    data.appname || data.sitename || data.description || 'Megzed';
+  const language = data.language || data.default_language || 'en';
+  const currency = data.currency || 'USD';
+  const contact_phone = data.contact_phone || data.contact_number;
+
+  return {
+    ...data,
+    appname,
+    language,
+    currency,
+    contact_phone,
+  };
+};
 
 
 
 // 2. The Fixed Fetch Function
 export async function fetchAppSettings(): Promise<AppSettings> {
-  const response = await fetch(`${API_BASE_URL}/appsettings`);
+  const response = await fetch(`${API_BASE_URL}/front-web`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch app settings');
@@ -49,8 +85,7 @@ export async function fetchAppSettings(): Promise<AppSettings> {
   // CRITICAL FIX: The API returns a single object { ... }, not an array [ ... ]
   // We check if it's an array just in case, but prioritize the object.
   if (Array.isArray(data)) {
-    return data[0]; 
-  } else {
-    return data; // This handles the current API response correctly
+    return normalizeAppSettings(data[0]);
   }
+  return normalizeAppSettings(data as AppSettings);
 }
