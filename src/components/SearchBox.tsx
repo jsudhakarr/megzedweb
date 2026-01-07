@@ -5,9 +5,10 @@ import { apiService, type Item } from "../services/api";
 
 interface SearchBoxProps {
   primaryColor: string;
+  containerClassName?: string;
 }
 
-export default function SearchBox({ primaryColor }: SearchBoxProps) {
+export default function SearchBox({ primaryColor, containerClassName }: SearchBoxProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Item[]>([]);
@@ -65,7 +66,10 @@ export default function SearchBox({ primaryColor }: SearchBoxProps) {
   };
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-2xl mx-auto">
+    <div
+      ref={searchRef}
+      className={`relative w-full max-w-2xl mx-auto ${containerClassName ?? ''}`}
+    >
       {/* Search input */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />

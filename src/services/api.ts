@@ -111,6 +111,18 @@ export interface User {
   profile_photo_url?: string;
 }
 
+export interface Slider {
+  id: number;
+  title: string;
+  subtitle?: string | null;
+  image: string;
+  target_type?: string | null;
+  item_id?: number | null;
+  shop_id?: number | null;
+  link_url?: string | null;
+  sort_order?: number | null;
+}
+
 // ✅ Chat Types
 export interface ChatMessage {
   id: number;
@@ -712,6 +724,17 @@ class ApiService {
 
   async getPublicUsers(): Promise<PublicUser[]> {
     const response = await fetch(`${API_BASE_URL}/users/public`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+  }
+
+  async getSliders(): Promise<Slider[]> {
+    const response = await fetch(`${API_BASE_URL}/sliders`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
