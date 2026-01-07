@@ -193,6 +193,26 @@ export default function Home() {
     }
   };
 
+  const resolveViewAllRoute = (section: HomeSection) => {
+    const explicitRoute = resolveRoute(section.view_all?.route_key || null);
+    if (explicitRoute) return explicitRoute;
+
+    switch (section.type) {
+      case 'categories':
+        return '/categories';
+      case 'items': {
+        if (section.data_source?.filter === 'featured') return '/items?filter=featured';
+        return '/items';
+      }
+      case 'shops':
+        return '/shops';
+      case 'users':
+        return '/users';
+      default:
+        return null;
+    }
+  };
+
   const headerStyles = (section: HomeSection) => ({
     title: { color: section.style?.title_color || '#0f172a' },
     subtitle: { color: section.style?.subtitle_color || '#64748b' },
@@ -454,7 +474,7 @@ export default function Home() {
             {!sectionsLoading &&
               dynamicSections.map((section) => {
                 const styles = headerStyles(section);
-                const viewAllRoute = resolveRoute(section.view_all?.route_key || null);
+                const viewAllRoute = resolveViewAllRoute(section);
                 const backgroundColor = section.style?.background_color || '#ffffff';
                 const itemCount = section.item_count || undefined;
 
