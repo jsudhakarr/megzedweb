@@ -180,7 +180,7 @@ export default function Home() {
                 style={{ backgroundColor: primaryColor }}
               >
                 <PlusCircle className="w-5 h-5" />
-                <span>{t('add_property')}</span>
+                <span>Post now</span>
               </button>
 
               {user ? (
@@ -243,10 +243,10 @@ export default function Home() {
               <button
                 onClick={() => setScanOpen(true)}
                 className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
-                title={t('scan_qr')}
+                title="Scan View details"
               >
                 <QrCode className="w-5 h-5" />
-                <span className="text-xs font-semibold">{t('scan')}</span>
+                <span className="text-xs font-semibold">Scan View details</span>
               </button>
 
               <button
