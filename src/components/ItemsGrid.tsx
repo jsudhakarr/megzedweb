@@ -36,6 +36,9 @@ export default function ItemsGrid({
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(!itemsOverride);
   const listRef = useRef<HTMLDivElement>(null);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -135,9 +138,32 @@ export default function ItemsGrid({
     el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
   };
 
+  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isListLayout) return;
+    const el = listRef.current;
+    if (!el) return;
+    setIsDragging(true);
+    dragStartX.current = event.pageX - el.offsetLeft;
+    dragScrollLeft.current = el.scrollLeft;
+  };
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isListLayout || !isDragging) return;
+    const el = listRef.current;
+    if (!el) return;
+    event.preventDefault();
+    const x = event.pageX - el.offsetLeft;
+    const walk = (x - dragStartX.current) * 1.1;
+    el.scrollLeft = dragScrollLeft.current - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   const gridClass =
     layout === 'list'
-      ? 'flex gap-4 overflow-x-auto pb-4 scrollbar-hide'
+      ? `flex gap-4 overflow-x-auto pb-4 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
       : `grid sm:grid-cols-2 md:grid-cols-3 gap-4 ${
           showFilters ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5'
         }`;
@@ -165,7 +191,14 @@ export default function ItemsGrid({
             ›
           </button>
         )}
-        <div ref={isListLayout ? listRef : undefined} className={gridClass}>
+        <div
+          ref={isListLayout ? listRef : undefined}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          className={gridClass}
+        >
         {resolvedItems.map((item: any) => {
           const fields = getDynamicFields(item);
 
