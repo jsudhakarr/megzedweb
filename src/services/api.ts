@@ -598,19 +598,32 @@ class ApiService {
     state?: string | null;
   }): Promise<Item[]> {
     const params = new URLSearchParams();
-    if (filters.categoryId)
-      params.append('category_id', filters.categoryId.toString());
-    if (filters.subcategoryId)
-      params.append('subcategory_id', filters.subcategoryId.toString());
+    const categoryId = filters.categoryId ?? undefined;
+    const subcategoryId = filters.subcategoryId ?? undefined;
     if (filters.listingType) params.append('listing_type', filters.listingType);
-    if (filters.minPrice) params.append('min_price', filters.minPrice);
-    if (filters.maxPrice) params.append('max_price', filters.maxPrice);
+    if (filters.minPrice !== undefined && filters.minPrice !== '')
+      params.append('min_price', filters.minPrice);
+    if (filters.maxPrice !== undefined && filters.maxPrice !== '')
+      params.append('max_price', filters.maxPrice);
     if (filters.verified !== null && filters.verified !== undefined)
       params.append('verified', String(filters.verified));
     if (filters.city) params.append('city', filters.city);
     if (filters.state) params.append('state', filters.state);
 
-    const response = await fetch(`${API_BASE_URL}/items?${params.toString()}`, {
+    let endpoint = `${API_BASE_URL}/items`;
+    if (subcategoryId) {
+      endpoint = `${API_BASE_URL}/items/by-subcategory/${subcategoryId}`;
+    } else if (categoryId) {
+      endpoint = `${API_BASE_URL}/items/by-category/${categoryId}`;
+    } else {
+      if (categoryId) params.append('category_id', String(categoryId));
+      if (subcategoryId) params.append('subcategory_id', String(subcategoryId));
+    }
+
+    const queryString = params.toString();
+    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+
+    const response = await fetch(url, {
       headers: this.getHeaders(),
     });
 
