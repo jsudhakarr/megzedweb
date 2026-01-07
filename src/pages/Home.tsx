@@ -174,7 +174,7 @@ export default function Home() {
   });
 
   const sectionWrapperClass = (section: HomeSectionResolved) =>
-    `py-4 ${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
+    `${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
 
   useEffect(() => {
     const loadSections = async () => {
