@@ -12,7 +12,6 @@ import {
   Bell,
   PlusCircle,
   MessageCircle,
-  Loader2,
 } from 'lucide-react';
 
 import SearchBox from '../components/SearchBox';
@@ -271,6 +270,35 @@ export default function Home() {
     return data && data.length > 0 ? data : undefined;
   }, [sectionData, sliderSection]);
 
+  const shimmerBaseClass =
+    'animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200';
+
+  const renderSectionSkeletons = () => (
+    <div className="space-y-10">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <section key={`section-skeleton-${index}`} className="py-8">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="space-y-2">
+                <div className={`h-6 w-44 ${shimmerBaseClass}`} />
+                <div className={`h-4 w-64 ${shimmerBaseClass}`} />
+              </div>
+              <div className={`h-4 w-16 ${shimmerBaseClass}`} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((__, cardIndex) => (
+                <div
+                  key={`section-skeleton-${index}-card-${cardIndex}`}
+                  className={`h-40 ${shimmerBaseClass}`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* HEADER */}
@@ -461,9 +489,7 @@ export default function Home() {
         ) : (
           <div className="space-y-10">
             {sectionsLoading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-              </div>
+              <div className="py-6">{renderSectionSkeletons()}</div>
             )}
 
             {!sectionsLoading &&
