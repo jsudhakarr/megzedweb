@@ -173,7 +173,9 @@ export default function Home() {
   });
 
   const sectionWrapperClass = (section: HomeSectionResolved) =>
-    `${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
+    `${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''} py-6`;
+  const sectionHeaderClass = 'flex items-start justify-between gap-4 mb-3';
+  const sectionTitleWrapperClass = 'space-y-1';
 
   useEffect(() => {
     if (cachedHomeSections) {
@@ -210,7 +212,7 @@ export default function Home() {
     loadSections();
   }, []);
 
-  const dynamicSections = useMemo(() => {
+  const dynamicSections = useMemo<HomeSectionResolved[]>(() => {
     if (!homeSections.length) return [];
     return homeSections.filter((section) => section.type !== 'slider');
   }, [homeSections]);
@@ -446,29 +448,23 @@ export default function Home() {
             )}
 
             {!sectionsLoading &&
-              dynamicSections.map((section, sectionIndex) => {
+              dynamicSections.map((section) => {
                 const styles = headerStyles(section);
                 const viewAllRoute = resolveViewAllRoute(section);
                 const backgroundColor = section.style?.background_color || '#ffffff';
                 const itemCount = section.item_count || undefined;
-                const isFirstSection = sectionIndex === 0;
-                const isLastSection = sectionIndex === dynamicSections.length - 1;
-                const sectionSpacingClass = `${isFirstSection ? 'pt-6' : ''} ${
-                  isLastSection ? 'pb-6' : ''
-                }`.trim();
-
                 if (section.type === 'categories') {
                   const categories = section.resolvedData.categories ?? [];
                   const categoriesOverride = categories.length ? categories : undefined;
                   return (
                     <section
                       key={section.id}
-                      className={`${sectionWrapperClass(section)} ${sectionSpacingClass}`.trim()}
+                      className={sectionWrapperClass(section)}
                       style={{ backgroundColor }}
                     >
                       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
+                        <div className={sectionHeaderClass}>
+                          <div className={sectionTitleWrapperClass}>
                             <h2
                               className="text-xl sm:text-2xl font-bold leading-tight"
                               style={styles.title}
@@ -476,7 +472,7 @@ export default function Home() {
                               {section.title || t('categories')}
                             </h2>
                             {section.subtitle && (
-                              <p className="text-sm mt-1" style={styles.subtitle}>
+                              <p className="text-sm" style={styles.subtitle}>
                                 {section.subtitle}
                               </p>
                             )}
@@ -510,12 +506,12 @@ export default function Home() {
                   return (
                     <section
                       key={section.id}
-                      className={`${sectionWrapperClass(section)} ${sectionSpacingClass}`.trim()}
+                      className={sectionWrapperClass(section)}
                       style={{ backgroundColor }}
                     >
                       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
+                        <div className={sectionHeaderClass}>
+                          <div className={sectionTitleWrapperClass}>
                             <h2
                               className="text-xl sm:text-2xl font-bold leading-tight"
                               style={styles.title}
@@ -523,7 +519,7 @@ export default function Home() {
                               {section.title || t('featured_properties')}
                             </h2>
                             {section.subtitle && (
-                              <p className="text-sm mt-1" style={styles.subtitle}>
+                              <p className="text-sm" style={styles.subtitle}>
                                 {section.subtitle}
                               </p>
                             )}
@@ -564,8 +560,8 @@ export default function Home() {
                       style={{ backgroundColor }}
                     >
                       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
+                        <div className={sectionHeaderClass}>
+                          <div className={sectionTitleWrapperClass}>
                             <h2
                               className="text-xl sm:text-2xl font-bold leading-tight"
                               style={styles.title}
@@ -573,7 +569,7 @@ export default function Home() {
                               {section.title || featuredHeading}
                             </h2>
                             {section.subtitle && (
-                              <p className="text-sm mt-1" style={styles.subtitle}>
+                              <p className="text-sm" style={styles.subtitle}>
                                 {section.subtitle}
                               </p>
                             )}
@@ -585,7 +581,7 @@ export default function Home() {
                               className="text-sm sm:text-base font-semibold transition"
                               style={styles.viewAll}
                             >
-                              {t('view_more')} →
+                              {t('view_all')}
                             </button>
                           )}
                         </div>

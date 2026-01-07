@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
 
@@ -20,7 +21,12 @@ interface FilterSidebarProps {
   expandedSection?: string | null;
 }
 
-export default function FilterSidebar({ primaryColor, onFilterChange, initialFilters, expandedSection: controlledExpandedSection }: FilterSidebarProps) {
+export default function FilterSidebar({
+  primaryColor,
+  onFilterChange,
+  initialFilters,
+  expandedSection: controlledExpandedSection,
+}: FilterSidebarProps) {
   const [filters, setFilters] = useState<FilterState>(
     initialFilters || {
       category: null,
@@ -98,6 +104,7 @@ export default function FilterSidebar({ primaryColor, onFilterChange, initialFil
   const hasActiveFilters = Object.values(filters).some(
     (v) => v !== null && v !== ''
   );
+  const focusRingStyle = { '--tw-ring-color': primaryColor } as CSSProperties;
 
   return (
     <div className="bg-white rounded-xl shadow-md border border-slate-200 p-5 h-fit sticky top-6 w-72 max-w-[20rem]">
@@ -284,7 +291,7 @@ export default function FilterSidebar({ primaryColor, onFilterChange, initialFil
                     handleFilterChange({ minPrice: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: primaryColor }}
+                  style={focusRingStyle}
                 />
               </div>
               <div>
@@ -299,7 +306,7 @@ export default function FilterSidebar({ primaryColor, onFilterChange, initialFil
                     handleFilterChange({ maxPrice: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: primaryColor }}
+                  style={focusRingStyle}
                 />
               </div>
             </div>
@@ -376,7 +383,7 @@ export default function FilterSidebar({ primaryColor, onFilterChange, initialFil
                     handleFilterChange({ state: e.target.value || null })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: primaryColor }}
+                  style={focusRingStyle}
                 />
               </div>
               <div>
@@ -391,7 +398,7 @@ export default function FilterSidebar({ primaryColor, onFilterChange, initialFil
                     handleFilterChange({ city: e.target.value || null })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: primaryColor }}
+                  style={focusRingStyle}
                 />
               </div>
             </div>
