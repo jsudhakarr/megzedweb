@@ -213,7 +213,7 @@ export default function Home() {
           sections.map(async (section) => {
             if (section.type === 'ad') return [section.id, []] as const;
             try {
-              const data = await apiService.getHomeSectionData(section.id);
+              const data = await apiService.getHomeSectionData(section);
               const normalized = Array.isArray(data)
                 ? data
                 : Array.isArray((data as any)?.data)
