@@ -4,6 +4,8 @@ import { useAppSettings } from "../contexts/AppSettingsContext";
 import { apiService, type Item } from "../services/api";
 import MapEmbed from "../components/MapEmbed";
 import LeafletRadiusMap from "../components/LeafletRadiusMap";
+import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
 
 
 import {
@@ -134,26 +136,39 @@ export default function ItemDetail() {
   // -----------------------------
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-10 h-10 animate-spin" style={{ color: primaryColor }} />
-        <p className="text-slate-500 font-medium">Loading details...</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <SiteHeader />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin" style={{ color: primaryColor }} />
+          <p className="text-slate-500 font-medium">Loading details...</p>
+        </div>
+        <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
       </div>
     );
   }
 
   if (error || !item) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-sm w-full">
-          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Tag className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <SiteHeader />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-sm w-full">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Tag className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Item Not Found</h2>
+            <p className="text-slate-500 mb-6">
+              {error || "The item you requested could not be found."}
+            </p>
+            <button
+              onClick={() => navigate("/")}
+              className="w-full px-4 py-2 bg-slate-900 text-white rounded-xl"
+            >
+              Back to Home
+            </button>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Item Not Found</h2>
-          <p className="text-slate-500 mb-6">{error || "The item you requested could not be found."}</p>
-          <button onClick={() => navigate("/")} className="w-full px-4 py-2 bg-slate-900 text-white rounded-xl">
-            Back to Home
-          </button>
         </div>
+        <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
       </div>
     );
   }
@@ -182,9 +197,10 @@ export default function ItemDetail() {
   // UI
   // -----------------------------
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
+    <div className="min-h-screen bg-slate-50/50 pb-20 flex flex-col">
+      <SiteHeader />
       {/* Navbar */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 supports-[backdrop-filter]:bg-white/60">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 supports-[backdrop-filter]:bg-white/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
@@ -530,6 +546,8 @@ export default function ItemDetail() {
           </div>
         </div>
       </main>
+
+      <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
     </div>
   );
 }

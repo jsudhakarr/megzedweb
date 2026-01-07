@@ -21,6 +21,8 @@ import {
 } from '../services/api';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
+import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
 
 type TabKey = 'all' | 'shops' | 'listings';
 
@@ -119,26 +121,34 @@ export default function PublicUserProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <SiteHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+        <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
       </div>
     );
   }
 
   if (error || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 text-center space-y-4">
-          <p className="text-slate-700">{error || t('user_not_found')}</p>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="px-4 py-2 rounded-lg font-semibold text-white"
-            style={{ backgroundColor: primaryColor }}
-          >
-            {t('go_home')}
-          </button>
+      <div className="min-h-screen flex flex-col bg-slate-50 px-4">
+        <SiteHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 text-center space-y-4">
+            <p className="text-slate-700">{error || t('user_not_found')}</p>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="px-4 py-2 rounded-lg font-semibold text-white"
+              style={{ backgroundColor: primaryColor }}
+            >
+              {t('go_home')}
+            </button>
+          </div>
         </div>
+        <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
       </div>
     );
   }
@@ -147,8 +157,10 @@ export default function PublicUserProfile() {
   const showListings = tab === 'all' || tab === 'listings';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/40 to-white">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/40 to-white flex flex-col">
+      <SiteHeader />
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
@@ -423,6 +435,8 @@ export default function PublicUserProfile() {
           </section>
         )}
       </div>
+
+      <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
     </div>
   );
 }

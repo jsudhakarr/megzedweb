@@ -6,6 +6,8 @@ import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
 import FilterSidebar from '../components/FilterSidebar';
 import ItemsGrid from '../components/ItemsGrid';
+import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
 
 interface FilterState {
   category: number | null;
@@ -111,8 +113,10 @@ export default function Items() {
   const emptyLabel = translate('no_items_found', 'No items found.');
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <SiteHeader />
+
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
         <div className="flex items-center gap-3 mb-6">
           <button
             type="button"
@@ -163,6 +167,8 @@ export default function Items() {
           </div>
         </div>
       </div>
+
+      <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
     </div>
   );
 }

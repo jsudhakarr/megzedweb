@@ -5,6 +5,8 @@ import { apiService, type PublicUser } from '../services/api';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
 import PublicUserCard from '../components/PublicUserCard';
+import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
 
 export default function UsersDirectory() {
   const { t } = useI18n();
@@ -41,8 +43,10 @@ export default function UsersDirectory() {
   }, [users, query]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <SiteHeader />
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
         <div className="flex items-center gap-3 mb-6">
           <button
             type="button"
@@ -85,6 +89,8 @@ export default function UsersDirectory() {
           </div>
         )}
       </div>
+
+      <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
     </div>
   );
 }
