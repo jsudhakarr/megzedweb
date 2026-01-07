@@ -184,7 +184,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-transparent hover:bg-slate-100 transition-colors"
       >
         <div className="flex items-center justify-center w-10 h-10 bg-slate-100 rounded-lg">
           <MapPin className="w-5 h-5 text-slate-700" />
