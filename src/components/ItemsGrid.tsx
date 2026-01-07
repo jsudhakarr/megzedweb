@@ -8,10 +8,13 @@ import verifiedIcon from '../assets/icons/verified.png';
 
 interface ItemsGridProps {
   primaryColor: string;
+  items?: Item[];
+  limit?: number;
   subcategoryId?: number | null;
   subcategoryName?: string | null; // (kept for compatibility, not used for title now)
   onClearFilter?: () => void;       // (kept for compatibility, not used now)
   showFilters?: boolean;
+  layout?: 'grid' | 'list';
   lat?: number;
   lng?: number;
   distance?: number;
@@ -19,27 +22,36 @@ interface ItemsGridProps {
 
 export default function ItemsGrid({
   primaryColor,
+  items: itemsOverride,
+  limit,
   subcategoryId,
   subcategoryName, // unused now
   onClearFilter,   // unused now
   showFilters = false,
+  layout = 'grid',
   lat,
   lng,
   distance,
 }: ItemsGridProps) {
   const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!itemsOverride);
 
   useEffect(() => {
+    if (itemsOverride) {
+      setItems(itemsOverride);
+      setLoading(false);
+      return;
+    }
     loadItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subcategoryId, lat, lng, distance]);
+  }, [itemsOverride, subcategoryId, lat, lng, distance]);
 
   const loadItems = async () => {
     setLoading(true);
     try {
       const data = await apiService.getItems(subcategoryId ?? undefined, lat, lng, distance);
-      setItems((data || []).slice(0, 10));
+      const defaultLimit = typeof limit === 'number' ? limit : 10;
+      setItems((data || []).slice(0, defaultLimit));
     } catch (error) {
       console.error('Failed to load items:', error);
       setItems([]);
@@ -87,16 +99,21 @@ export default function ItemsGrid({
     );
   }
 
-  if (items.length === 0) return null;
+  const resolvedItems = typeof limit === 'number' ? items.slice(0, limit) : items;
+
+  if (resolvedItems.length === 0) return null;
+
+  const gridClass =
+    layout === 'list'
+      ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4'
+      : `grid sm:grid-cols-2 md:grid-cols-3 gap-4 ${
+          showFilters ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5'
+        }`;
 
   return (
     <div className="space-y-4">
-      <div
-        className={`grid sm:grid-cols-2 md:grid-cols-3 gap-4 ${
-          showFilters ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5'
-        }`}
-      >
-        {items.map((item: any) => {
+      <div className={gridClass}>
+        {resolvedItems.map((item: any) => {
           const fields = getDynamicFields(item);
 
           return (
