@@ -33,7 +33,7 @@ export default function ItemsGrid({
   lng,
   distance,
 }: ItemsGridProps) {
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Item[]>(itemsOverride ?? []);
   const [loading, setLoading] = useState(!itemsOverride);
   const listRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
@@ -97,14 +97,6 @@ export default function ItemsGrid({
       .slice(0, 2);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
   const resolvedItems = typeof limit === 'number' ? items.slice(0, limit) : items;
   const isListLayout = layout === 'list';
 
@@ -128,6 +120,14 @@ export default function ItemsGrid({
       window.removeEventListener('resize', updateScrollState);
     };
   }, [isListLayout, resolvedItems.length]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   if (resolvedItems.length === 0) return null;
 
