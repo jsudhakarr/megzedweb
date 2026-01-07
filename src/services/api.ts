@@ -145,6 +145,17 @@ export type Language = {
   name: string;
 };
 
+type HomeSectionDataSource = {
+  id: number;
+  type?: string | null;
+  view_all?: { route_key?: string | null } | null;
+  data_route?: string | null;
+  data_endpoint?: string | null;
+  api_route?: string | null;
+  endpoint?: string | null;
+  data_key?: string | null;
+  route_key?: string | null;
+};
 
 // --- Service Class ---
 
@@ -199,6 +210,76 @@ class ApiService {
   private extractToken(response: any): string | null {
     const token = response.token || response.access_token;
     return typeof token === 'string' && token.length > 0 ? token : null;
+  }
+
+  private normalizeApiRoute(route: string): string {
+    if (route.startsWith('http')) return route;
+    return `${API_BASE_URL}${route.startsWith('/') ? '' : '/'}${route}`;
+  }
+
+  private resolveHomeSectionRoute(section: HomeSectionDataSource): string | null {
+    const explicitRoute =
+      section.data_route ||
+      section.data_endpoint ||
+      section.api_route ||
+      section.endpoint;
+    if (explicitRoute) return explicitRoute;
+
+    const routeKey = section.route_key || section.data_key || section.view_all?.route_key;
+
+    if (section.type === 'items') {
+      switch (routeKey) {
+        case 'featured_items':
+          return 'items/featured';
+        case 'most_viewed_items':
+        case 'most_viewed':
+          return 'items/most-viewed';
+        case 'most_favorited_items':
+        case 'most_favorited':
+          return 'items/most-favorited';
+        case 'most_liked_items':
+        case 'most_liked':
+          return 'items/most-liked';
+        case 'items_by_city':
+        case 'by_city':
+          return 'items/by-city';
+        case 'items_by_location':
+        case 'by_location':
+          return 'items/by-location';
+        case 'items_nearby':
+        case 'nearby':
+          return 'items/nearby';
+        case 'all_items':
+          return 'items';
+        default:
+          return 'items';
+      }
+    }
+
+    if (section.type === 'shops') {
+      switch (routeKey) {
+        case 'verified_shops':
+        case 'verified':
+          return 'shops/verified';
+        case 'top_rated_shops':
+        case 'top_rated':
+          return 'shops/top-rated';
+        case 'all_shops':
+          return 'shops';
+        default:
+          return 'shops';
+      }
+    }
+
+    if (section.type === 'categories') {
+      return 'categories';
+    }
+
+    if (section.type === 'users') {
+      return 'users/public';
+    }
+
+    return null;
   }
 
   // --- 🔥 NEW GENERIC METHODS (Fixes "get does not exist" error) ---
@@ -718,10 +799,12 @@ class ApiService {
     return [];
   }
 
-  async getHomeSectionData(sectionId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/front-web/sections/${sectionId}/data`, {
-      headers: this.getHeaders(),
-    });
+  async getHomeSectionData(section: HomeSectionDataSource): Promise<any> {
+    const route = this.resolveHomeSectionRoute(section);
+    const url = route
+      ? this.normalizeApiRoute(route)
+      : `${API_BASE_URL}/front-web/sections/${section.id}/data`;
+    const response = await fetch(url, { headers: this.getHeaders() });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     if (Array.isArray(data?.data)) return data.data;
