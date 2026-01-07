@@ -105,7 +105,7 @@ export default function ItemsGrid({
 
   const gridClass =
     layout === 'list'
-      ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4'
+      ? 'flex gap-4 overflow-x-auto pb-4 scrollbar-hide'
       : `grid sm:grid-cols-2 md:grid-cols-3 gap-4 ${
           showFilters ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5'
         }`;
@@ -120,7 +120,9 @@ export default function ItemsGrid({
             <Link
               key={item.id}
               to={`/item/${item.id}`}
-              className="group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden"
+              className={`group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
+                layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+              }`}
             >
               {/* IMAGE */}
               <div className="p-3">
