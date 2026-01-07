@@ -88,6 +88,8 @@ export default function FilterSidebar({ primaryColor, onFilterChange, initialFil
       minPrice: '',
       maxPrice: '',
       verified: null,
+      city: null,
+      state: null,
     };
     setFilters(cleared);
     onFilterChange(cleared);
