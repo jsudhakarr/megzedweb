@@ -541,6 +541,7 @@ export default function Home() {
                           items={items}
                           limit={itemCount}
                           layout={useSliderLayout ? 'list' : 'grid'}
+                          cardStyle={section.style?.card_style ?? undefined}
                         />
                       </div>
                     </section>

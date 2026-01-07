@@ -109,7 +109,20 @@ export interface Item {
   price: string;
   description: string;
   listing_type: string;
+  listing_type_detail?: {
+    id: number;
+    name: string;
+    code: string;
+    icon?: string | null;
+    tag_color?: string | null;
+  } | null;
   rent_duration: string | null;
+  duration_detail?: {
+    id: number;
+    name: string;
+    code: string;
+    sort_order?: number | null;
+  } | null;
   status: string;
   approval_status: string;
   address: string;
@@ -121,7 +134,11 @@ export interface Item {
   latitude: string;
   longitude: string;
 
-  total_view: string;
+  total_view: string | number;
+  favorites_count?: number;
+  likes_count?: number;
+  is_favorite?: boolean;
+  is_liked?: boolean;
   is_verified: boolean;
   qr_code: string;
   qr_url: string;

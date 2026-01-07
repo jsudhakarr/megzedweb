@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, MapPin, Heart, TrendingUp } from 'lucide-react';
+import { Loader2, MapPin, Heart, TrendingUp, Eye, KeyRound, Star } from 'lucide-react';
 import { apiService, type Item } from '../services/api';
 
 // ✅ Custom verified icon (no public folder needed)
@@ -15,6 +15,7 @@ interface ItemsGridProps {
   onClearFilter?: () => void;       // (kept for compatibility, not used now)
   showFilters?: boolean;
   layout?: 'grid' | 'list';
+  cardStyle?: string;
   lat?: number;
   lng?: number;
   distance?: number;
@@ -29,6 +30,7 @@ export default function ItemsGrid({
   onClearFilter,   // unused now
   showFilters = false,
   layout = 'grid',
+  cardStyle,
   lat,
   lng,
   distance,
@@ -96,6 +98,16 @@ export default function ItemsGrid({
       )
       .slice(0, 2);
   };
+
+  const normalizeCardStyle = (style?: string) => {
+    if (!style) return 'default';
+    const normalized = style.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalized === 'style1' || normalized === '1') return 'style1';
+    if (normalized === 'style2' || normalized === '2') return 'style2';
+    return 'default';
+  };
+
+  const resolvedCardStyle = normalizeCardStyle(cardStyle);
 
   const resolvedItems = typeof limit === 'number' ? items.slice(0, limit) : items;
   const isListLayout = layout === 'list';
@@ -168,6 +180,27 @@ export default function ItemsGrid({
           showFilters ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5'
         }`;
 
+  const formatDuration = (item: any) =>
+    item?.duration_detail?.name || item?.rent_duration || '';
+
+  const formatCount = (value: any) => {
+    const parsed = Number(value ?? 0);
+    if (Number.isNaN(parsed)) return 0;
+    return parsed;
+  };
+
+  const getListingTag = (item: any) => {
+    const detail = item?.listing_type_detail || {};
+    const name =
+      detail?.name ||
+      (item?.listing_type === 'rent' ? 'Rent' : 'Sale');
+    return {
+      name,
+      icon: detail?.icon || null,
+      color: detail?.tag_color || null,
+    };
+  };
+
   return (
     <div className="space-y-4">
       <div className={isListLayout ? 'relative' : ''}>
@@ -199,113 +232,315 @@ export default function ItemsGrid({
           onMouseLeave={handleMouseUp}
           className={gridClass}
         >
-        {resolvedItems.map((item: any) => {
-          const fields = getDynamicFields(item);
+          {resolvedItems.map((item: any) => {
+            const fields = getDynamicFields(item);
+            const durationLabel = formatDuration(item);
+            const listingTag = getListingTag(item);
+            const tagStyles = listingTag.color
+              ? {
+                  backgroundColor: `${listingTag.color}1a`,
+                  borderColor: `${listingTag.color}40`,
+                  color: listingTag.color,
+                }
+              : undefined;
+            const isFavourite = item?.is_favorite === true;
 
-          return (
-            <Link
-              key={item.id}
-              to={`/item/${item.id}`}
-              className={`group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
-              }`}
-            >
-              {/* IMAGE */}
-              <div className="p-3">
-                <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
-                  {item.feature_photo?.url ? (
-                    <img
-                      src={item.feature_photo.url}
-                      alt={item.name}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
-                      No image
-                    </div>
-                  )}
+            const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
+              layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+            }`;
 
-                  {/* PROMOTED (top-left) */}
-                  {isPromoted(item) && (
-                    <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      Promoted
-                    </span>
-                  )}
+            if (resolvedCardStyle === 'style1') {
+              return (
+                <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
+                  <div className="p-3">
+                    <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
+                      {item.feature_photo?.url ? (
+                        <img
+                          src={item.feature_photo.url}
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+                          No image
+                        </div>
+                      )}
 
-                  {/* HEART (top-right) */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
-                    aria-label="Favourite"
-                  >
-                    <Heart className="w-4.5 h-4.5 text-slate-700" />
-                  </button>
+                      {isPromoted(item) && (
+                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                          <Star className="w-3.5 h-3.5" />
+                          Promoted
+                        </span>
+                      )}
 
-                  {/* VERIFIED (bottom-right on image) */}
-                  {isVerified(item) && (
-                    <div
-                      title="Verified"
-                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
-                    >
-                      <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* BODY */}
-              <div className="p-4 pt-0">
-                {/* PRICE */}
-                <div className="text-green-600 font-bold text-xl mb-2">
-                  ₹ {formatPrice(item.price)}
-                </div>
-
-                {/* TITLE */}
-                <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
-                  {item.name}
-                </div>
-
-                {/* DYNAMIC FIELDS (icon + value only) */}
-                {fields.length > 0 && (
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    {fields.map((field: any) => (
-                      <div
-                        key={field.field_id}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200"
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                        aria-label="Favourite"
                       >
-                        <img src={field.image} alt="" className="w-4 h-4 object-contain" />
-                        <span className="text-xs font-medium text-slate-700">{field.value}</span>
+                        <Heart
+                          className={`w-4.5 h-4.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
+                        />
+                      </button>
+
+                      {isVerified(item) && (
+                        <div
+                          title="Verified"
+                          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                        >
+                          <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="px-4 pb-4">
+                    <div className="text-sky-600 font-bold text-2xl leading-tight mb-1">
+                      ₹ {formatPrice(item.price)}
+                      {durationLabel && item.listing_type === 'rent' && (
+                        <span className="text-base font-semibold text-slate-500 ml-1">
+                          /{durationLabel}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
+                      {item.name}
+                    </div>
+
+                    <div className="flex items-center gap-6 text-slate-500 text-sm mb-3">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4" />
+                        <span>{formatCount(item.total_view)} Views</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-4 h-4" />
+                        <span>{formatCount(item.favorites_count)} Favorites</span>
+                      </div>
+                    </div>
 
-                {/* LOCATION + TYPE */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-slate-500 min-w-0">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-sm truncate">{item.city}</span>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-slate-500 min-w-0">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm truncate">{item.city || '—'}</span>
+                      </div>
+
+                      <span
+                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                        style={tagStyles}
+                      >
+                        {listingTag.icon ? (
+                          <img src={listingTag.icon} alt="" className="w-4 h-4 object-contain" />
+                        ) : (
+                          <KeyRound className="w-4 h-4" />
+                        )}
+                        {listingTag.name}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            if (resolvedCardStyle === 'style2') {
+              return (
+                <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
+                  <div className="p-3">
+                    <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
+                      {item.feature_photo?.url ? (
+                        <img
+                          src={item.feature_photo.url}
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+                          No image
+                        </div>
+                      )}
+
+                      {isPromoted(item) && (
+                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                          Promoted
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                        aria-label="Favourite"
+                      >
+                        <Heart
+                          className={`w-4.5 h-4.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
+                        />
+                      </button>
+
+                      {isVerified(item) && (
+                        <div
+                          title="Verified"
+                          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                        >
+                          <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {item.listing_type === 'rent' ? (
-                    <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold whitespace-nowrap">
-                      Rent • {item.rent_duration}
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 rounded-full bg-green-50 text-green-600 text-xs font-semibold whitespace-nowrap">
-                      Sale
-                    </span>
-                  )}
+                  <div className="px-4 pb-4">
+                    <div className="text-sky-600 font-bold text-2xl leading-tight mb-1">
+                      ₹ {formatPrice(item.price)}
+                      {durationLabel && item.listing_type === 'rent' && (
+                        <span className="text-base font-semibold text-slate-500 ml-1">
+                          /{durationLabel}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
+                      {item.name}
+                    </div>
+
+                    {fields.length > 0 && (
+                      <div className="flex items-center gap-3 mb-3 flex-wrap text-slate-600 text-sm">
+                        {fields.map((field: any) => (
+                          <div key={field.field_id} className="flex items-center gap-2">
+                            <img src={field.image} alt="" className="w-5 h-5 object-contain" />
+                            <span className="font-medium">{field.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-slate-500 min-w-0">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm truncate">{item.city || '—'}</span>
+                      </div>
+
+                      <span
+                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                        style={tagStyles}
+                      >
+                        {listingTag.icon ? (
+                          <img src={listingTag.icon} alt="" className="w-4 h-4 object-contain" />
+                        ) : (
+                          <KeyRound className="w-4 h-4" />
+                        )}
+                        {listingTag.name}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            return (
+              <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
+                {/* IMAGE */}
+                <div className="p-3">
+                  <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
+                    {item.feature_photo?.url ? (
+                      <img
+                        src={item.feature_photo.url}
+                        alt={item.name}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+                        No image
+                      </div>
+                    )}
+
+                    {/* PROMOTED (top-left) */}
+                    {isPromoted(item) && (
+                      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        Promoted
+                      </span>
+                    )}
+
+                    {/* HEART (top-right) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                      aria-label="Favourite"
+                    >
+                      <Heart className="w-4.5 h-4.5 text-slate-700" />
+                    </button>
+
+                    {/* VERIFIED (bottom-right on image) */}
+                    {isVerified(item) && (
+                      <div
+                        title="Verified"
+                        className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                      >
+                        <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
+
+                {/* BODY */}
+                <div className="p-4 pt-0">
+                  {/* PRICE */}
+                  <div className="text-green-600 font-bold text-xl mb-2">
+                    ₹ {formatPrice(item.price)}
+                  </div>
+
+                  {/* TITLE */}
+                  <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
+                    {item.name}
+                  </div>
+
+                  {/* DYNAMIC FIELDS (icon + value only) */}
+                  {fields.length > 0 && (
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      {fields.map((field: any) => (
+                        <div
+                          key={field.field_id}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200"
+                        >
+                          <img src={field.image} alt="" className="w-4 h-4 object-contain" />
+                          <span className="text-xs font-medium text-slate-700">{field.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* LOCATION + TYPE */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-slate-500 min-w-0">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-sm truncate">{item.city}</span>
+                    </div>
+
+                    {item.listing_type === 'rent' ? (
+                      <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold whitespace-nowrap">
+                        Rent • {item.rent_duration}
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full bg-green-50 text-green-600 text-xs font-semibold whitespace-nowrap">
+                        Sale
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
