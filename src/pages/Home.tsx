@@ -170,48 +170,7 @@ export default function Home() {
 
             {/* RIGHT */}
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-1 border-r border-slate-200 pr-3 mr-1">
-                {/* ✅ UPDATED: scan button opens popup */}
-                <button
-                  onClick={() => setScanOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-white shadow-md hover:shadow-lg transition-all transform active:scale-95 mr-2"
-                  style={{
-                    backgroundColor: primaryColor,
-                    boxShadow: `0 4px 10px ${primaryColor}40`,
-                  }}
-                  title={t('scan_qr')}
-                >
-                  <QrCode className="w-4 h-4" />
-                  <span className="font-semibold text-sm">{t('scan')}</span>
-                </button>
-
-                <button
-                  onClick={() => handleAuthNavigation('/dashboard/chat')}
-                  className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600 hover:text-blue-600"
-                  title={t('messages')}
-                >
-                  <MessageCircle className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={() => handleAuthNavigation('/dashboard/likes')}
-                  className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600 hover:text-red-500"
-                  title={t('favorites')}
-                >
-                  <Heart className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={() => handleAuthNavigation('/dashboard/notifications')}
-                  className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600 hover:text-slate-900 relative"
-                  title={t('notifications')}
-                >
-                  <Bell className="w-5 h-5" />
-                  {user && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                  )}
-                </button>
-
+              <div className="hidden md:block">
                 <LanguageButton />
               </div>
 
@@ -280,6 +239,49 @@ export default function Home() {
             <p className="text-sm text-slate-500 mb-5">
               Find the best deals near you in seconds.
             </p>
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
+              <button
+                onClick={() => setScanOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-white shadow-md hover:shadow-lg transition-all transform active:scale-95"
+                style={{
+                  backgroundColor: primaryColor,
+                  boxShadow: `0 4px 10px ${primaryColor}40`,
+                }}
+                title={t('scan_qr')}
+              >
+                <QrCode className="w-4 h-4" />
+                <span className="font-semibold text-sm">{t('scan')}</span>
+              </button>
+
+              <div className="flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2 py-1">
+                <button
+                  onClick={() => handleAuthNavigation('/dashboard/chat')}
+                  className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600 hover:text-blue-600"
+                  title={t('messages')}
+                >
+                  <MessageCircle className="w-5 h-5" />
+                </button>
+
+                <button
+                  onClick={() => handleAuthNavigation('/dashboard/likes')}
+                  className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600 hover:text-red-500"
+                  title={t('favorites')}
+                >
+                  <Heart className="w-5 h-5" />
+                </button>
+
+                <button
+                  onClick={() => handleAuthNavigation('/dashboard/notifications')}
+                  className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600 hover:text-slate-900 relative"
+                  title={t('notifications')}
+                >
+                  <Bell className="w-5 h-5" />
+                  {user && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                  )}
+                </button>
+              </div>
+            </div>
             <SearchBox primaryColor={primaryColor} containerClassName="max-w-none mx-0" />
           </div>
         </div>
