@@ -34,6 +34,8 @@ import { apiService, type HomeSectionResolved } from '../services/api';
 
 import type { Subcategory } from '../types/category';
 
+let cachedHomeSections: HomeSectionResolved[] | null = null;
+
 interface FilterState {
   category: number | null;
   subcategory: number | null;
@@ -60,8 +62,10 @@ export default function Home() {
   const [scanOpen, setScanOpen] = useState(false);
 
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
-  const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>([]);
-  const [sectionsLoading, setSectionsLoading] = useState(true);
+  const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>(
+    () => cachedHomeSections ?? []
+  );
+  const [sectionsLoading, setSectionsLoading] = useState(cachedHomeSections === null);
 
   const [filters, setFilters] = useState<FilterState>({
     category: null,
@@ -172,6 +176,11 @@ export default function Home() {
     `${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
 
   useEffect(() => {
+    if (cachedHomeSections) {
+      setSectionsLoading(false);
+      return;
+    }
+
     const loadSections = async () => {
       setSectionsLoading(true);
       try {
@@ -187,9 +196,11 @@ export default function Home() {
           return { ...sections[index], resolvedData: {} } as HomeSectionResolved;
         });
 
+        cachedHomeSections = resolvedSections;
         setHomeSections(resolvedSections);
       } catch (error) {
         console.error('Failed to load home sections:', error);
+        cachedHomeSections = [];
         setHomeSections([]);
       } finally {
         setSectionsLoading(false);
