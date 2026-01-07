@@ -168,12 +168,16 @@ export type HomeSection = {
   } | null;
   data_source?: HomeSectionDataSource | null;
   ad_config?: {
+    type?: string | null;
     target_type?: string | null;
     link?: string | null;
     item_id?: string | number | null;
     shop_id?: string | number | null;
     screen_key?: string | null;
+    unit_id?: string | null;
     image?: string | null;
+    title?: string | null;
+    description?: string | null;
   } | null;
 };
 
