@@ -549,14 +549,15 @@ class ApiService {
     subcategoryId?: number,
     lat?: number,
     lng?: number,
-    distance?: number
+    distance?: number,
+    perPage: number = 10
   ): Promise<Item[]> {
     const params = new URLSearchParams();
     if (subcategoryId) params.append('subcategory_id', subcategoryId.toString());
     if (lat !== undefined) params.append('lat', lat.toString());
     if (lng !== undefined) params.append('lng', lng.toString());
     if (distance !== undefined) params.append('distance', distance.toString());
-    params.append('per_page', '10');
+    params.append('per_page', perPage.toString());
 
     const url = `${API_BASE_URL}/items?${params.toString()}`;
     const response = await fetch(url, { headers: this.getHeaders() });
