@@ -145,16 +145,47 @@ export type Language = {
   name: string;
 };
 
-type HomeSectionDataSource = {
+export type HomeSectionDataSource = {
+  filter?: string | null;
+  source_id?: string | number | null;
+};
+
+export type HomeSection = {
   id: number;
+  title?: string | null;
+  subtitle?: string | null;
   type?: string | null;
-  view_all?: { route_key?: string | null } | null;
-  data_route?: string | null;
-  data_endpoint?: string | null;
-  api_route?: string | null;
-  endpoint?: string | null;
-  data_key?: string | null;
-  route_key?: string | null;
+  layout?: string | null;
+  item_count?: number | null;
+  view_all?: { enabled?: boolean; route_key?: string | null } | null;
+  style?: {
+    background_color?: string;
+    title_color?: string;
+    subtitle_color?: string;
+    view_all_color?: string;
+    show_divider?: boolean;
+    card_style?: string;
+  } | null;
+  data_source?: HomeSectionDataSource | null;
+  ad_config?: {
+    target_type?: string | null;
+    link?: string | null;
+    item_id?: string | number | null;
+    shop_id?: string | number | null;
+    screen_key?: string | null;
+    image?: string | null;
+  } | null;
+};
+
+export type HomeSectionResolved = HomeSection & {
+  resolvedData: {
+    items?: Item[];
+    shops?: Shop[];
+    users?: PublicUser[];
+    categories?: Category[];
+    slides?: Slider[];
+    ad?: HomeSection['ad_config'] | null;
+  };
 };
 
 // --- Service Class ---
@@ -217,69 +248,22 @@ class ApiService {
     return `${API_BASE_URL}${route.startsWith('/') ? '' : '/'}${route}`;
   }
 
-  private resolveHomeSectionRoute(section: HomeSectionDataSource): string | null {
-    const explicitRoute =
-      section.data_route ||
-      section.data_endpoint ||
-      section.api_route ||
-      section.endpoint;
-    if (explicitRoute) return explicitRoute;
+  private buildQuery(params?: Record<string, string | number | boolean | null | undefined>) {
+    if (!params) return '';
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined) return;
+      searchParams.append(key, String(value));
+    });
+    const queryString = searchParams.toString();
+    return queryString ? `?${queryString}` : '';
+  }
 
-    const routeKey = section.route_key || section.data_key || section.view_all?.route_key;
-
-    if (section.type === 'items') {
-      switch (routeKey) {
-        case 'featured_items':
-          return 'items/featured';
-        case 'most_viewed_items':
-        case 'most_viewed':
-          return 'items/most-viewed';
-        case 'most_favorited_items':
-        case 'most_favorited':
-          return 'items/most-favorited';
-        case 'most_liked_items':
-        case 'most_liked':
-          return 'items/most-liked';
-        case 'items_by_city':
-        case 'by_city':
-          return 'items/by-city';
-        case 'items_by_location':
-        case 'by_location':
-          return 'items/by-location';
-        case 'items_nearby':
-        case 'nearby':
-          return 'items/nearby';
-        case 'all_items':
-          return 'items';
-        default:
-          return 'items';
-      }
-    }
-
-    if (section.type === 'shops') {
-      switch (routeKey) {
-        case 'verified_shops':
-        case 'verified':
-          return 'shops/verified';
-        case 'top_rated_shops':
-        case 'top_rated':
-          return 'shops/top-rated';
-        case 'all_shops':
-          return 'shops';
-        default:
-          return 'shops';
-      }
-    }
-
-    if (section.type === 'categories') {
-      return 'categories';
-    }
-
-    if (section.type === 'users') {
-      return 'users/public';
-    }
-
-    return null;
+  private normalizeListResponse<T>(data: any): T[] {
+    if (Array.isArray(data?.data)) return data.data as T[];
+    if (Array.isArray(data)) return data as T[];
+    if (Array.isArray(data?.data?.data)) return data.data.data as T[];
+    return [];
   }
 
   // --- 🔥 NEW GENERIC METHODS (Fixes "get does not exist" error) ---
@@ -505,14 +489,14 @@ class ApiService {
 
   // ---------------- PUBLIC ----------------
 
-  async getCategories(): Promise<Category[]> {
-    const response = await fetch(`${API_BASE_URL}/categories`, {
+  async getCategories(params?: Record<string, string | number | boolean>): Promise<Category[]> {
+    const response = await fetch(`${API_BASE_URL}/categories${this.buildQuery(params)}`, {
       headers: this.getHeaders(),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data: CategoriesResponse = await response.json();
-    return data.data;
+    return this.normalizeListResponse<Category>(data);
   }
 
   async getSubcategories(categoryId?: string | number): Promise<Subcategory[]> {
@@ -788,52 +772,266 @@ class ApiService {
     return data.data;
   }
 
-  async getHomeSections(): Promise<any[]> {
+  async getFrontWebSections(): Promise<HomeSection[]> {
     const response = await fetch(`${API_BASE_URL}/front-web/sections`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    if (Array.isArray(data?.data)) return data.data;
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.data?.data)) return data.data.data;
-    return [];
+    return this.normalizeListResponse<HomeSection>(data);
   }
 
-  async getHomeSectionData(section: HomeSectionDataSource): Promise<any> {
-    const route = this.resolveHomeSectionRoute(section);
-    const url = route
-      ? this.normalizeApiRoute(route)
-      : `${API_BASE_URL}/front-web/sections/${section.id}/data`;
-    const response = await fetch(url, { headers: this.getHeaders() });
+  async getHomeSections(): Promise<HomeSection[]> {
+    return this.getFrontWebSections();
+  }
+
+  async getSliders(params?: Record<string, string | number | boolean>): Promise<Slider[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/sliders${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    if (Array.isArray(data?.data)) return data.data;
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.data?.data)) return data.data.data;
-    return data;
+    return this.normalizeListResponse<Slider>(data);
+  }
+
+  async getPublicUsersHighlights(): Promise<PublicUser[]> {
+    const response = await fetch(`${API_BASE_URL}/users/highlights`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<PublicUser>(data);
+  }
+
+  async getPublicUsersVerified(): Promise<PublicUser[]> {
+    const response = await fetch(`${API_BASE_URL}/users/public/verified`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<PublicUser>(data);
+  }
+
+  async getPublicUsersTopRated(): Promise<PublicUser[]> {
+    const response = await fetch(`${API_BASE_URL}/users/public/top-rated`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<PublicUser>(data);
+  }
+
+  async getPublicUsersIndex(
+    params?: Record<string, string | number | boolean>
+  ): Promise<PublicUser[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/users/public${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<PublicUser>(data);
+  }
+
+  async getShopsVerified(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/shops/verified${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Shop>(data);
+  }
+
+  async getShopsTopRated(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/shops/top-rated${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Shop>(data);
+  }
+
+  async getShopsIndex(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
+    const response = await fetch(`${API_BASE_URL}/shops${this.buildQuery(params)}`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Shop>(data);
+  }
+
+  async getItemsIndex(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+    const response = await fetch(`${API_BASE_URL}/items${this.buildQuery(params)}`, {
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
+  async getItemsFeatured(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/items/featured${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
+  async getItemsMostViewed(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/items/most-viewed${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
+  async getItemsMostFavorited(
+    params?: Record<string, string | number | boolean>
+  ): Promise<Item[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/items/most-favorited${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
+  async getItemsMostLiked(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/items/most-liked${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
+  async getItemsByCategory(
+    categoryId: string | number,
+    params?: Record<string, string | number | boolean>
+  ): Promise<Item[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/items/by-category/${encodeURIComponent(
+        String(categoryId)
+      )}${this.buildQuery(params)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
+  async resolveHomeSection(section: HomeSection): Promise<HomeSectionResolved> {
+    const itemCount = section.item_count ?? undefined;
+    const limitParams =
+      typeof itemCount === 'number' && itemCount > 0 ? { per_page: itemCount } : undefined;
+
+    if (section.type === 'slider') {
+      const slides = await this.getSliders(limitParams);
+      return { ...section, resolvedData: { slides: itemCount ? slides.slice(0, itemCount) : slides } };
+    }
+
+    if (section.type === 'categories') {
+      const categories = await this.getCategories(limitParams);
+      return {
+        ...section,
+        resolvedData: {
+          categories: itemCount ? categories.slice(0, itemCount) : categories,
+        },
+      };
+    }
+
+    if (section.type === 'items') {
+      const filter = section.data_source?.filter ?? 'all';
+      const sourceId = section.data_source?.source_id;
+      let items: Item[] = [];
+
+      switch (filter) {
+        case 'featured':
+          items = await this.getItemsFeatured(limitParams);
+          break;
+        case 'most_viewed':
+          items = await this.getItemsMostViewed(limitParams);
+          break;
+        case 'most_favorited':
+          items = await this.getItemsMostFavorited(limitParams);
+          break;
+        case 'most_liked':
+          items = await this.getItemsMostLiked(limitParams);
+          break;
+        case 'category':
+          if (sourceId !== null && sourceId !== undefined) {
+            items = await this.getItemsByCategory(sourceId, limitParams);
+          } else {
+            items = await this.getItemsIndex(limitParams);
+          }
+          break;
+        default:
+          items = await this.getItemsIndex(limitParams);
+          break;
+      }
+
+      return { ...section, resolvedData: { items: itemCount ? items.slice(0, itemCount) : items } };
+    }
+
+    if (section.type === 'shops') {
+      const filter = section.data_source?.filter ?? 'all';
+      let shops: Shop[] = [];
+
+      switch (filter) {
+        case 'verified':
+          shops = await this.getShopsVerified(limitParams);
+          break;
+        case 'top_rated':
+          shops = await this.getShopsTopRated(limitParams);
+          break;
+        default:
+          shops = await this.getShopsIndex(limitParams);
+          break;
+      }
+
+      return { ...section, resolvedData: { shops: itemCount ? shops.slice(0, itemCount) : shops } };
+    }
+
+    if (section.type === 'users') {
+      const filter = section.data_source?.filter ?? 'all';
+      let users: PublicUser[] = [];
+
+      switch (filter) {
+        case 'highlights':
+          users = await this.getPublicUsersHighlights();
+          break;
+        case 'verified':
+          users = await this.getPublicUsersVerified();
+          break;
+        case 'top_rated':
+          users = await this.getPublicUsersTopRated();
+          break;
+        default:
+          users = await this.getPublicUsersIndex(limitParams);
+          break;
+      }
+
+      return { ...section, resolvedData: { users: itemCount ? users.slice(0, itemCount) : users } };
+    }
+
+    if (section.type === 'ad') {
+      return { ...section, resolvedData: { ad: section.ad_config ?? null } };
+    }
+
+    return { ...section, resolvedData: {} };
   }
 
   async getPublicUsers(): Promise<PublicUser[]> {
-    const response = await fetch(`${API_BASE_URL}/users/public`, {
-      headers: this.getHeaders(),
-    });
-    if (!response.ok) throw new Error(await this.readError(response));
-    const data = await response.json();
-    if (Array.isArray(data?.data)) return data.data;
-    if (Array.isArray(data)) return data;
-    return [];
-  }
-
-  async getSliders(): Promise<Slider[]> {
-    const response = await fetch(`${API_BASE_URL}/sliders`, {
-      headers: this.getHeaders(),
-    });
-    if (!response.ok) throw new Error(await this.readError(response));
-    const data = await response.json();
-    if (Array.isArray(data?.data)) return data.data;
-    if (Array.isArray(data)) return data;
-    return [];
+    return this.getPublicUsersIndex();
   }
 
   async getPublicUser(userId: number): Promise<PublicUserDetails> {

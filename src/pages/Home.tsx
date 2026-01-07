@@ -30,46 +30,9 @@ import HomeSlider from '../components/HomeSlider';
 import HomeAdSection from '../components/HomeAdSection';
 import ShopsGrid from '../components/ShopsGrid';
 import ShopCard from '../components/ShopCard';
-import { apiService, type Category, type Item, type PublicUser, type Shop, type Slider } from '../services/api';
+import { apiService, type HomeSectionResolved } from '../services/api';
 
 import type { Subcategory } from '../types/category';
-
-interface HomeSectionStyle {
-  background_color?: string;
-  title_color?: string;
-  subtitle_color?: string;
-  view_all_color?: string;
-  show_divider?: boolean;
-  card_style?: string;
-}
-
-interface HomeSectionViewAll {
-  enabled?: boolean;
-  route_key?: string | null;
-}
-
-interface HomeSectionAdConfig {
-  target_type?: string | null;
-  link?: string | null;
-  item_id?: string | number | null;
-  shop_id?: string | number | null;
-  screen_key?: string | null;
-  image?: string | null;
-}
-
-interface HomeSection {
-  id: number;
-  title?: string;
-  subtitle?: string | null;
-  type: string;
-  layout?: string;
-  item_count?: number;
-  view_all?: HomeSectionViewAll;
-  style?: HomeSectionStyle;
-  ad_config?: HomeSectionAdConfig;
-}
-
-
 
 interface FilterState {
   category: number | null;
@@ -97,8 +60,7 @@ export default function Home() {
   const [scanOpen, setScanOpen] = useState(false);
 
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
-  const [homeSections, setHomeSections] = useState<HomeSection[]>([]);
-  const [sectionData, setSectionData] = useState<Record<number, any[]>>({});
+  const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -185,7 +147,7 @@ export default function Home() {
     }
   };
 
-  const resolveViewAllRoute = (section: HomeSection) => {
+  const resolveViewAllRoute = (section: HomeSectionResolved) => {
     const explicitRoute = resolveRoute(section.view_all?.route_key || null);
     if (explicitRoute) return explicitRoute;
 
@@ -205,45 +167,35 @@ export default function Home() {
     }
   };
 
-  const headerStyles = (section: HomeSection) => ({
+  const headerStyles = (section: HomeSectionResolved) => ({
     title: { color: section.style?.title_color || '#0f172a' },
     subtitle: { color: section.style?.subtitle_color || '#64748b' },
     viewAll: { color: section.style?.view_all_color || '#2563eb' },
   });
 
-  const sectionWrapperClass = (section: HomeSection) =>
+  const sectionWrapperClass = (section: HomeSectionResolved) =>
     `py-8 ${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
 
   useEffect(() => {
     const loadSections = async () => {
       setSectionsLoading(true);
       try {
-        const sections = await apiService.getHomeSections();
-        setHomeSections(sections);
-
-        const dataEntries = await Promise.all(
-          sections.map(async (section) => {
-            if (section.type === 'ad') return [section.id, []] as const;
-            try {
-              const data = await apiService.getHomeSectionData(section);
-              const normalized = Array.isArray(data)
-                ? data
-                : Array.isArray((data as any)?.data)
-                  ? (data as any).data
-                  : [];
-              return [section.id, normalized] as const;
-            } catch (error) {
-              console.error('Failed to load section data:', error);
-              return [section.id, []] as const;
-            }
-          })
+        const sections = await apiService.getFrontWebSections();
+        const resolvedResults = await Promise.allSettled(
+          sections.map((section) => apiService.resolveHomeSection(section))
         );
 
-        setSectionData(Object.fromEntries(dataEntries));
+        const resolvedSections = resolvedResults.map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          return { ...sections[index], resolvedData: {} } as HomeSectionResolved;
+        });
+
+        setHomeSections(resolvedSections);
       } catch (error) {
         console.error('Failed to load home sections:', error);
         setHomeSections([]);
-        setSectionData({});
       } finally {
         setSectionsLoading(false);
       }
@@ -266,9 +218,9 @@ export default function Home() {
 
   const sliderSlides = useMemo(() => {
     if (!sliderSection) return undefined;
-    const data = sectionData[sliderSection.id] as Slider[] | undefined;
-    return data && data.length > 0 ? data : undefined;
-  }, [sectionData, sliderSection]);
+    const data = sliderSection.resolvedData.slides ?? [];
+    return data.length > 0 ? data : undefined;
+  }, [sliderSection]);
 
   const shimmerBaseClass =
     'animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200';
@@ -500,7 +452,7 @@ export default function Home() {
                 const itemCount = section.item_count || undefined;
 
                 if (section.type === 'categories') {
-                  const categories = (sectionData[section.id] || []) as Category[];
+                  const categories = section.resolvedData.categories ?? [];
                   const categoriesOverride = categories.length ? categories : undefined;
                   return (
                     <section
@@ -547,7 +499,7 @@ export default function Home() {
                 }
 
                 if (section.type === 'items') {
-                  const items = (sectionData[section.id] || []) as Item[];
+                  const items = section.resolvedData.items ?? [];
                   const useSliderLayout = section.layout === 'list' || items.length > 5;
                   return (
                     <section
@@ -594,7 +546,7 @@ export default function Home() {
                 }
 
                 if (section.type === 'shops') {
-                  const shops = (sectionData[section.id] || []) as Shop[];
+                  const shops = section.resolvedData.shops ?? [];
                   const limitedShops = itemCount ? shops.slice(0, itemCount) : shops;
 
                   if (!limitedShops.length) return null;
@@ -647,7 +599,7 @@ export default function Home() {
                 }
 
                 if (section.type === 'users') {
-                  const users = (sectionData[section.id] || []) as PublicUser[];
+                  const users = section.resolvedData.users ?? [];
                   return (
                     <UsersSlider
                       key={section.id}
