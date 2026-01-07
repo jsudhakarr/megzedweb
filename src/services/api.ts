@@ -666,15 +666,6 @@ class ApiService {
     return data.data;
   }
 
-  async getItemsByCategory(categoryId: number): Promise<Item[]> {
-    const response = await fetch(`${API_BASE_URL}/items/by-category/${categoryId}`, {
-      headers: this.getHeaders(),
-    });
-    if (!response.ok) throw new Error(await this.readError(response));
-    const data: ItemsResponse = await response.json();
-    return data.data;
-  }
-
   async getItemsBySubcategory(subcategoryId: number): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items/by-subcategory/${subcategoryId}`, {
       headers: this.getHeaders(),

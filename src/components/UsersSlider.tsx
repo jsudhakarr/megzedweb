@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Users } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiService, type PublicUser } from '../services/api';
 import PublicUserCard from './PublicUserCard';
@@ -79,31 +79,28 @@ export default function UsersSlider({
   const dividerClass = styleConfig?.showDivider ? 'border-t border-b border-blue-100' : '';
 
   return (
-    <section className={`mt-0 rounded-none py-8 ${dividerClass}`} style={wrapperStyles}>
+    <section className={`py-6 ${dividerClass}`} style={wrapperStyles}>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5" style={viewAllStyles} />
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
-              <span style={titleStyles}>{resolvedTitle}</span>
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <div className="space-y-1">
+            <h2 className="text-xl sm:text-2xl font-bold leading-tight" style={titleStyles}>
+              {resolvedTitle}
             </h2>
+            {subtitle && (
+              <p className="text-sm" style={subtitleStyles}>
+                {subtitle}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {subtitle && (
-              <span className="text-sm hidden sm:inline" style={subtitleStyles}>
-                {subtitle}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate(resolvedViewAllRoute)}
-              className="text-sm sm:text-base font-semibold transition"
-              style={viewAllStyles}
-            >
-              {t('view_all')}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate(resolvedViewAllRoute)}
+            className="text-sm sm:text-base font-semibold transition"
+            style={viewAllStyles}
+          >
+            {t('view_all')}
+          </button>
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">

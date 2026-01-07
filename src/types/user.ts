@@ -14,6 +14,7 @@ export interface PublicUser {
   shops_count: number;
   profile_photo: string | null;
   profile_photo_url: string | null;
+  avg_rating?: number | null;
 }
 
 export interface PublicUserDetails extends PublicUser {
