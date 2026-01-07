@@ -6,7 +6,6 @@ import { useI18n } from '../contexts/I18nContext';
 
 import {
   User as UserIcon,
-  ShoppingBag,
   Store,
   QrCode,
   Heart,
@@ -169,12 +168,6 @@ export default function Home() {
   };
 
   const featuredHeading = replaceShopWithBusiness(t('featured_shops'), 'Featured Businesses');
-  const addBusinessAction = replaceShopWithBusiness(t('add_shop'), 'Add Business');
-  const createBusinessAction = replaceShopWithBusiness(
-    t('create_new_shop'),
-    'Create a new business'
-  );
-
   const resolveRoute = (routeKey?: string | null) => {
     if (!routeKey) return null;
     switch (routeKey) {
@@ -658,85 +651,6 @@ export default function Home() {
 
                 return null;
               })}
-          </div>
-        )}
-      </main>
-
-      {/* BACK TO MAIN WIDTH CONTENT */}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        {user && (
-          <div className="bg-white rounded-xl shadow-md p-8 border border-slate-200">
-            <h3 className="text-xl font-bold text-slate-900 mb-4">{t('quick_actions')}</h3>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="p-4 border-2 border-slate-200 rounded-lg transition-all text-left hover:shadow-md"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = primaryColor;
-                  e.currentTarget.style.backgroundColor = `${primaryColor}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <UserIcon className="w-6 h-6 mb-2" style={{ color: primaryColor }} />
-                <p className="font-semibold text-slate-900">{t('my_dashboard')}</p>
-                <p className="text-sm text-slate-500 mt-1">{t('view_your_account')}</p>
-              </button>
-
-              <button
-                onClick={() => navigate('/dashboard/items')}
-                className="p-4 border-2 border-slate-200 rounded-lg transition-all text-left hover:shadow-md"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = primaryColor;
-                  e.currentTarget.style.backgroundColor = `${primaryColor}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <ShoppingBag className="w-6 h-6 mb-2" style={{ color: primaryColor }} />
-                <p className="font-semibold text-slate-900">{t('add_item')}</p>
-                <p className="text-sm text-slate-500 mt-1">{t('list_new_item')}</p>
-              </button>
-
-              <button
-                onClick={() => navigate('/dashboard/shops')}
-                className="p-4 border-2 border-slate-200 rounded-lg transition-all text-left hover:shadow-md"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = primaryColor;
-                  e.currentTarget.style.backgroundColor = `${primaryColor}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-              <Store className="w-6 h-6 mb-2" style={{ color: primaryColor }} />
-                <p className="font-semibold text-slate-900">{addBusinessAction}</p>
-                <p className="text-sm text-slate-500 mt-1">{createBusinessAction}</p>
-              </button>
-
-              <button
-                onClick={() => navigate('/profile')}
-                className="p-4 border-2 border-slate-200 rounded-lg transition-all text-left hover:shadow-md"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = primaryColor;
-                  e.currentTarget.style.backgroundColor = `${primaryColor}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <UserIcon className="w-6 h-6 mb-2" style={{ color: primaryColor }} />
-                <p className="font-semibold text-slate-900">{t('edit_profile')}</p>
-                <p className="text-sm text-slate-500 mt-1">{t('update_information')}</p>
-              </button>
-            </div>
           </div>
         )}
       </main>
