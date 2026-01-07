@@ -102,8 +102,10 @@ export default function ItemsGrid({
   const normalizeCardStyle = (style?: string) => {
     if (!style) return 'default';
     const normalized = style.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (normalized === 'style1' || normalized === '1') return 'style1';
-    if (normalized === 'style2' || normalized === '2') return 'style2';
+    if (['style1', 'listcard1', 'list_card_1', '1'].includes(normalized)) return 'list_card_1';
+    if (['style2', 'listcard2', 'list_card_2', '2'].includes(normalized)) return 'list_card_2';
+    if (['gridcard1', 'grid_card_1'].includes(normalized)) return 'grid_card_1';
+    if (['gridcard2', 'grid_card_2'].includes(normalized)) return 'grid_card_2';
     return 'default';
   };
 
@@ -201,6 +203,27 @@ export default function ItemsGrid({
     };
   };
 
+  const getCardImageHeight = (variant: string) => {
+    if (variant === 'grid_card_2') return 'h-36';
+    if (variant === 'grid_card_1') return 'h-40';
+    if (variant === 'list_card_2') return 'h-40';
+    if (variant === 'list_card_1') return 'h-44';
+    return 'h-44';
+  };
+
+  const getCardPriceClass = (variant: string) => {
+    if (variant === 'list_card_1' || variant === 'grid_card_1') {
+      return 'text-sky-600 font-bold text-2xl';
+    }
+    if (variant === 'list_card_2' || variant === 'grid_card_2') {
+      return 'text-sky-600 font-bold text-xl';
+    }
+    return 'text-green-600 font-bold text-xl';
+  };
+
+  const cardImageHeight = getCardImageHeight(resolvedCardStyle);
+  const priceClass = getCardPriceClass(resolvedCardStyle);
+
   return (
     <div className="space-y-4">
       <div className={isListLayout ? 'relative' : ''}>
@@ -249,11 +272,13 @@ export default function ItemsGrid({
               layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
             }`;
 
-            if (resolvedCardStyle === 'style1') {
+            if (resolvedCardStyle === 'list_card_1') {
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
                   <div className="p-3">
-                    <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
+                    <div
+                      className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                    >
                       {item.feature_photo?.url ? (
                         <img
                           src={item.feature_photo.url}
@@ -299,7 +324,7 @@ export default function ItemsGrid({
                   </div>
 
                   <div className="px-4 pb-4">
-                    <div className="text-sky-600 font-bold text-2xl leading-tight mb-1">
+                    <div className={`${priceClass} leading-tight mb-1`}>
                       ₹ {formatPrice(item.price)}
                       {durationLabel && item.listing_type === 'rent' && (
                         <span className="text-base font-semibold text-slate-500 ml-1">
@@ -346,11 +371,13 @@ export default function ItemsGrid({
               );
             }
 
-            if (resolvedCardStyle === 'style2') {
+            if (resolvedCardStyle === 'list_card_2') {
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
                   <div className="p-3">
-                    <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
+                    <div
+                      className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                    >
                       {item.feature_photo?.url ? (
                         <img
                           src={item.feature_photo.url}
@@ -396,7 +423,7 @@ export default function ItemsGrid({
                   </div>
 
                   <div className="px-4 pb-4">
-                    <div className="text-sky-600 font-bold text-2xl leading-tight mb-1">
+                    <div className={`${priceClass} leading-tight mb-1`}>
                       ₹ {formatPrice(item.price)}
                       {durationLabel && item.listing_type === 'rent' && (
                         <span className="text-base font-semibold text-slate-500 ml-1">
@@ -443,11 +470,125 @@ export default function ItemsGrid({
               );
             }
 
+            if (resolvedCardStyle === 'grid_card_1' || resolvedCardStyle === 'grid_card_2') {
+              return (
+                <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
+                  <div className="p-3">
+                    <div
+                      className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                    >
+                      {item.feature_photo?.url ? (
+                        <img
+                          src={item.feature_photo.url}
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+                          No image
+                        </div>
+                      )}
+
+                      {isPromoted(item) && (
+                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                          Promoted
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                        aria-label="Favourite"
+                      >
+                        <Heart
+                          className={`w-4.5 h-4.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
+                        />
+                      </button>
+
+                      {isVerified(item) && (
+                        <div
+                          title="Verified"
+                          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                        >
+                          <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="px-4 pb-4">
+                    <div className={`${priceClass} leading-tight mb-1`}>
+                      ₹ {formatPrice(item.price)}
+                      {durationLabel && item.listing_type === 'rent' && (
+                        <span className="text-base font-semibold text-slate-500 ml-1">
+                          /{durationLabel}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
+                      {item.name}
+                    </div>
+
+                    {resolvedCardStyle === 'grid_card_1' && (
+                      <div className="flex items-center gap-6 text-slate-500 text-sm mb-3">
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-4 h-4" />
+                          <span>{formatCount(item.total_view)} Views</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Heart className="w-4 h-4" />
+                          <span>{formatCount(item.favorites_count)} Favorites</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {resolvedCardStyle === 'grid_card_2' && fields.length > 0 && (
+                      <div className="flex items-center gap-3 mb-3 flex-wrap text-slate-600 text-sm">
+                        {fields.map((field: any) => (
+                          <div key={field.field_id} className="flex items-center gap-2">
+                            <img src={field.image} alt="" className="w-5 h-5 object-contain" />
+                            <span className="font-medium">{field.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-slate-500 min-w-0">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm truncate">{item.city || '—'}</span>
+                      </div>
+
+                      <span
+                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                        style={tagStyles}
+                      >
+                        {listingTag.icon ? (
+                          <img src={listingTag.icon} alt="" className="w-4 h-4 object-contain" />
+                        ) : (
+                          <KeyRound className="w-4 h-4" />
+                        )}
+                        {listingTag.name}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
             return (
               <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
                 {/* IMAGE */}
                 <div className="p-3">
-                  <div className="relative w-full h-44 bg-white rounded-2xl overflow-hidden border border-slate-200">
+                  <div
+                    className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                  >
                     {item.feature_photo?.url ? (
                       <img
                         src={item.feature_photo.url}
@@ -496,7 +637,7 @@ export default function ItemsGrid({
                 {/* BODY */}
                 <div className="p-4 pt-0">
                   {/* PRICE */}
-                  <div className="text-green-600 font-bold text-xl mb-2">
+                  <div className={`${priceClass} mb-2`}>
                     ₹ {formatPrice(item.price)}
                   </div>
 
