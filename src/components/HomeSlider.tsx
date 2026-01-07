@@ -99,7 +99,7 @@ export default function HomeSlider({ primaryColor }: HomeSliderProps) {
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-left text-white">
+        <div className="absolute bottom-0 left-0 right-0 z-10 p-6 pl-16 pr-16 text-left text-white sm:pl-20 sm:pr-20">
           <div className="flex items-center gap-2 text-sm uppercase tracking-wide text-white/80 mb-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1">
               <ExternalLink className="w-3 h-3" />
@@ -124,7 +124,7 @@ export default function HomeSlider({ primaryColor }: HomeSliderProps) {
           <button
             type="button"
             onClick={() => goToSlide((currentIndex - 1 + sliders.length) % sliders.length)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/70 p-2 text-slate-900 shadow-sm hover:bg-white"
+            className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-900 shadow-sm backdrop-blur-sm transition hover:bg-white"
             aria-label="Previous slide"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -132,7 +132,7 @@ export default function HomeSlider({ primaryColor }: HomeSliderProps) {
           <button
             type="button"
             onClick={() => goToSlide((currentIndex + 1) % sliders.length)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/70 p-2 text-slate-900 shadow-sm hover:bg-white"
+            className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-900 shadow-sm backdrop-blur-sm transition hover:bg-white"
             aria-label="Next slide"
           >
             <ChevronRight className="w-5 h-5" />
@@ -141,7 +141,7 @@ export default function HomeSlider({ primaryColor }: HomeSliderProps) {
       )}
 
       {sliders.length > 1 && (
-        <div className="absolute bottom-4 right-4 flex items-center gap-2">
+        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
           {sliders.map((_, index) => (
             <button
               key={`slide-dot-${index}`}
