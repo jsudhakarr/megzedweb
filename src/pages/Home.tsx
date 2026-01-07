@@ -50,7 +50,7 @@ interface FilterState {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { settings } = useAppSettings();
   const { t } = useI18n();
 
@@ -100,11 +100,6 @@ export default function Home() {
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
   };
 
   const handleAuthNavigation = (path: string) => {
@@ -323,13 +318,6 @@ export default function Home() {
                       </div>
                     )}
                   </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="text-slate-500 hover:text-red-600 font-medium px-2"
-                  >
-                    {t('logout')}
-                  </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 pl-2">
@@ -353,11 +341,13 @@ export default function Home() {
         <div className={`grid gap-6 mb-8 ${hasSlider ? 'lg:grid-cols-2' : ''}`}>
           {hasSlider && <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Search listings</h2>
-            <p className="text-sm text-slate-500 mb-5">
-              Find the best deals near you in seconds.
+            <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">
+              Welcome back{user?.name ? `, ${user.name}` : ''}!
+            </h2>
+            <p className="text-sm text-slate-500 mb-5 text-center">
+              Discover fresh listings curated for you and your location.
             </p>
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
+            <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
               <button
                 onClick={() => setScanOpen(true)}
                 className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
@@ -445,11 +435,16 @@ export default function Home() {
             )}
 
             {!sectionsLoading &&
-              dynamicSections.map((section) => {
+              dynamicSections.map((section, sectionIndex) => {
                 const styles = headerStyles(section);
                 const viewAllRoute = resolveViewAllRoute(section);
                 const backgroundColor = section.style?.background_color || '#ffffff';
                 const itemCount = section.item_count || undefined;
+                const isFirstSection = sectionIndex === 0;
+                const isLastSection = sectionIndex === dynamicSections.length - 1;
+                const sectionSpacingClass = `${isFirstSection ? 'pt-6' : ''} ${
+                  isLastSection ? 'pb-6' : ''
+                }`.trim();
 
                 if (section.type === 'categories') {
                   const categories = section.resolvedData.categories ?? [];
@@ -457,7 +452,7 @@ export default function Home() {
                   return (
                     <section
                       key={section.id}
-                      className={sectionWrapperClass(section)}
+                      className={`${sectionWrapperClass(section)} ${sectionSpacingClass}`.trim()}
                       style={{ backgroundColor }}
                     >
                       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -504,7 +499,7 @@ export default function Home() {
                   return (
                     <section
                       key={section.id}
-                      className={sectionWrapperClass(section)}
+                      className={`${sectionWrapperClass(section)} ${sectionSpacingClass}`.trim()}
                       style={{ backgroundColor }}
                     >
                       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
