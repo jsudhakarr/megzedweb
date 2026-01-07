@@ -66,7 +66,7 @@ export default function CategoryGrid({
     }
   };
 
-  const useSliderLayout = useMemo(() => categories.length > 6, [categories.length]);
+  const useSliderLayout = useMemo(() => categories.length > 4, [categories.length]);
 
   useEffect(() => {
     if (!useSliderLayout) return;

@@ -940,11 +940,11 @@ class ApiService {
     }
 
     if (section.type === 'categories') {
-      const categories = await this.getCategories(limitParams);
+      const categories = await this.getCategories();
       return {
         ...section,
         resolvedData: {
-          categories: itemCount ? categories.slice(0, itemCount) : categories,
+          categories,
         },
       };
     }
