@@ -28,6 +28,7 @@ import ShopsSlider from '../components/ShopsSlider';
 import LanguageButton from '../components/LanguageButton';
 import ScanQrModal from '../components/ScanQrModal';
 import UsersSlider from '../components/UsersSlider';
+import HomeSlider from '../components/HomeSlider';
 
 import type { Subcategory } from '../types/category';
 
@@ -167,11 +168,6 @@ export default function Home() {
               />
             </div>
 
-            {/* CENTER */}
-            <div className="flex-1 max-w-xl hidden md:block">
-              <SearchBox primaryColor={primaryColor} />
-            </div>
-
             {/* RIGHT */}
             <div className="flex items-center gap-3">
               <div className="hidden md:flex items-center gap-1 border-r border-slate-200 pr-3 mr-1">
@@ -271,15 +267,23 @@ export default function Home() {
             </div>
           </div>
 
-          {/* MOBILE SEARCH */}
-          <div className="md:hidden mt-3">
-            <SearchBox primaryColor={primaryColor} />
-          </div>
         </div>
       </header>
 
       {/* MAIN CONTENT */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* HERO SLIDER + SEARCH */}
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+          <HomeSlider primaryColor={primaryColor} />
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Search listings</h2>
+            <p className="text-sm text-slate-500 mb-5">
+              Find the best deals near you in seconds.
+            </p>
+            <SearchBox primaryColor={primaryColor} containerClassName="max-w-none mx-0" />
+          </div>
+        </div>
+
         {/* CATEGORIES HEADER */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
