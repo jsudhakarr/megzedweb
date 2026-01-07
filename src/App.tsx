@@ -6,6 +6,7 @@ import { AppSettingsProvider, useAppSettings } from './contexts/AppSettingsConte
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import Items from './pages/Items';
 import ItemDetail from './pages/ItemDetail';
 import ShopDetail from './pages/ShopDetail';
 import Blog from './pages/Blog';
@@ -103,6 +104,7 @@ function App() {
             />
 
             <Route path="/" element={<Home />} />
+            <Route path="/items" element={<Items />} />
             <Route path="/item/:id" element={<ItemDetail />} />
             <Route path="/shop/:id" element={<ShopDetail />} />
             <Route path="/users" element={<UsersDirectory />} />
