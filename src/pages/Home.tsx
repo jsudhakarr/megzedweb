@@ -226,7 +226,7 @@ export default function Home() {
     'animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200';
 
   const renderSectionSkeletons = () => (
-    <div className="space-y-4">
+    <div>
       {Array.from({ length: 3 }).map((_, index) => (
         <section key={`section-skeleton-${index}`} className="py-4">
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -439,7 +439,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div>
             {sectionsLoading && (
               <div className="py-6">{renderSectionSkeletons()}</div>
             )}
