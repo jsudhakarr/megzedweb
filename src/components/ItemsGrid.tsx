@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, MapPin, Heart, TrendingUp } from 'lucide-react';
 import { apiService, type Item } from '../services/api';
@@ -35,6 +35,9 @@ export default function ItemsGrid({
 }: ItemsGridProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(!itemsOverride);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
     if (itemsOverride) {
@@ -100,8 +103,37 @@ export default function ItemsGrid({
   }
 
   const resolvedItems = typeof limit === 'number' ? items.slice(0, limit) : items;
+  const isListLayout = layout === 'list';
+
+  useEffect(() => {
+    if (!isListLayout) return;
+    const el = listRef.current;
+    if (!el) return;
+
+    const updateScrollState = () => {
+      const maxScrollLeft = el.scrollWidth - el.clientWidth;
+      setCanScrollLeft(el.scrollLeft > 0);
+      setCanScrollRight(el.scrollLeft < maxScrollLeft - 1);
+    };
+
+    updateScrollState();
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+    };
+  }, [isListLayout, resolvedItems.length]);
 
   if (resolvedItems.length === 0) return null;
+
+  const scrollByAmount = (direction: 'left' | 'right') => {
+    const el = listRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
 
   const gridClass =
     layout === 'list'
@@ -112,7 +144,28 @@ export default function ItemsGrid({
 
   return (
     <div className="space-y-4">
-      <div className={gridClass}>
+      <div className={isListLayout ? 'relative' : ''}>
+        {isListLayout && canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scrollByAmount('left')}
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-900 shadow-md backdrop-blur"
+            aria-label="Scroll left"
+          >
+            ‹
+          </button>
+        )}
+        {isListLayout && canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollByAmount('right')}
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-900 shadow-md backdrop-blur"
+            aria-label="Scroll right"
+          >
+            ›
+          </button>
+        )}
+        <div ref={isListLayout ? listRef : undefined} className={gridClass}>
         {resolvedItems.map((item: any) => {
           const fields = getDynamicFields(item);
 
@@ -220,6 +273,7 @@ export default function ItemsGrid({
             </Link>
           );
         })}
+        </div>
       </div>
     </div>
   );
