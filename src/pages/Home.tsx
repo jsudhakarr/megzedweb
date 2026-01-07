@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -13,6 +13,7 @@ import {
   Bell,
   PlusCircle,
   MessageCircle,
+  Loader2,
 } from 'lucide-react';
 
 import SearchBox from '../components/SearchBox';
@@ -24,13 +25,51 @@ import Footer from '../components/Footer';
 import LoginModal from '../components/LoginModal';
 
 // ✅ NEW
-import ShopsSlider from '../components/ShopsSlider';
 import LanguageButton from '../components/LanguageButton';
 import ScanQrModal from '../components/ScanQrModal';
 import UsersSlider from '../components/UsersSlider';
 import HomeSlider from '../components/HomeSlider';
+import HomeAdSection from '../components/HomeAdSection';
+import ShopsGrid from '../components/ShopsGrid';
+import ShopCard from '../components/ShopCard';
+import { apiService, type Category, type Item, type PublicUser, type Shop, type Slider } from '../services/api';
 
 import type { Subcategory } from '../types/category';
+
+interface HomeSectionStyle {
+  background_color?: string;
+  title_color?: string;
+  subtitle_color?: string;
+  view_all_color?: string;
+  show_divider?: boolean;
+  card_style?: string;
+}
+
+interface HomeSectionViewAll {
+  enabled?: boolean;
+  route_key?: string | null;
+}
+
+interface HomeSectionAdConfig {
+  target_type?: string | null;
+  link?: string | null;
+  item_id?: string | number | null;
+  shop_id?: string | number | null;
+  screen_key?: string | null;
+  image?: string | null;
+}
+
+interface HomeSection {
+  id: number;
+  title?: string;
+  subtitle?: string | null;
+  type: string;
+  layout?: string;
+  item_count?: number;
+  view_all?: HomeSectionViewAll;
+  style?: HomeSectionStyle;
+  ad_config?: HomeSectionAdConfig;
+}
 
 
 
@@ -60,6 +99,9 @@ export default function Home() {
   const [scanOpen, setScanOpen] = useState(false);
 
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
+  const [homeSections, setHomeSections] = useState<HomeSection[]>([]);
+  const [sectionData, setSectionData] = useState<Record<number, any[]>>({});
+  const [sectionsLoading, setSectionsLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>({
     category: null,
@@ -132,6 +174,87 @@ export default function Home() {
     t('create_new_shop'),
     'Create a new business'
   );
+
+  const resolveRoute = (routeKey?: string | null) => {
+    if (!routeKey) return null;
+    switch (routeKey) {
+      case 'categories':
+        return '/categories';
+      case 'featured_items':
+        return '/items?filter=featured';
+      case 'all_items':
+        return '/items';
+      case 'all_shops':
+        return '/shops';
+      case 'all_users':
+        return '/users';
+      default:
+        return routeKey.startsWith('/') ? routeKey : `/${routeKey}`;
+    }
+  };
+
+  const headerStyles = (section: HomeSection) => ({
+    title: { color: section.style?.title_color || '#0f172a' },
+    subtitle: { color: section.style?.subtitle_color || '#64748b' },
+    viewAll: { color: section.style?.view_all_color || '#2563eb' },
+  });
+
+  const sectionWrapperClass = (section: HomeSection) =>
+    `py-8 ${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
+
+  useEffect(() => {
+    const loadSections = async () => {
+      setSectionsLoading(true);
+      try {
+        const sections = await apiService.getHomeSections();
+        setHomeSections(sections);
+
+        const dataEntries = await Promise.all(
+          sections.map(async (section) => {
+            if (section.type === 'ad') return [section.id, []] as const;
+            try {
+              const data = await apiService.getHomeSectionData(section.id);
+              const normalized = Array.isArray(data)
+                ? data
+                : Array.isArray((data as any)?.data)
+                  ? (data as any).data
+                  : [];
+              return [section.id, normalized] as const;
+            } catch (error) {
+              console.error('Failed to load section data:', error);
+              return [section.id, []] as const;
+            }
+          })
+        );
+
+        setSectionData(Object.fromEntries(dataEntries));
+      } catch (error) {
+        console.error('Failed to load home sections:', error);
+        setHomeSections([]);
+        setSectionData({});
+      } finally {
+        setSectionsLoading(false);
+      }
+    };
+
+    loadSections();
+  }, []);
+
+  const dynamicSections = useMemo(() => {
+    if (!homeSections.length) return [];
+    return homeSections.filter((section) => section.type !== 'slider');
+  }, [homeSections]);
+
+  const sliderSection = useMemo(
+    () => homeSections.find((section) => section.type === 'slider'),
+    [homeSections]
+  );
+
+  const sliderSlides = useMemo(() => {
+    if (!sliderSection) return undefined;
+    const data = sectionData[sliderSection.id] as Slider[] | undefined;
+    return data && data.length > 0 ? data : undefined;
+  }, [sectionData, sliderSection]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
@@ -233,7 +356,7 @@ export default function Home() {
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* HERO SLIDER + SEARCH */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <HomeSlider primaryColor={primaryColor} />
+          <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
             <h2 className="text-2xl font-bold text-slate-900 mb-3">Search listings</h2>
             <p className="text-sm text-slate-500 mb-5">
@@ -283,29 +406,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CATEGORIES HEADER */}
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
-            {t('categories')}
-          </h2>
-
-          <button
-            type="button"
-            onClick={() => navigate('/categories')}
-            className="text-sm sm:text-base font-semibold text-blue-600 hover:text-blue-700 transition"
-          >
-            {t('view_all')}
-          </button>
-        </div>
-
-        {/* CATEGORIES GRID */}
-        <CategoryGrid
-          primaryColor={primaryColor}
-          onSubcategorySelect={handleSubcategorySelect}
-          selectedSubcategoryId={selectedSubcategory?.id}
-        />
-
-        {/* ITEMS */}
         {selectedSubcategory ? (
           <div className="flex gap-6 mb-6 mt-5">
             <div className="w-72 flex-shrink-0 hidden lg:block">
@@ -344,61 +444,203 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="mb-6 mt-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
-                {t('featured_properties')}
-              </h2>
+          <div className="space-y-10">
+            {sectionsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => navigate(`/items`)}
-                className="text-sm sm:text-base font-semibold text-blue-600 hover:text-blue-700 transition"
-              >
-                {t('view_all')}
-              </button>
-            </div>
+            {!sectionsLoading &&
+              dynamicSections.map((section) => {
+                const styles = headerStyles(section);
+                const viewAllRoute = resolveRoute(section.view_all?.route_key || null);
+                const backgroundColor = section.style?.background_color || '#ffffff';
+                const itemCount = section.item_count || undefined;
 
-            <ItemsGrid
-              primaryColor={primaryColor}
-              subcategoryId={selectedSubcategory?.id}
-              subcategoryName={selectedSubcategory?.name}
-              onClearFilter={handleClearFilter}
-              showFilters={false}
-              lat={filters.lat}
-              lng={filters.lng}
-              distance={filters.distance}
-            />
+                if (section.type === 'categories') {
+                  const categories = (sectionData[section.id] || []) as Category[];
+                  const categoriesOverride = categories.length ? categories : undefined;
+                  return (
+                    <section
+                      key={section.id}
+                      className={sectionWrapperClass(section)}
+                      style={{ backgroundColor }}
+                    >
+                      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h2
+                              className="text-xl sm:text-2xl font-bold leading-tight"
+                              style={styles.title}
+                            >
+                              {section.title || t('categories')}
+                            </h2>
+                            {section.subtitle && (
+                              <p className="text-sm mt-1" style={styles.subtitle}>
+                                {section.subtitle}
+                              </p>
+                            )}
+                          </div>
+                          {section.view_all?.enabled && viewAllRoute && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(viewAllRoute)}
+                              className="text-sm sm:text-base font-semibold transition"
+                              style={styles.viewAll}
+                            >
+                              {t('view_all')}
+                            </button>
+                          )}
+                        </div>
+
+                        <CategoryGrid
+                          primaryColor={primaryColor}
+                          categories={categoriesOverride}
+                          onSubcategorySelect={handleSubcategorySelect}
+                          selectedSubcategoryId={selectedSubcategory?.id}
+                        />
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (section.type === 'items') {
+                  const items = (sectionData[section.id] || []) as Item[];
+                  return (
+                    <section
+                      key={section.id}
+                      className={sectionWrapperClass(section)}
+                      style={{ backgroundColor }}
+                    >
+                      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h2
+                              className="text-xl sm:text-2xl font-bold leading-tight"
+                              style={styles.title}
+                            >
+                              {section.title || t('featured_properties')}
+                            </h2>
+                            {section.subtitle && (
+                              <p className="text-sm mt-1" style={styles.subtitle}>
+                                {section.subtitle}
+                              </p>
+                            )}
+                          </div>
+                          {section.view_all?.enabled && viewAllRoute && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(viewAllRoute)}
+                              className="text-sm sm:text-base font-semibold transition"
+                              style={styles.viewAll}
+                            >
+                              {t('view_all')}
+                            </button>
+                          )}
+                        </div>
+
+                        <ItemsGrid
+                          primaryColor={primaryColor}
+                          items={items}
+                          limit={itemCount}
+                          layout={section.layout === 'list' ? 'list' : 'grid'}
+                        />
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (section.type === 'shops') {
+                  const shops = (sectionData[section.id] || []) as Shop[];
+                  const limitedShops = itemCount ? shops.slice(0, itemCount) : shops;
+
+                  if (!limitedShops.length) return null;
+
+                  return (
+                    <section
+                      key={section.id}
+                      className={sectionWrapperClass(section)}
+                      style={{ backgroundColor }}
+                    >
+                      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h2
+                              className="text-xl sm:text-2xl font-bold leading-tight"
+                              style={styles.title}
+                            >
+                              {section.title || featuredHeading}
+                            </h2>
+                            {section.subtitle && (
+                              <p className="text-sm mt-1" style={styles.subtitle}>
+                                {section.subtitle}
+                              </p>
+                            )}
+                          </div>
+                          {section.view_all?.enabled && viewAllRoute && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(viewAllRoute)}
+                              className="text-sm sm:text-base font-semibold transition"
+                              style={styles.viewAll}
+                            >
+                              {t('view_more')} →
+                            </button>
+                          )}
+                        </div>
+
+                        {section.layout === 'list' ? (
+                          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                            {limitedShops.map((shop) => (
+                              <ShopCard key={shop.id} shop={shop} accentColor={primaryColor} />
+                            ))}
+                          </div>
+                        ) : (
+                          <ShopsGrid primaryColor={primaryColor} shops={limitedShops} />
+                        )}
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (section.type === 'users') {
+                  const users = (sectionData[section.id] || []) as PublicUser[];
+                  return (
+                    <UsersSlider
+                      key={section.id}
+                      primaryColor={primaryColor}
+                      users={itemCount ? users.slice(0, itemCount) : users}
+                      title={section.title || t('nearby_users')}
+                      subtitle={section.subtitle}
+                      viewAllRoute={viewAllRoute || '/users'}
+                      styleConfig={{
+                        backgroundColor,
+                        titleColor: section.style?.title_color,
+                        subtitleColor: section.style?.subtitle_color,
+                        viewAllColor: section.style?.view_all_color,
+                        showDivider: section.style?.show_divider,
+                      }}
+                    />
+                  );
+                }
+
+                if (section.type === 'ad') {
+                  return (
+                    <HomeAdSection
+                      key={section.id}
+                      ad={section.ad_config || {}}
+                      backgroundColor={backgroundColor}
+                      showDivider={section.style?.show_divider}
+                    />
+                  );
+                }
+
+                return null;
+              })}
           </div>
         )}
       </main>
-
-      {/* SHOPS SLIDER */}
-      <section
-        className="w-screen relative left-1/2 right-1/2 -mx-[50vw] py-8 sm:py-10"
-        style={{ backgroundColor: '#0f172a' }}
-      >
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">
-              {featuredHeading}
-            </h2>
-
-            <button
-              type="button"
-              onClick={() => navigate('/shops')}
-              className="text-sm sm:text-base font-semibold text-white/80 hover:text-white transition"
-            >
-              {t('view_more')} →
-            </button>
-          </div>
-
-          <ShopsSlider themeColor={primaryColor} />
-        </div>
-      </section>
-
-      {/* USERS SLIDER */}
-      <UsersSlider primaryColor={primaryColor} />
 
       {/* BACK TO MAIN WIDTH CONTENT */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-10">

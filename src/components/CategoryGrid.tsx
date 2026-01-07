@@ -4,20 +4,32 @@ import { apiService, type Category, type Subcategory } from '../services/api';
 
 interface CategoryGridProps {
   primaryColor: string;
+  categories?: Category[];
   onSubcategorySelect?: (subcategory: Subcategory, category: Category) => void;
   selectedSubcategoryId?: number | null;
 }
 
-export default function CategoryGrid({ primaryColor, onSubcategorySelect, selectedSubcategoryId }: CategoryGridProps) {
+export default function CategoryGrid({
+  primaryColor,
+  categories: categoriesOverride,
+  onSubcategorySelect,
+  selectedSubcategoryId,
+}: CategoryGridProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Record<number, Subcategory[]>>({});
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!categoriesOverride);
   const [loadingSubcategories, setLoadingSubcategories] = useState<number | null>(null);
 
   useEffect(() => {
+    if (categoriesOverride) {
+      setCategories(categoriesOverride);
+      setLoading(false);
+      return;
+    }
     loadCategories();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriesOverride]);
 
   const loadCategories = async () => {
     try {

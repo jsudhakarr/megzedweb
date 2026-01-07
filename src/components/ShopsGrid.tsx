@@ -5,22 +5,31 @@ import ShopCard from './ShopCard';
 
 interface ShopsGridProps {
   primaryColor: string;
+  shops?: Shop[];
+  limit?: number;
 }
 
-export default function ShopsGrid({ primaryColor }: ShopsGridProps) {
+export default function ShopsGrid({ primaryColor, shops: shopsOverride, limit }: ShopsGridProps) {
   const [shops, setShops] = useState<Shop[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!shopsOverride);
 
   useEffect(() => {
+    if (shopsOverride) {
+      const limited = typeof limit === 'number' ? shopsOverride.slice(0, limit) : shopsOverride;
+      setShops(limited);
+      setLoading(false);
+      return;
+    }
     loadShops();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [shopsOverride, limit]);
 
   const loadShops = async () => {
     setLoading(true);
     try {
       const data = await apiService.getShops();
-      setShops((data || []).slice(0, 4));
+      const defaultLimit = typeof limit === 'number' ? limit : 4;
+      setShops((data || []).slice(0, defaultLimit));
     } catch (error) {
       console.error('Failed to load shops:', error);
       setShops([]);

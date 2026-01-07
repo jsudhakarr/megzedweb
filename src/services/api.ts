@@ -706,20 +706,28 @@ class ApiService {
     return data.data;
   }
 
-  async getHomeSections(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/home/sections`, {
+  async getHomeSections(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/front-web/sections`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
-    return response.json();
+    const data = await response.json();
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data?.data)) return data.data.data;
+    return [];
   }
 
   async getHomeSectionData(sectionId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/home/sections/${sectionId}/data`, {
+    const response = await fetch(`${API_BASE_URL}/front-web/sections/${sectionId}/data`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
-    return response.json();
+    const data = await response.json();
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data?.data)) return data.data.data;
+    return data;
   }
 
   async getPublicUsers(): Promise<PublicUser[]> {

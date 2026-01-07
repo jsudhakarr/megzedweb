@@ -5,15 +5,23 @@ import { apiService, type Slider } from '../services/api';
 
 interface HomeSliderProps {
   primaryColor: string;
+  slides?: Slider[];
 }
 
-export default function HomeSlider({ primaryColor }: HomeSliderProps) {
+export default function HomeSlider({ primaryColor, slides }: HomeSliderProps) {
   const navigate = useNavigate();
   const [sliders, setSliders] = useState<Slider[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!slides);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    if (slides) {
+      const sorted = [...slides].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      setSliders(sorted);
+      setCurrentIndex(0);
+      setLoading(false);
+      return;
+    }
     const loadSliders = async () => {
       setLoading(true);
       try {
@@ -30,7 +38,7 @@ export default function HomeSlider({ primaryColor }: HomeSliderProps) {
     };
 
     loadSliders();
-  }, []);
+  }, [slides]);
 
   useEffect(() => {
     if (sliders.length <= 1) return;
