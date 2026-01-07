@@ -174,7 +174,7 @@ export default function Home() {
   });
 
   const sectionWrapperClass = (section: HomeSectionResolved) =>
-    `py-8 ${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
+    `py-4 ${section.style?.show_divider ? 'border-t border-b border-slate-200' : ''}`;
 
   useEffect(() => {
     const loadSections = async () => {
@@ -226,9 +226,9 @@ export default function Home() {
     'animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200';
 
   const renderSectionSkeletons = () => (
-    <div className="space-y-10">
+    <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, index) => (
-        <section key={`section-skeleton-${index}`} className="py-8">
+        <section key={`section-skeleton-${index}`} className="py-4">
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-4">
               <div className="space-y-2">
@@ -439,7 +439,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="space-y-10">
+          <div className="space-y-4">
             {sectionsLoading && (
               <div className="py-6">{renderSectionSkeletons()}</div>
             )}
