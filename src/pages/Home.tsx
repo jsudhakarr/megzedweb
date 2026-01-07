@@ -263,6 +263,8 @@ export default function Home() {
     [homeSections]
   );
 
+  const hasSlider = Boolean(sliderSection);
+
   const sliderSlides = useMemo(() => {
     if (!sliderSection) return undefined;
     const data = sectionData[sliderSection.id] as Slider[] | undefined;
@@ -368,8 +370,8 @@ export default function Home() {
       {/* MAIN CONTENT */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* HERO SLIDER + SEARCH */}
-        <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />
+        <div className={`grid gap-6 mb-8 ${hasSlider ? 'lg:grid-cols-2' : ''}`}>
+          {hasSlider && <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
             <h2 className="text-2xl font-bold text-slate-900 mb-3">Search listings</h2>
             <p className="text-sm text-slate-500 mb-5">
