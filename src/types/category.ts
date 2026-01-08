@@ -88,7 +88,7 @@ export interface ItemShop {
   longitude: string;
 
   shop_type: string;
-  is_verified: boolean;
+  is_verified: boolean | number;
   kyc_status?: string;
 
   user?: ItemUser | null;
@@ -139,7 +139,7 @@ export interface Item {
   likes_count?: number;
   is_favorite?: boolean;
   is_liked?: boolean;
-  is_verified: boolean;
+  is_verified: boolean | number;
   qr_code: string;
   qr_url: string;
   is_promoted: boolean;
@@ -199,7 +199,7 @@ export interface ShopUser {
   is_active: boolean;
   approved: boolean;
   mobile_verified: boolean;
-  is_verified: boolean;
+  is_verified: boolean | number;
 }
 
 export interface Shop {
@@ -216,7 +216,7 @@ export interface Shop {
   city: string | null;
   is_active: boolean;
   is_approved: boolean;
-  is_verified: boolean;
+  is_verified: boolean | number;
   qr_code: string | null;
   qr_url: string | null;
   items_count: number;
