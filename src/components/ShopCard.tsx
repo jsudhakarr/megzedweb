@@ -15,7 +15,7 @@ const initials = (name: string) =>
     .join('');
 
 export default function ShopCard({ shop, accentColor }: ShopCardProps) {
-  const verified = shop.is_verified === true || shop.is_verified === 1;
+  const verified = shop.is_verified;
   const location =
     [shop.city, shop.state].filter(Boolean).join(', ') || shop.country || '—';
   const rating =

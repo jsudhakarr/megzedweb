@@ -62,6 +62,7 @@ export default function Home() {
   const [scanOpen, setScanOpen] = useState(false);
 
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
+  const selectedSubcategoryId = selectedSubcategory?.id ?? null;
   const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>(
     () => cachedHomeSections ?? []
   );
@@ -493,7 +494,7 @@ export default function Home() {
                           primaryColor={primaryColor}
                           categories={categoriesOverride}
                           onSubcategorySelect={handleSubcategorySelect}
-                          selectedSubcategoryId={selectedSubcategory?.id}
+                          selectedSubcategoryId={selectedSubcategoryId}
                         />
                       </div>
                     </section>
