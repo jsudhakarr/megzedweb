@@ -14,6 +14,8 @@ import Blog from './pages/Blog';
 import PageDetail from './pages/PageDetail';
 import UsersDirectory from './pages/UsersDirectory';
 import PublicUserProfile from './pages/PublicUserProfile';
+import SubmissionDetails from './pages/SubmissionDetails';
+import ActionForm from './pages/ActionForm';
 
 // Dashboard Pages
 import Dashboard from './pages/Dashboard';
@@ -114,6 +116,30 @@ function App() {
             <Route path="/blog" element={<BlogWrapper />} />
             <Route path="/blog/:slug" element={<PageDetailWrapper />} />
             <Route path="/pages/:slug" element={<PageDetailWrapper />} />
+            <Route
+              path="/submission-details"
+              element={
+                <PrivateRoute>
+                  <SubmissionDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/submission-details/:id"
+              element={
+                <PrivateRoute>
+                  <SubmissionDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/action-form"
+              element={
+                <PrivateRoute>
+                  <ActionForm />
+                </PrivateRoute>
+              }
+            />
 
             {/* --- Protected Dashboard Routes --- */}
             <Route
