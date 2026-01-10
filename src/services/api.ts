@@ -1207,6 +1207,24 @@ class ApiService {
     return data.data || [];
   }
 
+  async getMyActionSubmissions(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/my/action-submissions`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return data.data || data || [];
+  }
+
+  async getReceivedActionSubmissions(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/seller/action-submissions`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return data.data || data || [];
+  }
+
   async createVisitBooking(payload: BookingPayloadVisit): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/bookings/visit`, {
       method: 'POST',
