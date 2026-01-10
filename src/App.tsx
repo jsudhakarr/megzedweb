@@ -23,7 +23,7 @@ import MyShops from './pages/dashboard/MyShops';
 import CreateShop from './pages/dashboard/CreateShop';
 import CreateItemFlow from './pages/dashboard/CreateItemFlow'; // ✅ NEW
 import Favorites from './pages/dashboard/Favorites';
-import Bookings from './pages/dashboard/Bookings';
+import ActionSubmissions from './pages/dashboard/ActionSubmissions';
 import Profile from './pages/Profile';
 import Notifications from './pages/dashboard/Notifications';
 import Chat from './pages/dashboard/Chat';
@@ -130,7 +130,8 @@ function App() {
               <Route path="shops/create" element={<CreateShop />} />
               <Route path="items/create" element={<CreateItemFlow />} /> {/* ✅ NEW */}
               <Route path="likes" element={<Favorites />} />
-              <Route path="bookings" element={<Bookings />} />
+              <Route path="requests/received" element={<ActionSubmissions variant="received" />} />
+              <Route path="requests/sent" element={<ActionSubmissions variant="sent" />} />
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="chat" element={<Chat />} />

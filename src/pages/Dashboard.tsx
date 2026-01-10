@@ -8,7 +8,8 @@ import {
   ShoppingBag,
   Store,
   Heart,
-  Calendar,
+  Inbox,
+  Send,
   User,
   Settings,
   LogOut,
@@ -124,7 +125,8 @@ export default function Dashboard() {
     { path: "/dashboard/items", label: "My Items", icon: <ShoppingBag className="w-5 h-5" /> },
     { path: "/dashboard/shops", label: "My Businesses", icon: <Store className="w-5 h-5" /> },
     { path: "/dashboard/likes", label: "Favorites", icon: <Heart className="w-5 h-5" /> },
-    { path: "/dashboard/bookings", label: "Bookings", icon: <Calendar className="w-5 h-5" /> },
+    { path: "/dashboard/requests/received", label: "Received Requests", icon: <Inbox className="w-5 h-5" /> },
+    { path: "/dashboard/requests/sent", label: "Sent Requests", icon: <Send className="w-5 h-5" /> },
 
     {
       path: "/dashboard/notifications",

@@ -7,7 +7,8 @@ import {
   ShoppingBag,
   Store,
   Heart,
-  Calendar,
+  Inbox,
+  Send,
   DollarSign,
   User as UserIcon,
   TrendingUp,
@@ -26,7 +27,8 @@ export default function DashboardOverview() {
   const [itemsCount, setItemsCount] = useState(0);
   const [shopsCount, setShopsCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
-  const [bookingsCount, setBookingsCount] = useState(0);
+  const [receivedRequestsCount, setReceivedRequestsCount] = useState(0);
+  const [sentRequestsCount, setSentRequestsCount] = useState(0);
 
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -56,7 +58,8 @@ export default function DashboardOverview() {
           apiService.getUserItems(),
           apiService.getUserShops(),
           apiService.getUserFavorites(),
-          apiService.getUserBookings(),
+          apiService.getReceivedActionSubmissions(),
+          apiService.getMyActionSubmissions(),
 
           apiService.getUnreadNotificationCount(),
           apiService.getConversations(),
@@ -80,18 +83,21 @@ export default function DashboardOverview() {
         const favorites = results[2].status === "fulfilled" ? results[2].value : [];
         setFavoritesCount(safeLen(favorites));
 
-        // 4. Bookings
-        const bookings = results[3].status === "fulfilled" ? results[3].value : [];
-        setBookingsCount(safeLen(bookings));
+        // 4. Requests
+        const receivedRequests = results[3].status === "fulfilled" ? results[3].value : [];
+        setReceivedRequestsCount(safeLen(receivedRequests));
+
+        const sentRequests = results[4].status === "fulfilled" ? results[4].value : [];
+        setSentRequestsCount(safeLen(sentRequests));
 
         // 5. Notifications (Handle { count: 5 } or plain number)
-        const notifData = results[4].status === "fulfilled" ? results[4].value : 0;
+        const notifData = results[5].status === "fulfilled" ? results[5].value : 0;
         setUnreadNotifications(
           typeof notifData === "object" ? notifData.count || 0 : Number(notifData) || 0
         );
 
         // 6. Chat unread total
-        const conversations = results[5].status === "fulfilled" ? results[5].value : [];
+        const conversations = results[6].status === "fulfilled" ? results[6].value : [];
         const chats = Array.isArray(conversations) ? conversations : (conversations as any).data || [];
         const totalUnreadMessages = Array.isArray(chats)
           ? chats.reduce((sum: number, c: any) => sum + (c.unread_count || 0), 0)
@@ -99,12 +105,12 @@ export default function DashboardOverview() {
         setUnreadMessages(totalUnreadMessages);
 
         // 7. Wallet balance
-        const wallet = results[6].status === "fulfilled" ? results[6].value : null;
+        const wallet = results[7].status === "fulfilled" ? results[7].value : null;
         const w = (wallet as any)?.data ?? wallet; // supports either shape
         setCoinsBalance(toInt(w?.coins_balance, 0));
 
         // 8. Wallet tx count
-        const tx = results[7].status === "fulfilled" ? results[7].value : [];
+        const tx = results[8].status === "fulfilled" ? results[8].value : [];
         const txList = Array.isArray(tx) ? tx : (tx as any)?.data || [];
         setWalletTxCount(Array.isArray(txList) ? txList.length : 0);
       } catch (error) {
@@ -114,7 +120,8 @@ export default function DashboardOverview() {
         setItemsCount(0);
         setShopsCount(0);
         setFavoritesCount(0);
-        setBookingsCount(0);
+        setReceivedRequestsCount(0);
+        setSentRequestsCount(0);
         setUnreadNotifications(0);
         setUnreadMessages(0);
         setCoinsBalance(0);
@@ -223,13 +230,22 @@ export default function DashboardOverview() {
       onClick: () => navigate("/dashboard/likes"),
     },
     {
-      title: "Bookings",
-      value: loading ? "..." : String(bookingsCount),
-      subtitle: "Total bookings",
-      icon: <Calendar className="w-6 h-6" />,
+      title: "Received Requests",
+      value: loading ? "..." : String(receivedRequestsCount),
+      subtitle: "Seller inbox",
+      icon: <Inbox className="w-6 h-6" />,
       bgColor: "#ddd6fe",
       iconColor: "#7c3aed",
-      onClick: () => navigate("/dashboard/bookings"),
+      onClick: () => navigate("/dashboard/requests/received"),
+    },
+    {
+      title: "Sent Requests",
+      value: loading ? "..." : String(sentRequestsCount),
+      subtitle: "Buyer submissions",
+      icon: <Send className="w-6 h-6" />,
+      bgColor: "#e0f2fe",
+      iconColor: "#0284c7",
+      onClick: () => navigate("/dashboard/requests/sent"),
     },
     {
       title: "Currency",
