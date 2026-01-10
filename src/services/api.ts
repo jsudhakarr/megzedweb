@@ -13,6 +13,7 @@ import type {
   PagesResponse,
 } from '../types/category';
 import type { PublicUser, PublicUserDetails } from '../types/user';
+import type { ActionSubmission, ActionSubmissionPayload } from '../types/action';
 
 const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
@@ -1340,6 +1341,34 @@ class ApiService {
 
   async getItemActions(itemId: number): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/items/${itemId}/actions`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async getActionSubmission(submissionId: number): Promise<ActionSubmission> {
+    const response = await fetch(`${API_BASE_URL}/action-submissions/${submissionId}`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return data.data ?? data;
+  }
+
+  async createActionSubmission(payload: ActionSubmissionPayload): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/action-submissions`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async cancelActionSubmission(submissionId: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/action-submissions/${submissionId}/cancel`, {
+      method: 'PATCH',
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));

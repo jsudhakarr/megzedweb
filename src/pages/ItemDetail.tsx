@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAppSettings } from "../contexts/AppSettingsContext";
 import { apiService, type Item } from "../services/api";
@@ -6,6 +6,7 @@ import MapEmbed from "../components/MapEmbed";
 import LeafletRadiusMap from "../components/LeafletRadiusMap";
 import Footer from '../components/Footer';
 import SiteHeader from '../components/SiteHeader';
+import type { ItemAction } from "../types/action";
 
 
 import {
@@ -28,6 +29,15 @@ import {
   Store,
 } from "lucide-react";
 
+const ACTION_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  in_progress: "In Progress",
+  completed: "View",
+  cancelled: "View",
+  rejected: "View",
+};
+
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -38,11 +48,15 @@ export default function ItemDetail() {
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [actions, setActions] = useState<ItemAction[]>([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
+  const [actionsContact, setActionsContact] = useState<{ phone?: string | null; whatsapp?: string | null }>({});
 
   const primaryColor = settings?.primary_color || "#0ea5e9";
 
   useEffect(() => {
     if (id) loadItem(Number(id));
+    if (id) loadItemActions(Number(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -67,6 +81,22 @@ export default function ItemDetail() {
     }
   };
 
+  const loadItemActions = async (itemId: number) => {
+    try {
+      setActionsLoading(true);
+      const response = await apiService.getItemActions(itemId);
+      const data = response?.data ?? response;
+      const actionList = data?.actions ?? data ?? [];
+      setActions(Array.isArray(actionList) ? actionList : []);
+      setActionsContact(data?.contact ?? {});
+    } catch (err) {
+      console.error(err);
+      setActions([]);
+    } finally {
+      setActionsLoading(false);
+    }
+  };
+
   const formatPrice = (price: string) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -81,6 +111,64 @@ export default function ItemDetail() {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const sortedActions = useMemo(() => {
+    return [...actions].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
+  }, [actions]);
+
+  const getPendingLabel = (action: ItemAction) => {
+    const status = (action.submission_status ?? "pending").toString().toLowerCase();
+    return ACTION_STATUS_LABELS[status] ?? "View";
+  };
+
+  const getActionLabel = (action: ItemAction) => {
+    if (action.pending) return getPendingLabel(action);
+    if (action.code === "price") return formatPrice(item?.price ?? "0");
+    return action.label || "Action";
+  };
+
+  const handleActionClick = (action: ItemAction) => {
+    if (action.pending && action.submission_id) {
+      navigate(`/submission-details/${action.submission_id}`);
+      return;
+    }
+
+    const contactPhone = actionsContact.phone || contactMobile;
+    const contactWhatsapp = actionsContact.whatsapp || actionsContact.phone || contactMobile;
+
+    switch (action.code) {
+      case "price": {
+        const priceCard = document.getElementById("price-card");
+        if (priceCard) {
+          priceCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+      case "chat":
+        navigate("/dashboard/chat");
+        return;
+      case "call":
+        if (contactPhone) window.location.href = `tel:${contactPhone}`;
+        return;
+      case "whatsapp": {
+        if (!contactWhatsapp) return;
+        const formatted = contactWhatsapp.replace(/[^\d]/g, "");
+        window.open(`https://wa.me/${formatted}`, "_blank", "noopener,noreferrer");
+        return;
+      }
+      case "navigate":
+        if (item?.latitude && item?.longitude) {
+          window.open(
+            `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+            "_blank",
+            "noopener,noreferrer"
+          );
+        }
+        return;
+      default:
+        navigate("/action-form", { state: { item, action } });
+    }
   };
 
   const getAllImages = () => {
@@ -425,7 +513,10 @@ export default function ItemDetail() {
           <div className="lg:col-span-4 space-y-6">
             <div className="lg:sticky lg:top-24 space-y-6">
               {/* Price Card */}
-              <div className="hidden lg:block bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+              <div
+                id="price-card"
+                className="hidden lg:block bg-white rounded-3xl p-6 shadow-sm border border-slate-100"
+              >
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-4xl font-extrabold tracking-tight" style={{ color: primaryColor }}>
                     {formatPrice(item.price)}
@@ -454,6 +545,36 @@ export default function ItemDetail() {
                     Chat Now
                   </button>
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-900">Actions</h3>
+                  {actionsLoading && (
+                    <span className="text-xs text-slate-400">Loading...</span>
+                  )}
+                </div>
+
+                {sortedActions.length === 0 && !actionsLoading ? (
+                  <p className="text-sm text-slate-500">No actions available.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {sortedActions.map((action) => (
+                      <button
+                        key={action.id}
+                        onClick={() => handleActionClick(action)}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all border ${
+                          action.pending
+                            ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {getActionLabel(action)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Seller / Business Info Card */}
