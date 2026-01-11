@@ -10,6 +10,7 @@ import type { ItemAction } from "../types/action";
 import ActionFormRenderer from "../components/actionForm/ActionFormRenderer";
 import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
+import PromoteModal from "../components/PromoteModal";
 
 import {
   ArrowLeft,
@@ -94,6 +95,8 @@ export default function ItemDetail() {
   const [activeAction, setActiveAction] = useState<ItemAction | null>(null);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [promoteActionType, setPromoteActionType] = useState<"activate" | "promote">("promote");
 
   const primaryColor = settings?.primary_color || "#0ea5e9";
 
@@ -261,6 +264,16 @@ export default function ItemDetail() {
       return;
     }
 
+    if (PROMOTE_ACTION_CODES.has(code)) {
+      const isInactive =
+        (item as any)?.status === 0 ||
+        String((item as any)?.status) === "inactive" ||
+        String((item as any)?.status) === "pending";
+      setPromoteActionType(isInactive ? "activate" : "promote");
+      setIsPromoteModalOpen(true);
+      return;
+    }
+
     // ✅ Edit is now NON_FORM, so it won't open modal
     if (!NON_FORM_ACTIONS.has(code)) {
       setActiveAction({ ...action, code });
@@ -329,6 +342,15 @@ export default function ItemDetail() {
     }
     setActionToast("Submitted successfully.");
     handleCloseActionModal();
+  };
+
+  const handlePromoteSuccess = async () => {
+    if (item?.id) {
+      await loadItemActions(item.id);
+      await loadItem(item.id);
+    }
+    setActionToast("Submitted successfully.");
+    setIsPromoteModalOpen(false);
   };
 
   const getAllImages = () => {
@@ -459,6 +481,18 @@ export default function ItemDetail() {
           )
         ) : null}
       </Modal>
+
+      {item ? (
+        <PromoteModal
+          isOpen={isPromoteModalOpen}
+          onClose={() => setIsPromoteModalOpen(false)}
+          targetId={(item as any).id}
+          targetType="item"
+          actionType={promoteActionType}
+          categoryId={categoryId}
+          onSuccess={handlePromoteSuccess}
+        />
+      ) : null}
 
       {actionToast ? (
         <div className="fixed right-6 top-20 z-50 max-w-sm">

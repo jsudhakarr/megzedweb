@@ -32,7 +32,11 @@ export default function MyItems() {
 
   // ✅ STATES FOR MODAL
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{ id: number; action: 'activate' | 'promote' } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{
+    id: number;
+    action: 'activate' | 'promote';
+    categoryId?: number | string;
+  } | null>(null);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -99,7 +103,8 @@ export default function MyItems() {
     
     setSelectedItem({
       id: item.id,
-      action: isInactive ? 'activate' : 'promote'
+      action: isInactive ? 'activate' : 'promote',
+      categoryId: item?.category_id ?? item?.categoryId ?? item?.category?.id,
     });
     setModalOpen(true);
   };
@@ -320,6 +325,7 @@ export default function MyItems() {
           targetId={selectedItem.id}
           targetType="item"
           actionType={selectedItem.action}
+          categoryId={selectedItem.categoryId}
           onSuccess={() => {
              fetchItems(); // Refresh the list after purchase
           }}
