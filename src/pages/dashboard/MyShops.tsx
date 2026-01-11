@@ -38,6 +38,7 @@ export default function MyShops() {
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoShopId, setPromoShopId] = useState<number | null>(null);
   const [promoAction, setPromoAction] = useState<"activate" | "promote">("promote");
+  const [promoCategoryId, setPromoCategoryId] = useState<number | string | null>(null);
 
   useEffect(() => {
     fetchShops();
@@ -78,11 +79,12 @@ export default function MyShops() {
   };
 
   const openShopAction = (
-    shopId: number,
+    shop: any,
     action: "activate" | "promote"
   ) => {
-    setPromoShopId(shopId);
+    setPromoShopId(shop.id);
     setPromoAction(action);
+    setPromoCategoryId(shop?.category_id ?? shop?.category?.id ?? null);
     setPromoOpen(true);
   };
 
@@ -402,7 +404,7 @@ export default function MyShops() {
                       /* ✅ STANDARD ACTION BUTTON */
                       <>
                         <button
-                          onClick={() => openShopAction(shop.id, isInactive ? "activate" : "promote")}
+                          onClick={() => openShopAction(shop, isInactive ? "activate" : "promote")}
                           className={`w-full relative overflow-hidden py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] ${
                             isInactive
                               ? 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-md'
@@ -444,6 +446,7 @@ export default function MyShops() {
           targetId={promoShopId}
           targetType="shop"
           actionType={promoAction}
+          categoryId={promoCategoryId ?? undefined}
           onSuccess={() => fetchShops()}
         />
       )}
