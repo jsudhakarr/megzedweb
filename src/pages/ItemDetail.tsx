@@ -30,7 +30,10 @@ import {
   Home,
   ShieldCheck,
   Store,
+  Pencil,
+  Megaphone,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const ACTION_STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -50,10 +53,25 @@ const NON_FORM_ACTIONS = new Set([
   "make_offer",
 ]);
 
+const OWNER_ACTION_CODES = new Set(["edit", "edit_item", "promote", "promote_item"]);
+
+const ACTION_ICON_MAP: Record<string, JSX.Element> = {
+  call: <Phone className="w-4 h-4" />,
+  chat: <MessageCircle className="w-4 h-4" />,
+  whatsapp: <MessageCircle className="w-4 h-4" />,
+  navigate: <MapPin className="w-4 h-4" />,
+  price: <Tag className="w-4 h-4" />,
+  edit: <Pencil className="w-4 h-4" />,
+  edit_item: <Pencil className="w-4 h-4" />,
+  promote: <Megaphone className="w-4 h-4" />,
+  promote_item: <Megaphone className="w-4 h-4" />,
+};
+
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { settings } = useAppSettings();
+  const { user } = useAuth();
 
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,6 +156,16 @@ export default function ItemDetail() {
     return [...actions].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
   }, [actions]);
 
+  const isOwner = useMemo(() => {
+    const ownerId = item?.user?.id ?? item?.shop?.user?.id;
+    return !!user && !!ownerId && user.id === ownerId;
+  }, [item?.shop?.user?.id, item?.user?.id, user]);
+
+  const visibleActions = useMemo(() => {
+    if (!isOwner) return sortedActions;
+    return sortedActions.filter((action) => OWNER_ACTION_CODES.has(action.code));
+  }, [isOwner, sortedActions]);
+
   const getPendingLabel = (action: ItemAction) => {
     const status = (action.submission_status ?? "pending").toString().toLowerCase();
     return ACTION_STATUS_LABELS[status] ?? "View";
@@ -147,6 +175,22 @@ export default function ItemDetail() {
     if (action.pending) return getPendingLabel(action);
     if (action.code === "price") return formatPrice(item?.price ?? "0");
     return action.label || "Action";
+  };
+
+  const getActionIcon = (action: ItemAction) => {
+    const iconUrl = action.icon_url || (action as { iconUrl?: string | null }).iconUrl || null;
+    const iconValue = action.icon || "";
+    const iconKey = (iconValue || action.code || "").toLowerCase();
+
+    if (iconUrl) {
+      return <img src={iconUrl} alt="" className="w-4 h-4 object-contain" />;
+    }
+
+    if (iconValue && /^(https?:\/\/|\/)/i.test(iconValue)) {
+      return <img src={iconValue} alt="" className="w-4 h-4 object-contain" />;
+    }
+
+    return ACTION_ICON_MAP[iconKey] || ACTION_ICON_MAP[action.code] || null;
   };
 
   const handleActionClick = (action: ItemAction) => {
@@ -484,22 +528,6 @@ export default function ItemDetail() {
                   <span className="text-lg text-slate-500 font-medium">/ {item.rent_duration}</span>
                 )}
               </div>
-
-              <div className="flex gap-3 mt-4">
-                <a
-                  href={`tel:${contactMobile}`}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow-md shadow-blue-100 active:scale-95 transition-all"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <Phone className="w-4 h-4" />
-                  Call
-                </a>
-
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-slate-100 rounded-xl font-bold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all">
-                  <MessageCircle className="w-4 h-4" />
-                  Chat
-                </button>
-              </div>
             </div>
 
             {/* Content */}
@@ -594,22 +622,6 @@ export default function ItemDetail() {
                 <p className="text-sm font-medium text-slate-400 mb-6">
                   {item.listing_type === "rent" ? "Rental Price" : "Asking Price"}
                 </p>
-
-                <div className="flex flex-col gap-3">
-                  <a
-                    href={`tel:${contactMobile}`}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white shadow-lg shadow-blue-100 hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    <Phone className="w-5 h-5" />
-                    Call {hasShop ? "Business" : "Seller"}
-                  </a>
-
-                  <button className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-slate-100 rounded-xl font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-200 active:scale-95 transition-all">
-                    <MessageCircle className="w-5 h-5" />
-                    Chat Now
-                  </button>
-                </div>
               </div>
 
               {/* Action Buttons */}
@@ -621,11 +633,11 @@ export default function ItemDetail() {
                   )}
                 </div>
 
-                {sortedActions.length === 0 && !actionsLoading ? (
+                {visibleActions.length === 0 && !actionsLoading ? (
                   <p className="text-sm text-slate-500">No actions available.</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {sortedActions.map((action) => (
+                    {visibleActions.map((action) => (
                       <button
                         key={action.id}
                         onClick={() => handleActionClick(action)}
@@ -635,7 +647,12 @@ export default function ItemDetail() {
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                         }`}
                       >
-                        {getActionLabel(action)}
+                        {getActionIcon(action) && (
+                          <span className={action.pending ? "text-white" : "text-slate-500"}>
+                            {getActionIcon(action)}
+                          </span>
+                        )}
+                        <span>{getActionLabel(action)}</span>
                       </button>
                     ))}
                   </div>
