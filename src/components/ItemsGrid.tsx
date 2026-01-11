@@ -11,8 +11,8 @@ interface ItemsGridProps {
   items?: Item[];
   limit?: number;
   subcategoryId?: number | null;
-  subcategoryName?: string | null; // (kept for compatibility, not used for title now)
-  onClearFilter?: () => void;       // (kept for compatibility, not used now)
+  subcategoryName?: string | null;
+  onClearFilter?: () => void;
   showFilters?: boolean;
   layout?: 'grid' | 'list';
   cardStyle?: string;
@@ -26,8 +26,8 @@ export default function ItemsGrid({
   items: itemsOverride,
   limit,
   subcategoryId,
-  subcategoryName, // unused now
-  onClearFilter,   // unused now
+  subcategoryName,
+  onClearFilter,
   showFilters = false,
   layout = 'grid',
   cardStyle,
@@ -83,7 +83,7 @@ export default function ItemsGrid({
     item?.shop?.is_verified === true ||
     item?.is_verified === true;
 
-  // ✅ Dynamic fields: icon + value only (no label, no dummy)
+  // ✅ Dynamic fields
   const getDynamicFields = (item: any) => {
     if (!Array.isArray(item?.dynamic_fields)) return [];
     return item.dynamic_fields
@@ -204,11 +204,11 @@ export default function ItemsGrid({
   };
 
   const getCardImageHeight = (variant: string) => {
-    if (variant === 'grid_card_2') return 'h-36';
-    if (variant === 'grid_card_1') return 'h-40';
-    if (variant === 'list_card_2') return 'h-40';
-    if (variant === 'list_card_1') return 'h-44';
-    return 'h-44';
+    if (variant === 'grid_card_2') return 'h-48'; 
+    if (variant === 'grid_card_1') return 'h-52'; 
+    if (variant === 'list_card_2') return 'h-52'; 
+    if (variant === 'list_card_1') return 'h-56'; 
+    return 'h-56'; 
   };
 
   const getCardPriceClass = (variant: string) => {
@@ -272,12 +272,15 @@ export default function ItemsGrid({
               layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
             }`;
 
+            // ----------------------------------------------------------------------
+            // LIST CARD 1
+            // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_1') {
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
-                  <div className="p-3">
+                  <div className="p-1.5">
                     <div
-                      className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                      className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                     >
                       {item.feature_photo?.url ? (
                         <img
@@ -291,20 +294,22 @@ export default function ItemsGrid({
                         </div>
                       )}
 
+                      {/* ✅ PROMOTED: Top-2 Left-2 */}
                       {isPromoted(item) && (
-                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                        <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
                           <Star className="w-3.5 h-3.5" />
                           Promoted
                         </span>
                       )}
 
+                      {/* ✅ HEART: Top-2 Right-2 */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
-                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                        className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
                         aria-label="Favourite"
                       >
                         <Heart
@@ -312,10 +317,11 @@ export default function ItemsGrid({
                         />
                       </button>
 
+                      {/* ✅ VERIFIED: Bottom-2 Right-2 */}
                       {isVerified(item) && (
                         <div
                           title="Verified"
-                          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
                         >
                           <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
                         </div>
@@ -323,11 +329,12 @@ export default function ItemsGrid({
                     </div>
                   </div>
 
-                  <div className="px-4 pb-4">
-                    <div className={`${priceClass} leading-tight mb-1`}>
+                  <div className="px-4 pb-4 pt-1">
+                    <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
+                      {/* ✅ DURATION: Smaller text-xs */}
                       {durationLabel && item.listing_type === 'rent' && (
-                        <span className="text-base font-semibold text-slate-500 ml-1">
+                        <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
                         </span>
                       )}
@@ -371,12 +378,15 @@ export default function ItemsGrid({
               );
             }
 
+            // ----------------------------------------------------------------------
+            // LIST CARD 2
+            // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_2') {
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
-                  <div className="p-3">
+                  <div className="p-1.5">
                     <div
-                      className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                      className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                     >
                       {item.feature_photo?.url ? (
                         <img
@@ -390,20 +400,22 @@ export default function ItemsGrid({
                         </div>
                       )}
 
+                      {/* ✅ PROMOTED: Top-2 Left-2 */}
                       {isPromoted(item) && (
-                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                        <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
                           <TrendingUp className="w-3.5 h-3.5" />
                           Promoted
                         </span>
                       )}
 
+                      {/* ✅ HEART: Top-2 Right-2 */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
-                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                        className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
                         aria-label="Favourite"
                       >
                         <Heart
@@ -411,10 +423,11 @@ export default function ItemsGrid({
                         />
                       </button>
 
+                      {/* ✅ VERIFIED: Bottom-2 Right-2 */}
                       {isVerified(item) && (
                         <div
                           title="Verified"
-                          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
                         >
                           <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
                         </div>
@@ -422,11 +435,12 @@ export default function ItemsGrid({
                     </div>
                   </div>
 
-                  <div className="px-4 pb-4">
-                    <div className={`${priceClass} leading-tight mb-1`}>
+                  <div className="px-4 pb-4 pt-1">
+                    <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
+                      {/* ✅ DURATION: Smaller text-xs */}
                       {durationLabel && item.listing_type === 'rent' && (
-                        <span className="text-base font-semibold text-slate-500 ml-1">
+                        <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
                         </span>
                       )}
@@ -470,12 +484,15 @@ export default function ItemsGrid({
               );
             }
 
+            // ----------------------------------------------------------------------
+            // GRID CARDS 1 & 2
+            // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'grid_card_1' || resolvedCardStyle === 'grid_card_2') {
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
-                  <div className="p-3">
+                  <div className="p-1.5">
                     <div
-                      className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                      className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                     >
                       {item.feature_photo?.url ? (
                         <img
@@ -489,20 +506,22 @@ export default function ItemsGrid({
                         </div>
                       )}
 
+                      {/* ✅ PROMOTED: Top-2 Left-2 */}
                       {isPromoted(item) && (
-                        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                        <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
                           <TrendingUp className="w-3.5 h-3.5" />
                           Promoted
                         </span>
                       )}
 
+                      {/* ✅ HEART: Top-2 Right-2 */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
-                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                        className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
                         aria-label="Favourite"
                       >
                         <Heart
@@ -510,10 +529,11 @@ export default function ItemsGrid({
                         />
                       </button>
 
+                      {/* ✅ VERIFIED: Bottom-2 Right-2 */}
                       {isVerified(item) && (
                         <div
                           title="Verified"
-                          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
                         >
                           <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
                         </div>
@@ -521,11 +541,12 @@ export default function ItemsGrid({
                     </div>
                   </div>
 
-                  <div className="px-4 pb-4">
-                    <div className={`${priceClass} leading-tight mb-1`}>
+                  <div className="px-4 pb-4 pt-1">
+                    <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
+                      {/* ✅ DURATION: Smaller text-xs */}
                       {durationLabel && item.listing_type === 'rent' && (
-                        <span className="text-base font-semibold text-slate-500 ml-1">
+                        <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
                         </span>
                       )}
@@ -582,12 +603,14 @@ export default function ItemsGrid({
               );
             }
 
+            // ----------------------------------------------------------------------
+            // DEFAULT CARD
+            // ----------------------------------------------------------------------
             return (
               <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
-                {/* IMAGE */}
-                <div className="p-3">
+                <div className="p-1.5">
                   <div
-                    className={`relative w-full ${cardImageHeight} bg-white rounded-2xl overflow-hidden border border-slate-200`}
+                    className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                   >
                     {item.feature_photo?.url ? (
                       <img
@@ -601,32 +624,32 @@ export default function ItemsGrid({
                       </div>
                     )}
 
-                    {/* PROMOTED (top-left) */}
+                    {/* ✅ PROMOTED: Top-2 Left-2 */}
                     {isPromoted(item) && (
-                      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
                         <TrendingUp className="w-3.5 h-3.5" />
                         Promoted
                       </span>
                     )}
 
-                    {/* HEART (top-right) */}
+                    {/* ✅ HEART: Top-2 Right-2 */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+                      className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
                       aria-label="Favourite"
                     >
                       <Heart className="w-4.5 h-4.5 text-slate-700" />
                     </button>
 
-                    {/* VERIFIED (bottom-right on image) */}
+                    {/* ✅ VERIFIED: Bottom-2 Right-2 */}
                     {isVerified(item) && (
                       <div
                         title="Verified"
-                        className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                        className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
                       >
                         <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
                       </div>
@@ -634,19 +657,21 @@ export default function ItemsGrid({
                   </div>
                 </div>
 
-                {/* BODY */}
-                <div className="p-4 pt-0">
-                  {/* PRICE */}
-                  <div className={`${priceClass} mb-2`}>
+                <div className="px-4 pb-4 pt-1">
+                  <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                     ₹ {formatPrice(item.price)}
+                    {/* ✅ DURATION: Smaller text-xs */}
+                    {durationLabel && item.listing_type === 'rent' && (
+                      <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
+                        /{durationLabel}
+                      </span>
+                    )}
                   </div>
 
-                  {/* TITLE */}
                   <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
                     {item.name}
                   </div>
 
-                  {/* DYNAMIC FIELDS (icon + value only) */}
                   {fields.length > 0 && (
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       {fields.map((field: any) => (
@@ -661,22 +686,23 @@ export default function ItemsGrid({
                     </div>
                   )}
 
-                  {/* LOCATION + TYPE */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-slate-500 min-w-0">
                       <MapPin className="w-4 h-4" />
-                      <span className="text-sm truncate">{item.city}</span>
+                      <span className="text-sm truncate">{item.city || '—'}</span>
                     </div>
 
-                    {item.listing_type === 'rent' ? (
-                      <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold whitespace-nowrap">
-                        Rent • {item.rent_duration}
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1 rounded-full bg-green-50 text-green-600 text-xs font-semibold whitespace-nowrap">
-                        Sale
-                      </span>
-                    )}
+                    <span
+                      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                      style={tagStyles}
+                    >
+                      {listingTag.icon ? (
+                        <img src={listingTag.icon} alt="" className="w-4 h-4 object-contain" />
+                      ) : (
+                        <KeyRound className="w-4 h-4" />
+                      )}
+                      {listingTag.name}
+                    </span>
                   </div>
                 </div>
               </Link>
