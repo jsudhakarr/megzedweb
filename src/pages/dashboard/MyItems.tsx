@@ -79,6 +79,17 @@ export default function MyItems() {
     return 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
+  const getListingLabel = (item: any) =>
+    item?.listing_type_detail?.name ||
+    (item?.listing_type === 'rent' ? 'Rent' : item?.listing_type === 'sell' ? 'Sale' : item?.listing_type) ||
+    '—';
+
+  const getDurationLabel = (item: any) =>
+    item?.duration_detail?.name || item?.rent_duration || '—';
+
+  const getLocationLabel = (item: any) =>
+    [item?.city, item?.state, item?.country].filter(Boolean).join(', ') || '—';
+
   const handleEdit = (id: number | string) => {
     navigate(`/dashboard/items/create?edit=${id}`);
   };
@@ -152,7 +163,7 @@ export default function MyItems() {
 
       {/* Grid Content */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 animate-pulse">
               <div className="h-32 bg-slate-200 rounded-md mb-2" />
@@ -173,7 +184,7 @@ export default function MyItems() {
           <p className="text-xs text-slate-500 mt-1">Add a new property to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredItems.map((item: any) => {
             // Check if inactive for button logic
             const isInactive = item.status === 0 || String(item.status) === 'inactive' || String(item.status) === 'pending';
@@ -266,6 +277,51 @@ export default function MyItems() {
                       <Clock className="w-3 h-3" />
                       {new Date(item.created_at || Date.now()).toLocaleDateString()}
                     </span>
+                  </div>
+
+                  <div className="space-y-1 text-[11px] text-slate-500">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Listing</span>
+                      <span className="text-slate-500">{getListingLabel(item)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Duration</span>
+                      <span className="text-slate-500">{getDurationLabel(item)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Approval</span>
+                      <span className="text-slate-500 capitalize">
+                        {item.approval_status || '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Category</span>
+                      <span className="text-slate-500">
+                        {item.category?.name || '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Subcategory</span>
+                      <span className="text-slate-500">
+                        {item.subcategory?.name || '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Location</span>
+                      <span className="text-slate-500 truncate">{getLocationLabel(item)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Address</span>
+                      <span className="text-slate-500 truncate">{item.address || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Favorites</span>
+                      <span className="text-slate-500">{item.favorites_count ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-700">Likes</span>
+                      <span className="text-slate-500">{item.likes_count ?? 0}</span>
+                    </div>
                   </div>
 
                   <div className="mt-auto pt-2 border-t border-slate-50">
