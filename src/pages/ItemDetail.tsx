@@ -54,6 +54,7 @@ const NON_FORM_ACTIONS = new Set([
 ]);
 
 const OWNER_ACTION_CODES = new Set(["edit", "edit_item", "promote", "promote_item"]);
+const PROMOTE_ACTION_CODES = new Set(["promote", "promote_item"]);
 
 const ACTION_ICON_MAP: Record<string, JSX.Element> = {
   call: <Phone className="w-4 h-4" />,
@@ -173,6 +174,7 @@ export default function ItemDetail() {
 
   const getActionLabel = (action: ItemAction) => {
     if (action.pending) return getPendingLabel(action);
+    if (PROMOTE_ACTION_CODES.has(action.code) && item?.is_promoted) return "Promoted";
     if (action.code === "price") return formatPrice(item?.price ?? "0");
     return action.label || "Action";
   };
@@ -199,6 +201,10 @@ export default function ItemDetail() {
       return;
     }
 
+    if (PROMOTE_ACTION_CODES.has(action.code) && item?.is_promoted) {
+      return;
+    }
+
     if (!NON_FORM_ACTIONS.has(action.code)) {
       setActiveAction(action);
       setIsActionModalOpen(true);
@@ -209,6 +215,12 @@ export default function ItemDetail() {
     const contactWhatsapp = actionsContact.whatsapp || actionsContact.phone || contactMobile;
 
     switch (action.code) {
+      case "edit":
+      case "edit_item":
+        if (item?.id) {
+          navigate(`/dashboard/items/create?edit=${item.id}`);
+        }
+        return;
       case "price": {
         const priceCard = document.getElementById("price-card");
         if (priceCard) {
@@ -618,10 +630,6 @@ export default function ItemDetail() {
                     <span className="text-lg text-slate-400 font-medium">/ {item.rent_duration}</span>
                   )}
                 </div>
-
-                <p className="text-sm font-medium text-slate-400 mb-6">
-                  {item.listing_type === "rent" ? "Rental Price" : "Asking Price"}
-                </p>
               </div>
 
               {/* Action Buttons */}
@@ -641,10 +649,13 @@ export default function ItemDetail() {
                       <button
                         key={action.id}
                         onClick={() => handleActionClick(action)}
+                        disabled={PROMOTE_ACTION_CODES.has(action.code) && item?.is_promoted}
                         className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all border ${
                           action.pending
                             ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
-                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                            : PROMOTE_ACTION_CODES.has(action.code) && item?.is_promoted
+                              ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                         }`}
                       >
                         {getActionIcon(action) && (
