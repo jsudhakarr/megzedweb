@@ -13,6 +13,7 @@ interface PromoteModalProps {
   targetId: number;
   targetType: "item" | "shop";
   actionType: "activate" | "promote";
+  categoryId?: number | string;
   onSuccess: () => void;
 }
 
@@ -22,6 +23,7 @@ export default function PromoteModal({
   targetId,
   targetType,
   actionType,
+  categoryId,
   onSuccess,
 }: PromoteModalProps) {
   const { settings } = useAppSettings();
@@ -46,7 +48,7 @@ export default function PromoteModal({
     const planApiType = `${targetType}_${actionType === "activate" ? "post" : "promotion"}`;
 
     promotionService
-      .getPlansByType(planApiType)
+      .getPlansByType(planApiType, categoryId)
       .then((data: any[]) => {
         const safeData = Array.isArray(data) ? data : [];
         const activePlans = safeData.filter(
@@ -137,7 +139,9 @@ export default function PromoteModal({
                   >
                     <div className="text-left">
                       <div className="font-bold text-slate-800">{p.name}</div>
-                      <div className="text-xs text-slate-500">{p.duration} days validity</div>
+                      <div className="text-xs text-slate-500">
+                        {(p.durationDays ?? p.duration) || 0} days validity
+                      </div>
                     </div>
 
                     <div className="font-bold text-slate-900 flex items-center gap-1.5 bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">
