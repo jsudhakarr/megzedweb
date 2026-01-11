@@ -80,6 +80,7 @@ export interface ItemShopPhoto {
 
 export interface ItemShop {
   id: number;
+  user_id?: number | null;
   shop_name: string;
   description?: string;
   address: string;
@@ -100,6 +101,7 @@ export interface ItemShop {
 
 export interface Item {
   id: number;
+  user_id?: number | null;
   uid: string;
   unique_code: string;
   shop_id: string | null;

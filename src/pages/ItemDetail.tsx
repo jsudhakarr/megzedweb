@@ -158,9 +158,14 @@ export default function ItemDetail() {
   }, [actions]);
 
   const isOwner = useMemo(() => {
-    const ownerId = item?.user?.id ?? item?.shop?.user?.id;
-    return !!user && !!ownerId && user.id === ownerId;
-  }, [item?.shop?.user?.id, item?.user?.id, user]);
+    const ownerId =
+      item?.user?.id ??
+      item?.user_id ??
+      item?.shop?.user?.id ??
+      item?.shop?.user_id ??
+      null;
+    return !!user && ownerId !== null && user.id === Number(ownerId);
+  }, [item?.shop?.user?.id, item?.shop?.user_id, item?.user?.id, item?.user_id, user]);
 
   const visibleActions = useMemo(() => {
     if (!isOwner) return sortedActions;
