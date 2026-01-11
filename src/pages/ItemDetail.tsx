@@ -7,6 +7,9 @@ import LeafletRadiusMap from "../components/LeafletRadiusMap";
 import Footer from '../components/Footer';
 import SiteHeader from '../components/SiteHeader';
 import type { ItemAction } from "../types/action";
+import ActionFormRenderer from "../components/actionForm/ActionFormRenderer";
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
 
 
 import {
@@ -38,6 +41,15 @@ const ACTION_STATUS_LABELS: Record<string, string> = {
   rejected: "View",
 };
 
+const NON_FORM_ACTIONS = new Set([
+  "price",
+  "navigate",
+  "call",
+  "whatsapp",
+  "chat",
+  "make_offer",
+]);
+
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -51,6 +63,9 @@ export default function ItemDetail() {
   const [actions, setActions] = useState<ItemAction[]>([]);
   const [actionsLoading, setActionsLoading] = useState(false);
   const [actionsContact, setActionsContact] = useState<{ phone?: string | null; whatsapp?: string | null }>({});
+  const [activeAction, setActiveAction] = useState<ItemAction | null>(null);
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [actionToast, setActionToast] = useState<string | null>(null);
 
   const primaryColor = settings?.primary_color || "#0ea5e9";
 
@@ -59,6 +74,12 @@ export default function ItemDetail() {
     if (id) loadItemActions(Number(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!actionToast) return;
+    const timer = window.setTimeout(() => setActionToast(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [actionToast]);
 
   const loadItem = async (itemId: number) => {
     try {
@@ -134,6 +155,12 @@ export default function ItemDetail() {
       return;
     }
 
+    if (!NON_FORM_ACTIONS.has(action.code)) {
+      setActiveAction(action);
+      setIsActionModalOpen(true);
+      return;
+    }
+
     const contactPhone = actionsContact.phone || contactMobile;
     const contactWhatsapp = actionsContact.whatsapp || actionsContact.phone || contactMobile;
 
@@ -169,6 +196,17 @@ export default function ItemDetail() {
       default:
         navigate("/action-form", { state: { item, action } });
     }
+  };
+
+  const handleCloseActionModal = () => {
+    setIsActionModalOpen(false);
+    setActiveAction(null);
+  };
+
+  const handleActionSuccess = () => {
+    if (item?.id) loadItemActions(item.id);
+    setActionToast("Submitted successfully.");
+    handleCloseActionModal();
   };
 
   const getAllImages = () => {
@@ -280,6 +318,7 @@ export default function ItemDetail() {
 
   const contactMobile = item.user?.mobile || item.shop?.user?.mobile || "";
   const sellerType = hasShop ? item.shop!.shop_type || "Business" : "Individual";
+  const categoryId = Number(item.category_id || 0);
 
   // -----------------------------
   // UI
@@ -287,6 +326,32 @@ export default function ItemDetail() {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 flex flex-col">
       <SiteHeader />
+      <Modal
+        isOpen={isActionModalOpen}
+        onClose={handleCloseActionModal}
+        title={activeAction?.label || "Action Form"}
+      >
+        {activeAction ? (
+          categoryId ? (
+            <ActionFormRenderer
+              itemId={item.id}
+              categoryId={categoryId}
+              actionCode={activeAction.code}
+              onCancel={handleCloseActionModal}
+              onSuccess={handleActionSuccess}
+            />
+          ) : (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+              Missing category information for this item.
+            </div>
+          )
+          ) : null}
+      </Modal>
+      {actionToast ? (
+        <div className="fixed right-6 top-20 z-50 max-w-sm">
+          <Toast message={actionToast} variant="success" />
+        </div>
+      ) : null}
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 supports-[backdrop-filter]:bg-white/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

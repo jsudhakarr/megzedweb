@@ -15,7 +15,7 @@ import type {
 import type { PublicUser, PublicUserDetails } from '../types/user';
 import type { ActionSubmission, ActionSubmissionPayload } from '../types/action';
 
-const API_BASE_URL = 'https://api.megzed.com/api/v1';
+export const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
 // --- Interfaces ---
 
@@ -1763,3 +1763,87 @@ export const markConversationRead = (id: number) => apiService.markConversationR
 
 export type { Category, Subcategory, Item, Shop, ContentPage } from '../types/category';
 export type { PublicUser, PublicUserDetails } from '../types/user';
+
+export type ApiError = Error & {
+  status?: number;
+  fieldErrors?: Record<string, string[]>;
+};
+
+export type ApiRequestOptions = {
+  endpoint: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?: BodyInit | Record<string, unknown> | null;
+  headers?: HeadersInit;
+  auth?: boolean;
+};
+
+const parseApiError = async (response: Response): Promise<ApiError> => {
+  const text = await response.text();
+  let message = 'Request failed';
+  let fieldErrors: Record<string, string[]> | undefined;
+
+  if (text) {
+    try {
+      const json = JSON.parse(text);
+      message =
+        json.message ||
+        json.error ||
+        (typeof json === 'string' ? json : '') ||
+        message;
+      if (json.errors && typeof json.errors === 'object') {
+        fieldErrors = json.errors;
+      }
+    } catch {
+      if (!text.trim().startsWith('<')) {
+        message = text;
+      }
+    }
+  }
+
+  const error = new Error(message) as ApiError;
+  error.status = response.status;
+  if (fieldErrors) error.fieldErrors = fieldErrors;
+  return error;
+};
+
+export const apiRequest = async <T>({
+  endpoint,
+  method = 'GET',
+  body = null,
+  headers,
+  auth = true,
+}: ApiRequestOptions): Promise<T> => {
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
+  const requestHeaders: HeadersInit = {
+    Accept: 'application/json',
+    ...headers,
+  };
+
+  const token = auth ? localStorage.getItem('auth_token') : null;
+  if (token) {
+    (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  }
+
+  let requestBody: BodyInit | undefined;
+  if (body instanceof FormData) {
+    requestBody = body;
+  } else if (body && method !== 'GET') {
+    (requestHeaders as Record<string, string>)['Content-Type'] = 'application/json';
+    requestBody = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers: requestHeaders,
+    body: requestBody,
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  return response.json();
+};
