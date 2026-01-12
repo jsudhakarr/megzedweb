@@ -597,6 +597,7 @@ export default function Chat() {
   const parsePriceValue = (price: string | number | null | undefined) => {
     if (price == null) return null;
     if (typeof price === 'number') return Number.isFinite(price) ? price : null;
+    if (typeof price !== 'string') return null;
     const cleaned = price.replace(/[^\d.]/g, '');
     if (!cleaned) return null;
     const parsed = Number(cleaned);
