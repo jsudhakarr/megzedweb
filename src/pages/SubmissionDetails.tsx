@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { MessageCircle, Phone, Navigation, Star } from "lucide-react";
 import { apiService } from "../services/api";
 import { useAppSettings } from "../contexts/AppSettingsContext";
@@ -15,6 +15,7 @@ type SubmissionField = {
 const normalizeFields = (submission: ActionSubmission | null): SubmissionField[] => {
   if (!submission) return [];
   const sources = [
+    (submission as any).submitted_values,
     submission.form_fields,
     submission.form_data,
     submission.fields,
@@ -62,16 +63,27 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleString();
 };
 
+const formatActionLabel = (value?: string | null) => {
+  if (!value) return "Action";
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
 export default function SubmissionDetails() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { settings } = useAppSettings();
   const primaryColor = settings?.primary_color || "#0ea5e9";
+  const variant = (location.state as { variant?: "received" | "sent" } | null)?.variant;
 
   const [submission, setSubmission] = useState<ActionSubmission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -82,7 +94,7 @@ export default function SubmissionDetails() {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiService.getActionSubmission(Number(id));
+        const data = await apiService.getActionSubmission(Number(id), variant);
         setSubmission(data);
       } catch (err) {
         console.error(err);
@@ -93,7 +105,7 @@ export default function SubmissionDetails() {
     };
 
     fetchSubmission();
-  }, [id]);
+  }, [id, variant]);
 
   const fields = useMemo(() => normalizeFields(submission), [submission]);
 
@@ -101,38 +113,75 @@ export default function SubmissionDetails() {
   const normalizedStatus = status.toLowerCase();
 
   const item = submission?.item;
-  const itemName = item?.name || item?.title || "Item";
+  const itemName =
+    (submission as any)?.item_name ||
+    item?.name ||
+    item?.title ||
+    "Item";
   const itemPrice = item?.price ? `₹ ${Number(item.price).toLocaleString()}` : "Price on request";
   const itemImage =
+    (submission as any)?.item_image ||
     item?.feature_photo?.url ||
     item?.item_photos?.find((photo) => photo?.url)?.url ||
     null;
+  const itemAddress =
+    (submission as any)?.item_address ||
+    item?.address ||
+    "-";
+  const itemLat = (submission as any)?.item_lat || item?.latitude;
+  const itemLng = (submission as any)?.item_lng || item?.longitude;
 
   const actionLabel =
     submission?.action_label ||
     submission?.actionLabel ||
     submission?.action?.label ||
-    "Action";
+    formatActionLabel((submission as any)?.action_code);
 
-  const contactPhone =
-    submission?.contact?.phone ||
-    item?.shop?.phone ||
-    item?.shop?.user?.mobile ||
-    item?.user?.mobile ||
-    "";
-  const contactWhatsapp = submission?.contact?.whatsapp || contactPhone;
+  const isSellerView = variant === "received";
+  const contactPhone = isSellerView
+    ? ((submission as any)?.buyer_mobile || "").toString()
+    : (submission as any)?.owner_mobile ||
+      submission?.contact?.phone ||
+      item?.shop?.phone ||
+      item?.shop?.user?.mobile ||
+      item?.user?.mobile ||
+      "";
+  const contactWhatsapp =
+    submission?.contact?.whatsapp ||
+    (isSellerView ? contactPhone : contactPhone);
+  const counterpartyLabel = isSellerView ? "Buyer" : "Seller";
+  const counterpartyName = isSellerView
+    ? (submission as any)?.buyer_name
+    : (submission as any)?.lister_name;
 
   const handleCancel = async () => {
     if (!submission?.id) return;
     try {
       setCancelLoading(true);
       await apiService.cancelActionSubmission(submission.id);
-      const data = await apiService.getActionSubmission(submission.id);
+      const data = await apiService.getActionSubmission(submission.id, variant);
       setSubmission(data);
     } catch (err) {
       console.error("Failed to cancel submission:", err);
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (nextStatus: "accepted" | "rejected") => {
+    if (!submission?.id) return;
+    try {
+      setStatusUpdating(true);
+      await apiService.updateActionSubmissionStatus(submission.id, {
+        status: nextStatus,
+        reason: nextStatus === "rejected" && rejectReason ? rejectReason : undefined,
+      });
+      const data = await apiService.getActionSubmission(submission.id, variant);
+      setSubmission(data);
+    } catch (err) {
+      console.error("Failed to update submission status:", err);
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
@@ -207,6 +256,19 @@ export default function SubmissionDetails() {
                   <span className="font-medium text-slate-700">Last Update:</span>{" "}
                   {formatDate(submission.submission_updated_at || submission.updated_at)}
                 </div>
+                <div>
+                  <span className="font-medium text-slate-700">Request ID:</span>{" "}
+                  {(submission as any)?.uid || submission.id}
+                </div>
+                {counterpartyName ? (
+                  <div>
+                    <span className="font-medium text-slate-700">{counterpartyLabel}:</span>{" "}
+                    {counterpartyName}
+                  </div>
+                ) : null}
+                <div>
+                  <span className="font-medium text-slate-700">Location:</span> {itemAddress}
+                </div>
               </div>
             </div>
           </div>
@@ -217,7 +279,7 @@ export default function SubmissionDetails() {
           <SubmissionFields fields={fields} />
         </div>
 
-        {normalizedStatus === "pending" && (
+        {normalizedStatus === "pending" && !isSellerView && (
           <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-3">Request Actions</h2>
             <button
@@ -227,6 +289,37 @@ export default function SubmissionDetails() {
             >
               {cancelLoading ? "Cancelling..." : "Cancel Request"}
             </button>
+          </div>
+        )}
+
+        {normalizedStatus === "pending" && isSellerView && (
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
+            <h2 className="text-lg font-bold text-slate-900">Request Actions</h2>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-600">Reject reason (optional)</label>
+              <input
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="Add a reason for rejection"
+                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+              />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => handleStatusUpdate("accepted")}
+                disabled={statusUpdating}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold"
+              >
+                {statusUpdating ? "Updating..." : "Accept"}
+              </button>
+              <button
+                onClick={() => handleStatusUpdate("rejected")}
+                disabled={statusUpdating}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-rose-200 text-rose-600 font-semibold"
+              >
+                {statusUpdating ? "Updating..." : "Reject"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -261,9 +354,9 @@ export default function SubmissionDetails() {
                   WhatsApp
                 </a>
               ) : null}
-              {item?.latitude && item?.longitude ? (
+              {itemLat && itemLng ? (
                 <a
-                  href={`https://www.google.com/maps?q=${item.latitude},${item.longitude}`}
+                  href={`https://www.google.com/maps?q=${itemLat ?? item?.latitude},${itemLng ?? item?.longitude}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold"
