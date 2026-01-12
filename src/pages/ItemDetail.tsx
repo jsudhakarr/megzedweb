@@ -1,9 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAppSettings } from "../contexts/AppSettingsContext";
 import { apiService, type Item } from "../services/api";
-import MapEmbed from "../components/MapEmbed";
-import LeafletRadiusMap from "../components/LeafletRadiusMap";
 import Footer from "../components/Footer";
 import SiteHeader from "../components/SiteHeader";
 import type { ItemAction } from "../types/action";
@@ -11,6 +9,7 @@ import ActionFormRenderer from "../components/actionForm/ActionFormRenderer";
 import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
 import PromoteModal from "../components/PromoteModal";
+import AppLoader from "../components/AppLoader";
 
 import {
   ArrowLeft,
@@ -36,6 +35,8 @@ import {
 
 // ✅ AUTH
 import { useAuth } from "../contexts/AuthContext";
+
+const MapEmbed = lazy(() => import("../components/MapEmbed"));
 
 const normalizeCode = (code?: string | null) => (code ?? "").toLowerCase().trim();
 
@@ -842,15 +843,17 @@ export default function ItemDetail() {
                   Item Location
                 </h3>
 
-                <MapEmbed
-                  title="Item Location"
-                  latitude={(item as any).latitude}
-                  longitude={(item as any).longitude}
-                  heightClassName="h-56"
-                  showFooter={true}
-                  blockInteractions={true}
-                  directionsLabel="Directions"
-                />
+                <Suspense fallback={<AppLoader label="Loading map..." />}>
+                  <MapEmbed
+                    title="Item Location"
+                    latitude={(item as any).latitude}
+                    longitude={(item as any).longitude}
+                    heightClassName="h-56"
+                    showFooter={true}
+                    blockInteractions={true}
+                    directionsLabel="Directions"
+                  />
+                </Suspense>
               </div>
             </div>
           </div>
