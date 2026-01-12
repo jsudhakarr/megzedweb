@@ -56,6 +56,7 @@ export default function Items() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [itemsCardStyle, setItemsCardStyle] = useState<string | undefined>(undefined);
 
   const translate = (key: string, fallback: string) => {
     const value = t(key);
@@ -65,6 +66,28 @@ export default function Items() {
   useEffect(() => {
     setFilters(initialFilters);
   }, [initialFilters]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadCardStyle = async () => {
+      try {
+        const sections = await apiService.getHomeSections();
+        const itemsSection = sections.find(
+          (section) => section.type === 'items' && section.style?.card_style
+        );
+        if (isMounted) {
+          setItemsCardStyle(itemsSection?.style?.card_style ?? undefined);
+        }
+      } catch (err) {
+        console.warn('Failed to load items card style:', err);
+      }
+    };
+
+    loadCardStyle();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const hasActiveFilters = useMemo(() => {
     return Object.values(filters).some((value) => value !== null && value !== '');
@@ -90,6 +113,7 @@ export default function Items() {
             verified: filters.verified,
             city: filters.city,
             state: filters.state,
+            perPage: 60,
           });
         } else {
           data = await apiService.getItems(undefined, undefined, undefined, undefined, 60);
@@ -162,6 +186,7 @@ export default function Items() {
                 items={items}
                 limit={items.length}
                 layout="grid"
+                cardStyle={itemsCardStyle}
               />
             )}
           </div>
