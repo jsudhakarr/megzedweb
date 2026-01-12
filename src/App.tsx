@@ -1,15 +1,14 @@
+import { Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppSettingsProvider, useAppSettings } from './contexts/AppSettingsContext';
+import AppLoader from './components/AppLoader';
 
 // Public Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
-import Items from './pages/Items';
 import Categories from './pages/Categories';
-import ItemDetail from './pages/ItemDetail';
-import ShopDetail from './pages/ShopDetail';
 import Blog from './pages/Blog';
 import PageDetail from './pages/PageDetail';
 import UsersDirectory from './pages/UsersDirectory';
@@ -18,7 +17,6 @@ import SubmissionDetails from './pages/SubmissionDetails';
 import ActionForm from './pages/ActionForm';
 
 // Dashboard Pages
-import Dashboard from './pages/Dashboard';
 import DashboardOverview from './pages/dashboard/DashboardOverview';
 import MyItems from './pages/dashboard/MyItems';
 import MyShops from './pages/dashboard/MyShops';
@@ -28,12 +26,16 @@ import Favorites from './pages/dashboard/Favorites';
 import ActionSubmissions from './pages/dashboard/ActionSubmissions';
 import Profile from './pages/Profile';
 import Notifications from './pages/dashboard/Notifications';
-import Chat from './pages/dashboard/Chat';
 import Wallet from './pages/dashboard/Wallet';
 import CoinPackages from './pages/dashboard/CoinPackages';
 
+const Items = lazy(() => import('./pages/Items'));
+const ItemDetail = lazy(() => import('./pages/ItemDetail'));
+const ShopDetail = lazy(() => import('./pages/ShopDetail'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Chat = lazy(() => import('./pages/dashboard/Chat'));
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
+function PrivateRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -50,7 +52,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return user ? <>{children}</> : <Navigate to="/login" />;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -107,10 +109,31 @@ function App() {
             />
 
             <Route path="/" element={<Home />} />
-            <Route path="/items" element={<Items />} />
+            <Route
+              path="/items"
+              element={
+                <Suspense fallback={<AppLoader label="Loading search..." />}>
+                  <Items />
+                </Suspense>
+              }
+            />
             <Route path="/categories" element={<Categories />} />
-            <Route path="/item/:id" element={<ItemDetail />} />
-            <Route path="/shop/:id" element={<ShopDetail />} />
+            <Route
+              path="/item/:id"
+              element={
+                <Suspense fallback={<AppLoader label="Loading item..." />}>
+                  <ItemDetail />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/shop/:id"
+              element={
+                <Suspense fallback={<AppLoader label="Loading shop..." />}>
+                  <ShopDetail />
+                </Suspense>
+              }
+            />
             <Route path="/users" element={<UsersDirectory />} />
             <Route path="/users/:id" element={<PublicUserProfile />} />
             <Route path="/blog" element={<BlogWrapper />} />
@@ -146,7 +169,9 @@ function App() {
               path="/dashboard"
               element={
                 <PrivateRoute>
-                  <Dashboard />
+                  <Suspense fallback={<AppLoader label="Loading dashboard..." />}>
+                    <Dashboard />
+                  </Suspense>
                 </PrivateRoute>
               }
             >
@@ -160,7 +185,14 @@ function App() {
               <Route path="requests/sent" element={<ActionSubmissions variant="sent" />} />
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
-              <Route path="chat" element={<Chat />} />
+              <Route
+                path="chat"
+                element={
+                  <Suspense fallback={<AppLoader label="Loading chat..." />}>
+                    <Chat />
+                  </Suspense>
+                }
+              />
               <Route path="wallet" element={<Wallet />} />
               <Route path="coins" element={<CoinPackages />} />
 

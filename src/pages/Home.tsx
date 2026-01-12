@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -21,10 +21,10 @@ import FilterSidebar from '../components/FilterSidebar';
 import LocationPicker from '../components/LocationPicker';
 import Footer from '../components/Footer';
 import LoginModal from '../components/LoginModal';
+import AppLoader from '../components/AppLoader';
 
 // ✅ NEW
 import LanguageButton from '../components/LanguageButton';
-import ScanQrModal from '../components/ScanQrModal';
 import UsersSlider from '../components/UsersSlider';
 import HomeSlider from '../components/HomeSlider';
 import HomeAdSection from '../components/HomeAdSection';
@@ -33,6 +33,8 @@ import ShopCard from '../components/ShopCard';
 import { apiService, type HomeSectionResolved, type Category } from '../services/api';
 
 import type { Subcategory } from '../types/category';
+
+const ScanQrModal = lazy(() => import('../components/ScanQrModal'));
 
 let cachedHomeSections: HomeSectionResolved[] | null = null;
 
@@ -656,11 +658,13 @@ export default function Home() {
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
 
       {/* ✅ NEW: QR scan modal */}
-      <ScanQrModal
-        open={scanOpen}
-        onClose={() => setScanOpen(false)}
-        primaryColor={primaryColor}
-      />
+      <Suspense fallback={<AppLoader label="Loading scanner..." />}>
+        <ScanQrModal
+          open={scanOpen}
+          onClose={() => setScanOpen(false)}
+          primaryColor={primaryColor}
+        />
+      </Suspense>
     </div>
   );
 }
