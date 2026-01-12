@@ -597,6 +597,9 @@ class ApiService {
     verified?: boolean | null;
     city?: string | null;
     state?: string | null;
+    lat?: number;
+    lng?: number;
+    distance?: number;
     perPage?: number;
   }): Promise<Item[]> {
     const params = new URLSearchParams();
@@ -614,6 +617,9 @@ class ApiService {
       params.append('verified', String(filters.verified));
     if (filters.city) params.append('city', filters.city);
     if (filters.state) params.append('state', filters.state);
+    if (filters.lat !== undefined) params.append('lat', String(filters.lat));
+    if (filters.lng !== undefined) params.append('lng', String(filters.lng));
+    if (filters.distance !== undefined) params.append('distance', String(filters.distance));
 
     let endpoint = `${API_BASE_URL}/items`;
     if (subcategoryId) {

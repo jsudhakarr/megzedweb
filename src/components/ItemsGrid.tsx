@@ -10,12 +10,19 @@ interface ItemsGridProps {
   primaryColor: string;
   items?: Item[];
   limit?: number;
+  categoryId?: number | null;
   subcategoryId?: number | null;
   subcategoryName?: string | null;
   onClearFilter?: () => void;
   showFilters?: boolean;
   layout?: 'grid' | 'list';
   cardStyle?: string;
+  listingType?: string | null;
+  minPrice?: string;
+  maxPrice?: string;
+  verified?: boolean | null;
+  city?: string | null;
+  state?: string | null;
   lat?: number;
   lng?: number;
   distance?: number;
@@ -25,10 +32,17 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const {
     items: itemsOverride,
     limit,
+    categoryId,
     subcategoryId,
     showFilters = false,
     layout = 'grid',
     cardStyle,
+    listingType,
+    minPrice,
+    maxPrice,
+    verified,
+    city,
+    state,
     lat,
     lng,
     distance,
@@ -50,13 +64,40 @@ export default function ItemsGrid(props: ItemsGridProps) {
     }
     loadItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemsOverride, subcategoryId, lat, lng, distance]);
+  }, [
+    itemsOverride,
+    categoryId,
+    subcategoryId,
+    listingType,
+    minPrice,
+    maxPrice,
+    verified,
+    city,
+    state,
+    lat,
+    lng,
+    distance,
+    limit,
+  ]);
 
   const loadItems = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getItems(subcategoryId ?? undefined, lat, lng, distance);
       const defaultLimit = typeof limit === 'number' ? limit : 10;
+      const data = await apiService.filterItems({
+        categoryId: categoryId ?? undefined,
+        subcategoryId: subcategoryId ?? undefined,
+        listingType,
+        minPrice,
+        maxPrice,
+        verified,
+        city,
+        state,
+        lat,
+        lng,
+        distance,
+        perPage: defaultLimit,
+      });
       setItems((data || []).slice(0, defaultLimit));
     } catch (error) {
       console.error('Failed to load items:', error);

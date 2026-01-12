@@ -30,7 +30,7 @@ import HomeSlider from '../components/HomeSlider';
 import HomeAdSection from '../components/HomeAdSection';
 import ShopsGrid from '../components/ShopsGrid';
 import ShopCard from '../components/ShopCard';
-import { apiService, type HomeSectionResolved } from '../services/api';
+import { apiService, type HomeSectionResolved, type Category } from '../services/api';
 
 import type { Subcategory } from '../types/category';
 
@@ -82,8 +82,13 @@ export default function Home() {
     distance: undefined,
   });
 
-  const handleSubcategorySelect = (subcategory: Subcategory) => {
+  const handleSubcategorySelect = (subcategory: Subcategory, category: Category) => {
     setSelectedSubcategory(subcategory);
+    setFilters((prev) => ({
+      ...prev,
+      category: category.id,
+      subcategory: subcategory.id,
+    }));
   };
 
   const handleClearFilter = () => {
@@ -104,7 +109,7 @@ export default function Home() {
   };
 
   const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
   const handleAuthNavigation = (path: string) => {
@@ -290,7 +295,7 @@ export default function Home() {
                 city={filters.city}
                 state={filters.state}
                 onLocationChange={(city, state, lat, lng, distance) => {
-                  setFilters({ ...filters, city, state, lat, lng, distance });
+                  setFilters((prev) => ({ ...prev, city, state, lat, lng, distance }));
                 }}
               />
             </div>
@@ -432,10 +437,17 @@ export default function Home() {
 
               <ItemsGrid
                 primaryColor={primaryColor}
-                subcategoryId={selectedSubcategory.id}
+                categoryId={filters.category}
+                subcategoryId={filters.subcategory ?? selectedSubcategory.id}
                 subcategoryName={selectedSubcategory.name}
                 onClearFilter={handleClearFilter}
                 showFilters
+                listingType={filters.listingType}
+                minPrice={filters.minPrice}
+                maxPrice={filters.maxPrice}
+                verified={filters.verified}
+                city={filters.city}
+                state={filters.state}
                 lat={filters.lat}
                 lng={filters.lng}
                 distance={filters.distance}
