@@ -1,16 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppSettings } from '../../contexts/AppSettingsContext';
 import { apiService } from '../../services/api';
 import { Search, Filter, Clock, MapPin, User, Inbox, Send } from 'lucide-react';
 
 const getItemTitle = (submission: any) =>
-  submission?.item_title || submission?.itemTitle || submission?.item?.title || submission?.title || 'Request';
+  submission?.item_name ||
+  submission?.item_title ||
+  submission?.itemTitle ||
+  submission?.item?.title ||
+  submission?.title ||
+  'Request';
 
 const getItemImage = (submission: any) =>
   submission?.item_image || submission?.itemImage || submission?.item?.images?.[0]?.url || null;
 
 const getItemAddress = (submission: any) =>
-  submission?.item_address || submission?.itemAddress || submission?.item?.address || submission?.location || 'Location';
+  submission?.item_address ||
+  submission?.itemAddress ||
+  submission?.item?.address ||
+  submission?.location ||
+  'Location';
 
 const getStatus = (submission: any) => submission?.status || 'Pending';
 
@@ -19,7 +29,14 @@ const getCounterpartyName = (submission: any, variant: 'received' | 'sent') => {
     return submission?.buyer_name || submission?.buyerName || submission?.buyer?.name || 'Buyer';
   }
 
-  return submission?.seller_name || submission?.sellerName || submission?.seller?.name || submission?.shop?.name || 'Seller';
+  return (
+    submission?.lister_name ||
+    submission?.seller_name ||
+    submission?.sellerName ||
+    submission?.seller?.name ||
+    submission?.shop?.name ||
+    'Seller'
+  );
 };
 
 const formatDate = (value: any) => {
@@ -32,6 +49,7 @@ const formatDate = (value: any) => {
 export default function ActionSubmissions({ variant }: { variant: 'received' | 'sent' }) {
   const { settings } = useAppSettings();
   const primaryColor = settings?.primary_color || '#0073f0';
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +144,16 @@ export default function ActionSubmissions({ variant }: { variant: 'received' | '
           {filteredRequests.map((request: any, index: number) => (
             <div
               key={request.id || index}
-              className="bg-white rounded-xl shadow-md border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-shadow"
+              role="button"
+              tabIndex={0}
+              onClick={() => request?.id && navigate(`/submission-details/${request.id}`, { state: { variant } })}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && request?.id) {
+                  navigate(`/submission-details/${request.id}`, { state: { variant } });
+                }
+              }}
+              className="bg-white rounded-xl shadow-md border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2"
+              style={{ '--tw-ring-color': `${primaryColor}55` } as React.CSSProperties}
             >
               <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
                 <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
@@ -149,6 +176,11 @@ export default function ActionSubmissions({ variant }: { variant: 'received' | '
                       <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                       <span className="truncate">{formatDate(request?.created_at || request?.createdAt)}</span>
                     </div>
+                    {request?.action_code ? (
+                      <div className="text-xs sm:text-sm text-slate-500">
+                        Action: <span className="font-medium text-slate-700">{request.action_code}</span>
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
                       <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                       <span className="truncate">{getItemAddress(request)}</span>

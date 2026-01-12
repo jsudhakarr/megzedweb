@@ -1233,7 +1233,7 @@ class ApiService {
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    return data.data || data || [];
+    return data.data?.submissions || data.submissions || data.data || data || [];
   }
 
   async createVisitBooking(payload: BookingPayloadVisit): Promise<any> {
@@ -1357,13 +1357,32 @@ class ApiService {
     return response.json();
   }
 
-  async getActionSubmission(submissionId: number): Promise<ActionSubmission> {
-    const response = await fetch(`${API_BASE_URL}/action-submissions/${submissionId}`, {
-      headers: this.getHeaders(true),
-    });
-    if (!response.ok) throw new Error(await this.readError(response));
-    const data = await response.json();
-    return data.data ?? data;
+  async getActionSubmission(
+    submissionId: number,
+    variant?: 'sent' | 'received'
+  ): Promise<ActionSubmission> {
+    const getSubmission = async (path: string) => {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: this.getHeaders(true),
+      });
+      if (!response.ok) throw new Error(await this.readError(response));
+      const data = await response.json();
+      return data.data ?? data;
+    };
+
+    if (variant === 'received') {
+      return getSubmission(`/seller/action-submissions/${submissionId}`);
+    }
+
+    if (variant === 'sent') {
+      return getSubmission(`/my/action-submissions/${submissionId}`);
+    }
+
+    try {
+      return await getSubmission(`/my/action-submissions/${submissionId}`);
+    } catch (error) {
+      return getSubmission(`/seller/action-submissions/${submissionId}`);
+    }
   }
 
   async createActionSubmission(payload: ActionSubmissionPayload): Promise<any> {
@@ -1377,9 +1396,22 @@ class ApiService {
   }
 
   async cancelActionSubmission(submissionId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/action-submissions/${submissionId}/cancel`, {
+    const response = await fetch(`${API_BASE_URL}/my/action-submissions/${submissionId}/cancel`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async updateActionSubmissionStatus(
+    submissionId: number,
+    payload: { status: 'accepted' | 'rejected'; reason?: string }
+  ): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/seller/action-submissions/${submissionId}/status`, {
+      method: 'PATCH',
+      headers: this.getHeaders(true),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(await this.readError(response));
     return response.json();

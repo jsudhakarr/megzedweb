@@ -31,7 +31,9 @@ export interface ActionFormField {
 
 export interface ActionSubmission {
   id: number;
+  uid?: string | null;
   status?: string | null;
+  action_code?: string | null;
   action?: {
     id?: number;
     label?: string;
@@ -39,6 +41,21 @@ export interface ActionSubmission {
   } | null;
   action_label?: string | null;
   actionLabel?: string | null;
+  item_name?: string | null;
+  item_image?: string | null;
+  item_address?: string | null;
+  item_lat?: string | number | null;
+  item_lng?: string | number | null;
+  owner_mobile?: string | null;
+  buyer_name?: string | null;
+  buyer_mobile?: string | null;
+  lister_name?: string | null;
+  submitted_values?: Array<{
+    field_id?: number | string;
+    label?: string;
+    type?: string;
+    value?: string;
+  }> | null;
   item?: {
     id?: number;
     name?: string;
