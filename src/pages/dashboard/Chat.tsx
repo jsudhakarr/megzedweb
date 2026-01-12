@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppSettings } from '../../contexts/AppSettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import {
   getConversations,
   getMessages,
   sendMessage,
   markConversationRead,
+  startConversation,
 } from '../../services/api';
 import { Send, User, MessageCircle, MoreVertical, Loader2, Search, ArrowLeft } from 'lucide-react';
 
@@ -29,7 +30,9 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [q, setQ] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
+  const pendingTargetRef = useRef<{ itemId: number | null; sellerId: number | null } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -128,6 +131,14 @@ export default function Chat() {
     return uniqueConversations.find((c) => c.__conv_id === activeChatId) ?? null;
   }, [uniqueConversations, activeChatId]);
 
+  const chatTarget = useMemo(() => {
+    const state = location.state as { itemId?: number; sellerId?: number; item_id?: number; other_user_id?: number } | null;
+    const itemId = Number(state?.itemId ?? state?.item_id ?? 0) || null;
+    const sellerId = Number(state?.sellerId ?? state?.other_user_id ?? 0) || null;
+    if (!itemId && !sellerId) return null;
+    return { itemId, sellerId };
+  }, [location.state]);
+
   // -----------------------------
   // Load conversations
   // -----------------------------
@@ -150,6 +161,67 @@ export default function Chat() {
       setLoadingChats(false);
     }
   };
+
+  useEffect(() => {
+    if (!chatTarget) return;
+    pendingTargetRef.current = chatTarget;
+  }, [chatTarget]);
+
+  useEffect(() => {
+    if (loadingChats) return;
+    if (!pendingTargetRef.current) return;
+
+    const { itemId, sellerId } = pendingTargetRef.current;
+    const existing = uniqueConversations.find((c) => {
+      const matchesItem = itemId ? c.__item_id === itemId : true;
+      const matchesSeller = sellerId ? c.__other_id === sellerId : true;
+      return matchesItem && matchesSeller;
+    });
+
+    if (existing) {
+      setActiveChatId(existing.__conv_id);
+      pendingTargetRef.current = null;
+      return;
+    }
+
+    const startChat = async () => {
+      const payload: Record<string, number> = {};
+      if (itemId) payload.item_id = itemId;
+      if (sellerId) payload.other_user_id = sellerId;
+      if (!Object.keys(payload).length) {
+        pendingTargetRef.current = null;
+        return;
+      }
+
+      try {
+        const response = await startConversation(payload);
+        const data = (response as any)?.data ?? response;
+        const conversation = data?.conversation ?? data;
+        const conversationId = Number(data?.conversation_id ?? data?.id ?? conversation?.id ?? 0);
+
+        if (conversationId) {
+          if (conversation && typeof conversation === 'object') {
+            setConversations((prev) => {
+              const list = Array.isArray(prev) ? prev : [];
+              if (list.some((c) => getConvId(c) === conversationId)) return list;
+              return [conversation, ...list];
+            });
+          } else {
+            await loadConversations();
+          }
+          setActiveChatId(conversationId);
+        } else {
+          await loadConversations();
+        }
+      } catch (e) {
+        console.error('Failed to start conversation:', e);
+      } finally {
+        pendingTargetRef.current = null;
+      }
+    };
+
+    startChat();
+  }, [loadingChats, uniqueConversations]);
 
   // -----------------------------
   // Load messages on select

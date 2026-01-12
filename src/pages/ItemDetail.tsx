@@ -300,6 +300,13 @@ export default function ItemDetail() {
       }
 
       case "chat":
+        {
+          const sellerId = item?.shop?.user?.id ?? item?.user?.id ?? null;
+          if (item?.id && sellerId) {
+            navigate("/dashboard/chat", { state: { itemId: item.id, sellerId } });
+            return;
+          }
+        }
         navigate("/dashboard/chat");
         return;
 

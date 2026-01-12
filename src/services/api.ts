@@ -1757,6 +1757,7 @@ export const getNotifications = () => apiService.getNotifications();
 export const markAllNotificationsRead = () => apiService.markAllNotificationsRead();
 export const markNotificationRead = (id: string | number) => apiService.markNotificationRead(id);
 export const getConversations = () => apiService.getConversations();
+export const startConversation = (payload: any) => apiService.startConversation(payload);
 export const getMessages = (id: number) => apiService.getConversation(id); // Maps "messages" to "conversation details"
 export const sendMessage = (id: number, message: string) => apiService.sendMessage(id, { message });
 export const markConversationRead = (id: number) => apiService.markConversationRead(id);
