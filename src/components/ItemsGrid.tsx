@@ -176,9 +176,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const gridClass =
     layout === 'list'
       ? `flex gap-4 overflow-x-auto pb-4 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
-      : `grid sm:grid-cols-2 md:grid-cols-3 gap-4 ${
-          showFilters ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5'
-        }`;
+      : 'grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4';
 
   const formatDuration = (item: any) =>
     item?.duration_detail?.name || item?.rent_duration || '';
