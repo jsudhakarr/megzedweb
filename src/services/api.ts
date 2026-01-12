@@ -1456,10 +1456,16 @@ class ApiService {
   }
 
   async sendMessage(conversationId: number, payload: any): Promise<any> {
+    const isFormData = payload instanceof FormData;
+    const headers = this.getHeaders(true) as Record<string, string>;
+    if (isFormData) {
+      delete headers['Content-Type'];
+    }
+
     const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages`, {
       method: 'POST',
-      headers: this.getHeaders(true),
-      body: JSON.stringify(payload),
+      headers,
+      body: isFormData ? payload : JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(await this.readError(response));
     return response.json();
@@ -1785,7 +1791,11 @@ export const markNotificationRead = (id: string | number) => apiService.markNoti
 export const getConversations = () => apiService.getConversations();
 export const startConversation = (payload: any) => apiService.startConversation(payload);
 export const getMessages = (id: number) => apiService.getConversation(id); // Maps "messages" to "conversation details"
-export const sendMessage = (id: number, message: string) => apiService.sendMessage(id, { message });
+export const sendMessage = (id: number, payload: string | FormData | Record<string, any>) => {
+  if (payload instanceof FormData) return apiService.sendMessage(id, payload);
+  if (typeof payload === 'string') return apiService.sendMessage(id, { message: payload });
+  return apiService.sendMessage(id, payload);
+};
 export const markConversationRead = (id: number) => apiService.markConversationRead(id);
 export const blockUser = (id: number, action: 'block' | 'unblock' = 'block') => apiService.blockUser(id, action);
 export const getBlockStatus = (id: number) => apiService.getBlockStatus(id);
