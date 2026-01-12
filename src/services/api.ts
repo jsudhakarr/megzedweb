@@ -597,10 +597,14 @@ class ApiService {
     verified?: boolean | null;
     city?: string | null;
     state?: string | null;
+    perPage?: number;
   }): Promise<Item[]> {
     const params = new URLSearchParams();
     const categoryId = filters.categoryId ?? undefined;
     const subcategoryId = filters.subcategoryId ?? undefined;
+    if (filters.perPage !== undefined) {
+      params.append('per_page', String(filters.perPage));
+    }
     if (filters.listingType) params.append('listing_type', filters.listingType);
     if (filters.minPrice !== undefined && filters.minPrice !== '')
       params.append('min_price', filters.minPrice);
