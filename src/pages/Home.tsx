@@ -37,6 +37,7 @@ import type { Subcategory } from '../types/category';
 const ScanQrModal = lazy(() => import('../components/ScanQrModal'));
 
 let cachedHomeSections: HomeSectionResolved[] | null = null;
+let cachedHomeSectionsByLocation: Record<string, HomeSectionResolved[]> = {};
 
 interface FilterState {
   category: number | null;
@@ -52,6 +53,29 @@ interface FilterState {
   distance?: number;
 }
 
+const defaultFilters: FilterState = {
+  category: null,
+  subcategory: null,
+  listingType: null,
+  minPrice: '',
+  maxPrice: '',
+  verified: null,
+  city: null,
+  state: null,
+  lat: undefined,
+  lng: undefined,
+  distance: undefined,
+};
+
+const getLocationKey = (filters: FilterState) =>
+  JSON.stringify({
+    city: filters.city,
+    state: filters.state,
+    lat: filters.lat,
+    lng: filters.lng,
+    distance: filters.distance,
+  });
+
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -65,24 +89,28 @@ export default function Home() {
 
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
   const selectedSubcategoryId = selectedSubcategory?.id ?? null;
-  const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>(
-    () => cachedHomeSections ?? []
-  );
-  const [sectionsLoading, setSectionsLoading] = useState(cachedHomeSections === null);
 
-  const [filters, setFilters] = useState<FilterState>({
-    category: null,
-    subcategory: null,
-    listingType: null,
-    minPrice: '',
-    maxPrice: '',
-    verified: null,
-    city: null,
-    state: null,
-    lat: undefined,
-    lng: undefined,
-    distance: undefined,
-  });
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const locationParams = useMemo(
+    () => ({
+      city: filters.city,
+      state: filters.state,
+      lat: filters.lat,
+      lng: filters.lng,
+      distance: filters.distance,
+    }),
+    [filters.city, filters.state, filters.lat, filters.lng, filters.distance]
+  );
+  const locationKey = useMemo(
+    () => getLocationKey(filters),
+    [filters.city, filters.state, filters.lat, filters.lng, filters.distance]
+  );
+  const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>(
+    () => cachedHomeSectionsByLocation[locationKey] ?? cachedHomeSections ?? []
+  );
+  const [sectionsLoading, setSectionsLoading] = useState(
+    cachedHomeSectionsByLocation[locationKey] === undefined && cachedHomeSections === null
+  );
 
   const handleSubcategorySelect = (subcategory: Subcategory, category: Category) => {
     setSelectedSubcategory(subcategory);
@@ -95,19 +123,7 @@ export default function Home() {
 
   const handleClearFilter = () => {
     setSelectedSubcategory(null);
-    setFilters({
-      category: null,
-      subcategory: null,
-      listingType: null,
-      minPrice: '',
-      maxPrice: '',
-      verified: null,
-      city: null,
-      state: null,
-      lat: undefined,
-      lng: undefined,
-      distance: undefined,
-    });
+    setFilters(defaultFilters);
   };
 
   const handleFilterChange = (newFilters: FilterState) => {
@@ -186,7 +202,9 @@ export default function Home() {
   const sectionTitleWrapperClass = 'space-y-1';
 
   useEffect(() => {
-    if (cachedHomeSections) {
+    const cachedSections = cachedHomeSectionsByLocation[locationKey];
+    if (cachedSections) {
+      setHomeSections(cachedSections);
       setSectionsLoading(false);
       return;
     }
@@ -196,7 +214,7 @@ export default function Home() {
       try {
         const sections = await apiService.getFrontWebSections();
         const resolvedResults = await Promise.allSettled(
-          sections.map((section) => apiService.resolveHomeSection(section))
+          sections.map((section) => apiService.resolveHomeSection(section, locationParams))
         );
 
         const resolvedSections = resolvedResults.map((result, index) => {
@@ -206,10 +224,12 @@ export default function Home() {
           return { ...sections[index], resolvedData: {} } as HomeSectionResolved;
         });
 
+        cachedHomeSectionsByLocation[locationKey] = resolvedSections;
         cachedHomeSections = resolvedSections;
         setHomeSections(resolvedSections);
       } catch (error) {
         console.error('Failed to load home sections:', error);
+        cachedHomeSectionsByLocation[locationKey] = [];
         cachedHomeSections = [];
         setHomeSections([]);
       } finally {
@@ -218,7 +238,7 @@ export default function Home() {
     };
 
     loadSections();
-  }, []);
+  }, [locationKey, locationParams]);
 
   const dynamicSections = useMemo<HomeSectionResolved[]>(() => {
     if (!homeSections.length) return [];
