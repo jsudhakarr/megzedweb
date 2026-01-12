@@ -1,13 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Camera, Upload, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import QrScanner from "qr-scanner";
+type QrScannerConstructor = typeof import("qr-scanner").default;
+type QrScannerInstance = InstanceType<QrScannerConstructor>;
 
-// ✅ Vite worker path
-QrScanner.WORKER_PATH = new URL(
-  "qr-scanner/qr-scanner-worker.min.js",
-  import.meta.url
-).toString();
+let qrScannerLoader: Promise<QrScannerConstructor> | null = null;
+
+const loadQrScanner = async () => {
+  if (!qrScannerLoader) {
+    qrScannerLoader = import("qr-scanner").then((module) => {
+      const QrScanner = module.default;
+      // ✅ Vite worker path
+      QrScanner.WORKER_PATH = new URL(
+        "qr-scanner/qr-scanner-worker.min.js",
+        import.meta.url
+      ).toString();
+      return QrScanner;
+    });
+  }
+
+  return qrScannerLoader;
+};
 
 type Props = {
   open: boolean;
@@ -42,7 +55,7 @@ function extractItemIdFromQr(text: string): number | null {
 export default function ScanQrModal({ open, onClose, primaryColor }: Props) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const scannerRef = useRef<QrScanner | null>(null);
+  const scannerRef = useRef<QrScannerInstance | null>(null);
 
   const [mode, setMode] = useState<"camera" | "upload">("camera");
   const [error, setError] = useState<string | null>(null);
@@ -75,28 +88,39 @@ export default function ScanQrModal({ open, onClose, primaryColor }: Props) {
     const video = videoRef.current;
     if (!video) return;
 
-    const scanner = new QrScanner(
-      video,
-      (result) => {
-        const text = typeof result === "string" ? result : result?.data;
-        if (text) goToItem(text);
-      },
-      {
-        highlightScanRegion: true,
-        highlightCodeOutline: true,
-        maxScansPerSecond: 5,
-      }
-    );
+    let active = true;
 
-    scannerRef.current = scanner;
+    loadQrScanner()
+      .then((QrScanner) => {
+        if (!active) return;
 
-    scanner.start().catch(() => {
-      setError("Camera permission denied or camera not available.");
-    });
+        const scanner = new QrScanner(
+          video,
+          (result) => {
+            const text = typeof result === "string" ? result : result?.data;
+            if (text) goToItem(text);
+          },
+          {
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+            maxScansPerSecond: 5,
+          }
+        );
+
+        scannerRef.current = scanner;
+
+        scanner.start().catch(() => {
+          setError("Camera permission denied or camera not available.");
+        });
+      })
+      .catch(() => {
+        setError("QR scanner failed to load.");
+      });
 
     return () => {
-      scanner.stop();
-      scanner.destroy();
+      active = false;
+      scannerRef.current?.stop();
+      scannerRef.current?.destroy();
       scannerRef.current = null;
     };
   }, [open, mode]);
@@ -207,6 +231,7 @@ export default function ScanQrModal({ open, onClose, primaryColor }: Props) {
                     setError(null);
 
                     try {
+                      const QrScanner = await loadQrScanner();
                       const result = await QrScanner.scanImage(file, {
                         returnDetailedScanResult: true,
                       });
