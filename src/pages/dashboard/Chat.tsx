@@ -628,7 +628,7 @@ export default function Chat() {
   // Avatar
   // -----------------------------
   const Avatar = ({ url, name }: { url?: string; name?: string }) => {
-    const hasUrl = url && url.startsWith('http');
+    const hasUrl = typeof url === 'string' && url.startsWith('http');
     if (hasUrl) {
       return (
         <img
@@ -977,7 +977,8 @@ export default function Chat() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
-                      {activeConversation.__item_photo?.startsWith('http') && (
+                      {typeof activeConversation.__item_photo === 'string' &&
+                        activeConversation.__item_photo.startsWith('http') && (
                         <img
                           src={activeConversation.__item_photo}
                           alt={activeConversation.__item_title}
