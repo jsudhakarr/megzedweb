@@ -264,6 +264,22 @@ class ApiService {
     return queryString ? `?${queryString}` : '';
   }
 
+  private buildLocationParams(location?: {
+    city?: string | null;
+    state?: string | null;
+    lat?: number;
+    lng?: number;
+    distance?: number;
+  }): Record<string, string | number> {
+    const params: Record<string, string | number> = {};
+    if (location?.city) params.city = location.city;
+    if (location?.state) params.state = location.state;
+    if (location?.lat !== undefined) params.lat = location.lat;
+    if (location?.lng !== undefined) params.lng = location.lng;
+    if (location?.distance !== undefined) params.distance = location.distance;
+    return params;
+  }
+
   private normalizeListResponse<T>(data: any): T[] {
     if (Array.isArray(data?.data)) return data.data as T[];
     if (Array.isArray(data)) return data as T[];
@@ -814,28 +830,43 @@ class ApiService {
     return this.normalizeListResponse<Slider>(data);
   }
 
-  async getPublicUsersHighlights(): Promise<PublicUser[]> {
-    const response = await fetch(`${API_BASE_URL}/users/highlights`, {
-      headers: this.getHeaders(),
-    });
+  async getPublicUsersHighlights(
+    params?: Record<string, string | number | boolean>
+  ): Promise<PublicUser[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/users/highlights${this.buildQuery(params)}`,
+      {
+        headers: this.getHeaders(),
+      }
+    );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     return this.normalizeListResponse<PublicUser>(data);
   }
 
-  async getPublicUsersVerified(): Promise<PublicUser[]> {
-    const response = await fetch(`${API_BASE_URL}/users/public/verified`, {
-      headers: this.getHeaders(),
-    });
+  async getPublicUsersVerified(
+    params?: Record<string, string | number | boolean>
+  ): Promise<PublicUser[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/users/public/verified${this.buildQuery(params)}`,
+      {
+        headers: this.getHeaders(),
+      }
+    );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     return this.normalizeListResponse<PublicUser>(data);
   }
 
-  async getPublicUsersTopRated(): Promise<PublicUser[]> {
-    const response = await fetch(`${API_BASE_URL}/users/public/top-rated`, {
-      headers: this.getHeaders(),
-    });
+  async getPublicUsersTopRated(
+    params?: Record<string, string | number | boolean>
+  ): Promise<PublicUser[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/users/public/top-rated${this.buildQuery(params)}`,
+      {
+        headers: this.getHeaders(),
+      }
+    );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     return this.normalizeListResponse<PublicUser>(data);
@@ -948,10 +979,21 @@ class ApiService {
     return this.normalizeListResponse<Item>(data);
   }
 
-  async resolveHomeSection(section: HomeSection): Promise<HomeSectionResolved> {
+  async resolveHomeSection(
+    section: HomeSection,
+    locationParams?: {
+      city?: string | null;
+      state?: string | null;
+      lat?: number;
+      lng?: number;
+      distance?: number;
+    }
+  ): Promise<HomeSectionResolved> {
     const itemCount = section.item_count ?? undefined;
     const limitParams =
       typeof itemCount === 'number' && itemCount > 0 ? { per_page: itemCount } : undefined;
+    const locationQuery = this.buildLocationParams(locationParams);
+    const queryParams = { ...locationQuery, ...(limitParams ?? {}) };
 
     if (section.type === 'slider') {
       const slides = await this.getSliders(limitParams);
@@ -975,26 +1017,26 @@ class ApiService {
 
       switch (filter) {
         case 'featured':
-          items = await this.getItemsFeatured(limitParams);
+          items = await this.getItemsFeatured(queryParams);
           break;
         case 'most_viewed':
-          items = await this.getItemsMostViewed(limitParams);
+          items = await this.getItemsMostViewed(queryParams);
           break;
         case 'most_favorited':
-          items = await this.getItemsMostFavorited(limitParams);
+          items = await this.getItemsMostFavorited(queryParams);
           break;
         case 'most_liked':
-          items = await this.getItemsMostLiked(limitParams);
+          items = await this.getItemsMostLiked(queryParams);
           break;
         case 'category':
           if (sourceId !== null && sourceId !== undefined) {
-            items = await this.getItemsByCategory(sourceId, limitParams);
+            items = await this.getItemsByCategory(sourceId, queryParams);
           } else {
-            items = await this.getItemsIndex(limitParams);
+            items = await this.getItemsIndex(queryParams);
           }
           break;
         default:
-          items = await this.getItemsIndex(limitParams);
+          items = await this.getItemsIndex(queryParams);
           break;
       }
 
@@ -1007,13 +1049,13 @@ class ApiService {
 
       switch (filter) {
         case 'verified':
-          shops = await this.getShopsVerified(limitParams);
+          shops = await this.getShopsVerified(queryParams);
           break;
         case 'top_rated':
-          shops = await this.getShopsTopRated(limitParams);
+          shops = await this.getShopsTopRated(queryParams);
           break;
         default:
-          shops = await this.getShopsIndex(limitParams);
+          shops = await this.getShopsIndex(queryParams);
           break;
       }
 
@@ -1026,16 +1068,16 @@ class ApiService {
 
       switch (filter) {
         case 'highlights':
-          users = await this.getPublicUsersHighlights();
+          users = await this.getPublicUsersHighlights(queryParams);
           break;
         case 'verified':
-          users = await this.getPublicUsersVerified();
+          users = await this.getPublicUsersVerified(queryParams);
           break;
         case 'top_rated':
-          users = await this.getPublicUsersTopRated();
+          users = await this.getPublicUsersTopRated(queryParams);
           break;
         default:
-          users = await this.getPublicUsersIndex(limitParams);
+          users = await this.getPublicUsersIndex(queryParams);
           break;
       }
 
