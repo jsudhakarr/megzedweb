@@ -24,6 +24,9 @@ import {
   Image as ImageIcon,
   Mic,
   FileText,
+  Paperclip,
+  Tag,
+  X,
   ShieldOff,
   ShieldCheck,
 } from 'lucide-react';
@@ -41,10 +44,13 @@ export default function Chat() {
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isOfferOpen, setIsOfferOpen] = useState(false);
+  const [offerValue, setOfferValue] = useState('');
 
   const [loadingChats, setLoadingChats] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendingAttachment, setSendingAttachment] = useState(false);
   const [q, setQ] = useState('');
   const [isBlockMenuOpen, setIsBlockMenuOpen] = useState(false);
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
@@ -59,6 +65,10 @@ export default function Chat() {
   const location = useLocation();
 
   const pendingTargetRef = useRef<{ itemId: number | null; sellerId: number | null } | null>(null);
+  const pendingOfferRef = useRef(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -189,11 +199,20 @@ export default function Chat() {
   const activeOtherId = activeConversation?.__other_id ?? null;
 
   const chatTarget = useMemo(() => {
-    const state = location.state as { itemId?: number; sellerId?: number; item_id?: number; other_user_id?: number } | null;
+    const state = location.state as {
+      itemId?: number;
+      sellerId?: number;
+      item_id?: number;
+      other_user_id?: number;
+      openOffer?: boolean;
+      itemPrice?: number | string | null;
+    } | null;
     const itemId = Number(state?.itemId ?? state?.item_id ?? 0) || null;
     const sellerId = Number(state?.sellerId ?? state?.other_user_id ?? 0) || null;
-    if (!itemId && !sellerId) return null;
-    return { itemId, sellerId };
+    const itemPrice = state?.itemPrice ?? null;
+    const openOffer = Boolean(state?.openOffer);
+    if (!itemId && !sellerId && !openOffer) return null;
+    return { itemId, sellerId, openOffer, itemPrice };
   }, [location.state]);
 
   // -----------------------------
@@ -273,7 +292,10 @@ export default function Chat() {
 
   useEffect(() => {
     if (!chatTarget) return;
-    pendingTargetRef.current = chatTarget;
+    pendingTargetRef.current = { itemId: chatTarget.itemId, sellerId: chatTarget.sellerId };
+    if (chatTarget.openOffer) {
+      pendingOfferRef.current = true;
+    }
   }, [chatTarget]);
 
   useEffect(() => {
@@ -341,6 +363,13 @@ export default function Chat() {
     markRead(activeChatId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChatId]);
+
+  useEffect(() => {
+    if (!activeConversation) return;
+    if (!pendingOfferRef.current) return;
+    setIsOfferOpen(true);
+    pendingOfferRef.current = false;
+  }, [activeConversation]);
 
   const markRead = async (id: number) => {
     try {
@@ -429,20 +458,35 @@ export default function Chat() {
   // -----------------------------
   // Send message
   // -----------------------------
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || activeChatId === null || sending || isConversationBlocked) return;
+  const updateConversationPreview = (type: 'text' | 'image' | 'audio' | 'file', preview: string, meta?: any) => {
+    setConversations((prev) =>
+      (prev || []).map((c: any) => {
+        if (getConvId(c) !== activeChatId) return c;
+        return {
+          ...c,
+          last_message_preview: preview,
+          last_message_at: new Date().toISOString(),
+          last_message_type: type,
+          last_message_meta: meta ?? c.last_message_meta ?? null,
+          unread_count: 0,
+        };
+      })
+    );
+  };
+
+  const sendTextMessage = async (body: string) => {
+    if (!body.trim() || activeChatId === null || sending || sendingAttachment || isConversationBlocked) return;
 
     const tempId = Date.now();
     const temp = {
       id: tempId,
-      body: newMessage,
+      body,
       is_me: true,
       sender_id: currentUser?.id ?? 0,
       is_read: true,
       created_at: new Date().toISOString(),
       __id: tempId,
-      __body: newMessage,
+      __body: body,
       __is_me: true,
       __sender_id: currentUser?.id ?? 0,
       __is_read: true,
@@ -456,32 +500,129 @@ export default function Chat() {
 
     try {
       setSending(true);
-
-      // API expects conversation id + body
-      await sendMessage(activeChatId, temp.body);
-
-      // Update sidebar preview
-      setConversations((prev) =>
-        (prev || []).map((c: any) => {
-          if (getConvId(c) !== activeChatId) return c;
-          return {
-            ...c,
-            last_message_preview: temp.body,
-            last_message_at: new Date().toISOString(),
-            last_message_type: 'text',
-            unread_count: 0,
-          };
-        })
-      );
+      await sendMessage(activeChatId, { message: body });
+      updateConversationPreview('text', body);
     } catch (e) {
       console.error('send failed:', e);
-      // remove optimistic
       setMessages((prev) => prev.filter((m: any) => m.__id !== tempId));
       alert('Failed to send message');
     } finally {
       setSending(false);
     }
   };
+
+  const sendAttachment = async (file: File, kind: 'image' | 'audio' | 'file') => {
+    if (activeChatId === null || sending || sendingAttachment || isConversationBlocked) return;
+    const tempId = Date.now();
+    const attachmentUrl = URL.createObjectURL(file);
+    const temp = {
+      id: tempId,
+      body: '',
+      is_me: true,
+      sender_id: currentUser?.id ?? 0,
+      is_read: true,
+      created_at: new Date().toISOString(),
+      __id: tempId,
+      __body: '',
+      __is_me: true,
+      __sender_id: currentUser?.id ?? 0,
+      __is_read: true,
+      __created_at: new Date(),
+      __optimistic: true,
+      __type: kind,
+      __attachment_url: attachmentUrl,
+      __attachment_name: file.name,
+    };
+
+    setMessages((prev) => [...prev, temp]);
+    scrollToBottom();
+
+    const formData = new FormData();
+    formData.append('message', '');
+    formData.append('message_type', kind);
+    formData.append('attachment', file);
+
+    try {
+      setSendingAttachment(true);
+      await sendMessage(activeChatId, formData);
+      updateConversationPreview(
+        kind,
+        kind === 'image' ? 'Photo' : kind === 'audio' ? 'Voice message' : file.name,
+        { name: file.name }
+      );
+    } catch (e) {
+      console.error('send attachment failed:', e);
+      setMessages((prev) => prev.filter((m: any) => m.__id !== tempId));
+      alert('Failed to send attachment');
+    } finally {
+      setSendingAttachment(false);
+      URL.revokeObjectURL(attachmentUrl);
+    }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+    await sendTextMessage(newMessage);
+  };
+
+  const handleAttachmentPick = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    kind: 'image' | 'audio' | 'file'
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+    await sendAttachment(file, kind);
+  };
+
+  const openOfferSheet = () => {
+    if (isConversationBlocked) return;
+    setIsOfferOpen(true);
+  };
+
+  const handleSendOffer = async () => {
+    const offerNumeric = parsePriceValue(offerValue);
+    if (!offerNumeric) return;
+    await sendTextMessage(`Offer: ${formatCurrency(offerNumeric)}`);
+    setIsOfferOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isOfferOpen) return;
+    if (offerOptions.length === 0) return;
+    setOfferValue(String(offerOptions[0]));
+  }, [isOfferOpen, offerOptions]);
+
+  const parsePriceValue = (price: string | number | null | undefined) => {
+    if (price == null) return null;
+    if (typeof price === 'number') return Number.isFinite(price) ? price : null;
+    const cleaned = price.replace(/[^\d.]/g, '');
+    if (!cleaned) return null;
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(value);
+
+  const baseOfferPrice = useMemo(() => {
+    const activePrice = parsePriceValue(activeConversation?.__item_price ?? null);
+    if (activePrice) return activePrice;
+    return parsePriceValue(chatTarget?.itemPrice ?? null);
+  }, [activeConversation?.__item_price, chatTarget?.itemPrice]);
+
+  const offerOptions = useMemo(() => {
+    if (!baseOfferPrice) return [];
+    const options = [baseOfferPrice, baseOfferPrice - 2000, baseOfferPrice - 3000].filter(
+      (value) => value > 0
+    );
+    return Array.from(new Set(options));
+  }, [baseOfferPrice]);
 
   // -----------------------------
   // Avatar
@@ -520,6 +661,7 @@ export default function Chat() {
   const activeOtherName = activeConversation?.__other_name ?? 'Chat';
   const isConversationBlocked = blockStatus.blocked_by_me || blockStatus.blocked_me;
   const blockLabel = blockStatus.blocked_me ? 'You have been blocked by this user.' : 'You blocked this user.';
+  const isSendingMessage = sending || sendingAttachment;
 
   const getLastPreview = (c: any) => {
     switch (c.__last_type) {
@@ -592,6 +734,72 @@ export default function Chat() {
           </div>
         )}
       </Modal>
+
+      {isOfferOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6">
+          <div
+            className="absolute inset-0 bg-slate-900/60"
+            onClick={() => setIsOfferOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Make an Offer</h3>
+              <button
+                type="button"
+                onClick={() => setIsOfferOpen(false)}
+                className="p-2 rounded-full text-slate-400 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {offerOptions.length === 0 ? (
+                <div className="text-sm text-slate-500">No price available for offers yet.</div>
+              ) : (
+                offerOptions.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setOfferValue(String(value))}
+                    className={`px-3 py-1.5 rounded-xl border text-sm font-semibold transition ${
+                      Number(offerValue) === value
+                        ? 'border-blue-600 text-blue-700 bg-blue-50'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {formatCurrency(value)}
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <span className="text-slate-500 font-semibold">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={offerValue}
+                  onChange={(e) => setOfferValue(e.target.value)}
+                  className="w-full bg-transparent text-lg font-semibold text-slate-900 focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleSendOffer}
+                disabled={!parsePriceValue(offerValue) || isSendingMessage || isConversationBlocked}
+                className="px-5 py-2.5 rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="h-[calc(100vh-140px)] min-h-[620px] bg-white border border-slate-200 rounded-2xl shadow-sm flex overflow-hidden">
         {/* SIDEBAR */}
@@ -883,7 +1091,49 @@ export default function Chat() {
 
               {/* Input */}
               <form onSubmit={handleSend} className="p-4 border-t border-slate-200 bg-white">
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={openOfferSheet}
+                    disabled={isConversationBlocked}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Tag className="w-4 h-4 text-blue-600" />
+                    Make Offer
+                  </button>
+                </div>
+
                 <div className="flex gap-2 items-center">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={isConversationBlocked || isSendingMessage}
+                      className="p-2 rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Send photo"
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isConversationBlocked || isSendingMessage}
+                      className="p-2 rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Send file"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => audioInputRef.current?.click()}
+                      disabled={isConversationBlocked || isSendingMessage}
+                      className="p-2 rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Send audio"
+                    >
+                      <Mic className="w-5 h-5" />
+                    </button>
+                  </div>
+
                   <input
                     type="text"
                     value={newMessage}
@@ -894,13 +1144,38 @@ export default function Chat() {
                   />
                   <button
                     type="submit"
-                    disabled={!newMessage.trim() || sending || isConversationBlocked}
+                    disabled={!newMessage.trim() || isSendingMessage || isConversationBlocked}
                     className="p-3 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-md active:scale-95 flex items-center justify-center"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
+                    {isSendingMessage ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5 ml-0.5" />
+                    )}
                   </button>
                 </div>
+
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => handleAttachmentPick(event, 'image')}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(event) => handleAttachmentPick(event, 'file')}
+                />
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(event) => handleAttachmentPick(event, 'audio')}
+                />
               </form>
             </>
           ) : (

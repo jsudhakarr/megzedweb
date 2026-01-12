@@ -310,6 +310,24 @@ export default function ItemDetail() {
         navigate("/dashboard/chat");
         return;
 
+      case "make_offer":
+        {
+          const sellerId = item?.shop?.user?.id ?? item?.user?.id ?? null;
+          if (item?.id && sellerId) {
+            navigate("/dashboard/chat", {
+              state: {
+                itemId: item.id,
+                sellerId,
+                openOffer: true,
+                itemPrice: item?.price ?? null,
+              },
+            });
+            return;
+          }
+        }
+        navigate("/dashboard/chat", { state: { openOffer: true } });
+        return;
+
       case "call":
         if (contactPhone) window.location.href = `tel:${contactPhone}`;
         return;
