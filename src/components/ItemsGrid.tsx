@@ -21,20 +21,18 @@ interface ItemsGridProps {
   distance?: number;
 }
 
-export default function ItemsGrid({
-  primaryColor,
-  items: itemsOverride,
-  limit,
-  subcategoryId,
-  subcategoryName,
-  onClearFilter,
-  showFilters = false,
-  layout = 'grid',
-  cardStyle,
-  lat,
-  lng,
-  distance,
-}: ItemsGridProps) {
+export default function ItemsGrid(props: ItemsGridProps) {
+  const {
+    items: itemsOverride,
+    limit,
+    subcategoryId,
+    showFilters = false,
+    layout = 'grid',
+    cardStyle,
+    lat,
+    lng,
+    distance,
+  } = props;
   const [items, setItems] = useState<Item[]>(itemsOverride ?? []);
   const [loading, setLoading] = useState(!itemsOverride);
   const listRef = useRef<HTMLDivElement>(null);

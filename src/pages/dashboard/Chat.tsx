@@ -588,12 +588,6 @@ export default function Chat() {
     setIsOfferOpen(false);
   };
 
-  useEffect(() => {
-    if (!isOfferOpen) return;
-    if (offerOptions.length === 0) return;
-    setOfferValue(String(offerOptions[0]));
-  }, [isOfferOpen, offerOptions]);
-
   const parsePriceValue = (price: string | number | null | undefined) => {
     if (price == null) return null;
     if (typeof price === 'number') return Number.isFinite(price) ? price : null;
@@ -624,6 +618,12 @@ export default function Chat() {
     );
     return Array.from(new Set(options));
   }, [baseOfferPrice]);
+
+  useEffect(() => {
+    if (!isOfferOpen) return;
+    if (offerOptions.length === 0) return;
+    setOfferValue(String(offerOptions[0]));
+  }, [isOfferOpen, offerOptions]);
 
   // -----------------------------
   // Avatar
