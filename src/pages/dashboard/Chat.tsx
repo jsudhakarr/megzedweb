@@ -1,15 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppSettings } from '../../contexts/AppSettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import {
   getConversations,
   getMessages,
   sendMessage,
   markConversationRead,
+  startConversation,
+  blockUser,
+  getBlockStatus,
+  getBlockedUsers,
 } from '../../services/api';
-import { Send, User, MessageCircle, MoreVertical, Loader2, Search, ArrowLeft } from 'lucide-react';
+import {
+  Send,
+  User,
+  MessageCircle,
+  MoreVertical,
+  Loader2,
+  Search,
+  ArrowLeft,
+  Image as ImageIcon,
+  Mic,
+  FileText,
+  ShieldOff,
+  ShieldCheck,
+} from 'lucide-react';
+import Modal from '../../components/ui/Modal';
 
 type ApiConversation = any;
 type ApiMessage = any;
@@ -28,8 +46,19 @@ export default function Chat() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [q, setQ] = useState('');
+  const [isBlockMenuOpen, setIsBlockMenuOpen] = useState(false);
+  const [isListMenuOpen, setIsListMenuOpen] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+  const [isBlockedUsersOpen, setIsBlockedUsersOpen] = useState(false);
+  const [blockStatus, setBlockStatus] = useState<{ blocked_by_me: boolean; blocked_me: boolean }>({
+    blocked_by_me: false,
+    blocked_me: false,
+  });
+  const [blockLoading, setBlockLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
+  const pendingTargetRef = useRef<{ itemId: number | null; sellerId: number | null } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +68,23 @@ export default function Chat() {
   const getConvId = (c: any) => Number(c?.id ?? c?.conversation_id ?? c?.chat_id ?? 0);
 
   const getOtherUser = (c: any) => (c?.other_user ?? c?.otherUser ?? null);
+
+  const normalizeAttachmentMeta = (meta: any) => {
+    if (!meta || typeof meta !== 'object') return null;
+    if (meta.meta && typeof meta.meta === 'object') return meta.meta;
+    return meta;
+  };
+
+  const resolveAttachmentUrl = (data: any) => {
+    const meta = normalizeAttachmentMeta(data?.last_message_meta ?? data?.last_message_attachment_meta);
+    return (
+      meta?.attachment_url ||
+      data?.last_message_attachment_url ||
+      meta?.attachment_path ||
+      data?.last_message_attachment_path ||
+      null
+    );
+  };
 
  const normalizeConversation = (c: any) => {
   const other = getOtherUser(c) || {};
@@ -64,6 +110,15 @@ export default function Chat() {
       ''
     );
 
+  const lastMeta = normalizeAttachmentMeta(c?.last_message_meta ?? c?.last_message_attachment_meta);
+  const lastAttachmentUrl = resolveAttachmentUrl(c);
+  let lastType = String(c?.last_message_type ?? 'text').toLowerCase();
+  if (lastType === 'text' && lastAttachmentUrl) {
+    if (/\.(png|jpe?g|gif|webp)$/i.test(lastAttachmentUrl)) lastType = 'image';
+    else if (/\.(mp3|wav|m4a|aac|ogg)$/i.test(lastAttachmentUrl)) lastType = 'audio';
+    else lastType = 'file';
+  }
+
   return {
     ...c,
     __conv_id: getConvId(c),
@@ -75,6 +130,9 @@ export default function Chat() {
     __online: Boolean(other?.is_online ?? other?.online ?? c?.online ?? false),
 
     __last: String(c?.last_message_preview ?? c?.last_message ?? ''),
+    __last_type: lastType,
+    __last_meta: lastMeta,
+    __last_attachment_url: lastAttachmentUrl,
     __last_at: c?.last_message_at ? new Date(c.last_message_at) : null,
     __unread: Number(c?.unread_count ?? 0),
 
@@ -128,6 +186,16 @@ export default function Chat() {
     return uniqueConversations.find((c) => c.__conv_id === activeChatId) ?? null;
   }, [uniqueConversations, activeChatId]);
 
+  const activeOtherId = activeConversation?.__other_id ?? null;
+
+  const chatTarget = useMemo(() => {
+    const state = location.state as { itemId?: number; sellerId?: number; item_id?: number; other_user_id?: number } | null;
+    const itemId = Number(state?.itemId ?? state?.item_id ?? 0) || null;
+    const sellerId = Number(state?.sellerId ?? state?.other_user_id ?? 0) || null;
+    if (!itemId && !sellerId) return null;
+    return { itemId, sellerId };
+  }, [location.state]);
+
   // -----------------------------
   // Load conversations
   // -----------------------------
@@ -150,6 +218,119 @@ export default function Chat() {
       setLoadingChats(false);
     }
   };
+
+  const loadBlockStatus = async (userId: number) => {
+    try {
+      const response = await getBlockStatus(userId);
+      const data = (response as any)?.data ?? response;
+      setBlockStatus({
+        blocked_by_me: Boolean(data?.blocked_by_me ?? data?.blockedByMe ?? false),
+        blocked_me: Boolean(data?.blocked_me ?? data?.blockedMe ?? false),
+      });
+    } catch (e) {
+      console.error('Failed to load block status:', e);
+      setBlockStatus({ blocked_by_me: false, blocked_me: false });
+    }
+  };
+
+  const loadBlockedUsers = async () => {
+    try {
+      const response = await getBlockedUsers();
+      const data = (response as any)?.data ?? response;
+      setBlockedUsers(Array.isArray(data) ? data : data?.users ?? []);
+    } catch (e) {
+      console.error('Failed to load blocked users:', e);
+      setBlockedUsers([]);
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    if (!activeOtherId) return;
+    setBlockLoading(true);
+    try {
+      const action = blockStatus.blocked_by_me ? 'unblock' : 'block';
+      await blockUser(activeOtherId, action);
+      await loadBlockStatus(activeOtherId);
+    } catch (e) {
+      console.error('Failed to update block status:', e);
+    } finally {
+      setBlockLoading(false);
+      setIsBlockMenuOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeOtherId) {
+      setBlockStatus({ blocked_by_me: false, blocked_me: false });
+      return;
+    }
+    loadBlockStatus(activeOtherId);
+  }, [activeOtherId]);
+
+  useEffect(() => {
+    setIsBlockMenuOpen(false);
+  }, [activeChatId]);
+
+  useEffect(() => {
+    if (!chatTarget) return;
+    pendingTargetRef.current = chatTarget;
+  }, [chatTarget]);
+
+  useEffect(() => {
+    if (loadingChats) return;
+    if (!pendingTargetRef.current) return;
+
+    const { itemId, sellerId } = pendingTargetRef.current;
+    const existing = uniqueConversations.find((c) => {
+      const matchesItem = itemId ? c.__item_id === itemId : true;
+      const matchesSeller = sellerId ? c.__other_id === sellerId : true;
+      return matchesItem && matchesSeller;
+    });
+
+    if (existing) {
+      setActiveChatId(existing.__conv_id);
+      pendingTargetRef.current = null;
+      return;
+    }
+
+    const startChat = async () => {
+      const payload: Record<string, number> = {};
+      if (itemId) payload.item_id = itemId;
+      if (sellerId) payload.other_user_id = sellerId;
+      if (!Object.keys(payload).length) {
+        pendingTargetRef.current = null;
+        return;
+      }
+
+      try {
+        const response = await startConversation(payload);
+        const data = (response as any)?.data ?? response;
+        const conversation = data?.conversation ?? data;
+        const conversationId = Number(data?.conversation_id ?? data?.id ?? conversation?.id ?? 0);
+
+        if (conversationId) {
+          if (conversation && typeof conversation === 'object') {
+            setConversations((prev) => {
+              const list = Array.isArray(prev) ? prev : [];
+              if (list.some((c) => getConvId(c) === conversationId)) return list;
+              return [conversation, ...list];
+            });
+          } else {
+            await loadConversations();
+          }
+          setActiveChatId(conversationId);
+        } else {
+          await loadConversations();
+        }
+      } catch (e) {
+        console.error('Failed to start conversation:', e);
+      } finally {
+        pendingTargetRef.current = null;
+      }
+    };
+
+    startChat();
+  }, [loadingChats, uniqueConversations]);
 
   // -----------------------------
   // Load messages on select
@@ -187,17 +368,49 @@ export default function Chat() {
       else if (Array.isArray(data?.messages)) list = data.messages;
       else if (Array.isArray(data?.data?.messages)) list = data.data.messages;
 
+      const normalizeMessageMeta = (meta: any) => {
+        if (!meta || typeof meta !== 'object') return null;
+        if (meta.meta && typeof meta.meta === 'object') return meta.meta;
+        return meta;
+      };
+
+      const resolveMessageAttachmentUrl = (m: any, meta: any) => {
+        return (
+          meta?.attachment_url ||
+          m?.attachment_url ||
+          m?.message_attachment_url ||
+          meta?.attachment_path ||
+          m?.attachment_path ||
+          m?.message_attachment_path ||
+          null
+        );
+      };
+
       // ✅ Normalize messages to Flutter model keys:
       // body, is_me, sender_id, created_at
-      const normalized = list.map((m: any) => ({
-        ...m,
-        __id: Number(m?.id ?? 0),
-        __body: String(m?.body ?? m?.message ?? ''),
-        __is_me: Boolean(m?.is_me ?? false),
-        __sender_id: Number(m?.sender_id ?? m?.user_id ?? 0),
-        __is_read: Boolean(m?.is_read ?? false),
-        __created_at: m?.created_at ? new Date(m.created_at) : null,
-      }));
+      const normalized = list.map((m: any) => {
+        const meta = normalizeMessageMeta(m?.message_meta ?? m?.attachment_meta ?? m?.meta ?? null);
+        const attachmentUrl = resolveMessageAttachmentUrl(m, meta);
+        let messageType = String(m?.message_type ?? m?.type ?? meta?.type ?? 'text').toLowerCase();
+        if (messageType === 'text' && attachmentUrl) {
+          if (/\.(png|jpe?g|gif|webp)$/i.test(attachmentUrl)) messageType = 'image';
+          else if (/\.(mp3|wav|m4a|aac|ogg)$/i.test(attachmentUrl)) messageType = 'audio';
+          else messageType = 'file';
+        }
+        return {
+          ...m,
+          __id: Number(m?.id ?? 0),
+          __body: String(m?.body ?? m?.message ?? ''),
+          __is_me: Boolean(m?.is_me ?? false),
+          __sender_id: Number(m?.sender_id ?? m?.user_id ?? 0),
+          __is_read: Boolean(m?.is_read ?? false),
+          __created_at: m?.created_at ? new Date(m.created_at) : null,
+          __type: messageType,
+          __attachment_url: attachmentUrl,
+          __attachment_meta: meta,
+          __attachment_name: meta?.name || m?.attachment_name || m?.file_name || null,
+        };
+      });
 
       setMessages(normalized);
     } catch (e) {
@@ -218,7 +431,7 @@ export default function Chat() {
   // -----------------------------
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || activeChatId === null || sending) return;
+    if (!newMessage.trim() || activeChatId === null || sending || isConversationBlocked) return;
 
     const tempId = Date.now();
     const temp = {
@@ -255,6 +468,7 @@ export default function Chat() {
             ...c,
             last_message_preview: temp.body,
             last_message_at: new Date().toISOString(),
+            last_message_type: 'text',
             unread_count: 0,
           };
         })
@@ -304,9 +518,82 @@ export default function Chat() {
   }
 
   const activeOtherName = activeConversation?.__other_name ?? 'Chat';
+  const isConversationBlocked = blockStatus.blocked_by_me || blockStatus.blocked_me;
+  const blockLabel = blockStatus.blocked_me ? 'You have been blocked by this user.' : 'You blocked this user.';
+
+  const getLastPreview = (c: any) => {
+    switch (c.__last_type) {
+      case 'audio':
+        return 'Voice message';
+      case 'image':
+        return 'Photo';
+      case 'file':
+        return c.__last_meta?.name || 'File attachment';
+      default:
+        return c.__last || 'Start chatting...';
+    }
+  };
+
+  const getLastPreviewIcon = (c: any) => {
+    switch (c.__last_type) {
+      case 'audio':
+        return <Mic className="w-3.5 h-3.5 text-slate-400" />;
+      case 'image':
+        return <ImageIcon className="w-3.5 h-3.5 text-slate-400" />;
+      case 'file':
+        return <FileText className="w-3.5 h-3.5 text-slate-400" />;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="h-[calc(100vh-140px)] min-h-[620px] bg-white border border-slate-200 rounded-2xl shadow-sm flex overflow-hidden">
+    <>
+      <Modal isOpen={isBlockedUsersOpen} onClose={() => setIsBlockedUsersOpen(false)} title="Blocked users">
+        {blockedUsers.length === 0 ? (
+          <div className="text-sm text-slate-500">No blocked users.</div>
+        ) : (
+          <div className="space-y-3">
+            {blockedUsers.map((u: any) => {
+              const userId = Number(u.id ?? u.user_id ?? 0);
+              return (
+              <div key={userId || u.id || u.user_id} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                    {u.avatar_url || u.profile_photo_url ? (
+                      <img
+                        src={u.avatar_url || u.profile_photo_url}
+                        alt={u.name || 'User'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-slate-400" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{u.name || 'User'}</div>
+                    {u.email && <div className="text-xs text-slate-500">{u.email}</div>}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!userId) return;
+                    await blockUser(userId, 'unblock');
+                    await loadBlockedUsers();
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
+                >
+                  Unblock
+                </button>
+              </div>
+            );
+            })}
+          </div>
+        )}
+      </Modal>
+
+      <div className="h-[calc(100vh-140px)] min-h-[620px] bg-white border border-slate-200 rounded-2xl shadow-sm flex overflow-hidden">
       {/* SIDEBAR */}
       <div className={`w-full md:w-96 border-r border-slate-200 flex flex-col ${activeChatId !== null ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-slate-200 bg-white">
@@ -315,12 +602,38 @@ export default function Chat() {
               <MessageCircle className="w-5 h-5" style={{ color: primaryColor }} />
               Messages
             </h2>
-            <button
-              onClick={loadConversations}
-              className="text-xs px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
-            >
-              Refresh
-            </button>
+            <div className="flex items-center gap-2 relative">
+              <button
+                onClick={loadConversations}
+                className="text-xs px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsListMenuOpen((prev) => !prev)}
+                className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                aria-label="List options"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {isListMenuOpen && (
+                <div className="absolute right-0 top-10 z-20 w-48 rounded-xl border border-slate-200 bg-white shadow-lg">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await loadBlockedUsers();
+                      setIsBlockedUsersOpen(true);
+                      setIsListMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <ShieldOff className="w-4 h-4 text-slate-500" />
+                    Blocked users
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mt-3 relative">
@@ -375,8 +688,9 @@ export default function Chat() {
                       </span>
                     </div>
 
-                    <p className={`text-sm truncate ${c.__unread > 0 ? 'text-slate-900 font-medium' : 'text-slate-500'}`}>
-                      {c.__last || 'Start chatting...'}
+                    <p className={`text-sm truncate flex items-center gap-1 ${c.__unread > 0 ? 'text-slate-900 font-medium' : 'text-slate-500'}`}>
+                      {getLastPreviewIcon(c)}
+                      <span className="truncate">{getLastPreview(c)}</span>
                     </p>
                   </div>
                 </button>
@@ -410,9 +724,38 @@ export default function Chat() {
                 </div>
               </div>
 
-              <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-full">
-                <MoreVertical className="w-5 h-5" />
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsBlockMenuOpen((prev) => !prev)}
+                  className="p-2 text-slate-400 hover:bg-slate-50 rounded-full"
+                  aria-label="Chat options"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+                {isBlockMenuOpen && (
+                  <div className="absolute right-0 top-11 z-20 w-52 rounded-xl border border-slate-200 bg-white shadow-lg">
+                    <button
+                      type="button"
+                      onClick={handleToggleBlock}
+                      disabled={blockLoading || !activeOtherId}
+                      className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {blockStatus.blocked_by_me ? (
+                        <>
+                          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                          Unblock user
+                        </>
+                      ) : (
+                        <>
+                          <ShieldOff className="w-4 h-4 text-rose-500" />
+                          Block user
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ✅ ITEM HEADER (same as Flutter chat) */}
@@ -438,7 +781,7 @@ export default function Chat() {
         <div className="font-semibold text-slate-900 truncate">
           {activeConversation.__item_title}
         </div>
-        <div className="text-sm font-semibold text-blue-600">
+        <div className="text-sm font-semibold" style={{ color: primaryColor }}>
           {activeConversation.__item_price}
         </div>
         {activeConversation.__item_city && (
@@ -455,7 +798,11 @@ export default function Chat() {
   </button>
 )}
 
-
+            {isConversationBlocked && (
+              <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 text-sm text-rose-700">
+                {blockLabel}
+              </div>
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -471,6 +818,8 @@ export default function Chat() {
               ) : (
                 messages.map((m: any) => {
                   const isMe = Boolean(m.__is_me);
+                  const messageType = m.__type;
+                  const attachmentUrl = m.__attachment_url;
                   const time =
                     m.__created_at instanceof Date
                       ? m.__created_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -486,7 +835,40 @@ export default function Chat() {
                         }`}
                         style={isMe ? { backgroundColor: primaryColor } : {}}
                       >
-                        <p className="leading-relaxed whitespace-pre-wrap break-words">{m.__body}</p>
+                        {attachmentUrl && messageType === 'image' ? (
+                          <img
+                            src={attachmentUrl}
+                            alt={m.__attachment_name || 'Attachment'}
+                            className="w-full max-w-[240px] rounded-xl mb-2"
+                          />
+                        ) : null}
+
+                        {attachmentUrl && messageType === 'audio' ? (
+                          <div className="mb-2">
+                            <audio controls className="w-full">
+                              <source src={attachmentUrl} />
+                            </audio>
+                          </div>
+                        ) : null}
+
+                        {attachmentUrl && messageType === 'file' ? (
+                          <a
+                            href={attachmentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`flex items-center gap-2 text-sm underline mb-2 ${isMe ? 'text-white' : 'text-blue-600'}`}
+                          >
+                            <FileText className="w-4 h-4" />
+                            {m.__attachment_name || 'Download file'}
+                          </a>
+                        ) : null}
+
+                        {m.__body && (
+                          <p className="leading-relaxed whitespace-pre-wrap break-words">{m.__body}</p>
+                        )}
+                        {!m.__body && messageType === 'audio' && (
+                          <p className="leading-relaxed">Voice note</p>
+                        )}
                         <div className={`text-[10px] mt-1 text-right opacity-70 ${isMe ? 'text-white' : 'text-slate-400'}`}>
                           {time}
                         </div>
@@ -505,12 +887,13 @@ export default function Chat() {
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-transparent transition-all"
+                  placeholder={isConversationBlocked ? 'Messaging disabled' : 'Type a message...'}
+                  disabled={isConversationBlocked}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-transparent transition-all disabled:opacity-60"
                 />
                 <button
                   type="submit"
-                  disabled={!newMessage.trim() || sending}
+                  disabled={!newMessage.trim() || sending || isConversationBlocked}
                   className="p-3 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-md active:scale-95 flex items-center justify-center"
                   style={{ backgroundColor: primaryColor }}
                 >
@@ -529,6 +912,6 @@ export default function Chat() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

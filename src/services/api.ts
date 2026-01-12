@@ -1475,6 +1475,32 @@ class ApiService {
     return response.json();
   }
 
+  async blockUser(userId: number, action: 'block' | 'unblock' = 'block'): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/block`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ action }),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async getBlockStatus(userId: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/block-status`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async getBlockedUsers(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/me/blocked-users`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
   // --- WALLET ENDPOINTS ---
 
   async getWallet(): Promise<any> {
@@ -1757,9 +1783,13 @@ export const getNotifications = () => apiService.getNotifications();
 export const markAllNotificationsRead = () => apiService.markAllNotificationsRead();
 export const markNotificationRead = (id: string | number) => apiService.markNotificationRead(id);
 export const getConversations = () => apiService.getConversations();
+export const startConversation = (payload: any) => apiService.startConversation(payload);
 export const getMessages = (id: number) => apiService.getConversation(id); // Maps "messages" to "conversation details"
 export const sendMessage = (id: number, message: string) => apiService.sendMessage(id, { message });
 export const markConversationRead = (id: number) => apiService.markConversationRead(id);
+export const blockUser = (id: number, action: 'block' | 'unblock' = 'block') => apiService.blockUser(id, action);
+export const getBlockStatus = (id: number) => apiService.getBlockStatus(id);
+export const getBlockedUsers = () => apiService.getBlockedUsers();
 
 export type { Category, Subcategory, Item, Shop, ContentPage } from '../types/category';
 export type { PublicUser, PublicUserDetails } from '../types/user';
