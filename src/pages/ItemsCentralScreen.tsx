@@ -71,10 +71,10 @@ export default function ItemsCentralScreen() {
       ...parsedFilters,
       sort: parsedFilters.sort || defaultFilters.sort,
     };
-    if (JSON.stringify(nextFilters) !== JSON.stringify(filters)) {
-      setFilters(nextFilters);
-    }
-  }, [filters, searchParams]);
+    setFilters((prev) =>
+      JSON.stringify(nextFilters) === JSON.stringify(prev) ? prev : nextFilters
+    );
+  }, [searchParams]);
 
   useEffect(() => {
     const params = writeFiltersToUrl(filters);
