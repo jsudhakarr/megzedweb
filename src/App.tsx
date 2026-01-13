@@ -30,6 +30,7 @@ import Wallet from './pages/dashboard/Wallet';
 import CoinPackages from './pages/dashboard/CoinPackages';
 
 const Items = lazy(() => import('./pages/Items'));
+const Shops = lazy(() => import('./pages/Shops'));
 const ItemDetail = lazy(() => import('./pages/ItemDetail'));
 const ShopDetail = lazy(() => import('./pages/ShopDetail'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -114,6 +115,14 @@ function App() {
               element={
                 <Suspense fallback={<AppLoader label="Loading search..." />}>
                   <Items />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/shops"
+              element={
+                <Suspense fallback={<AppLoader label="Loading businesses..." />}>
+                  <Shops />
                 </Suspense>
               }
             />
