@@ -1,4 +1,4 @@
-import { apiService, type Item, type Shop } from './api';
+import { API_BASE_URL, apiService, type Item, type Shop } from './api';
 import type { PublicUser } from '../types/user';
 import type {
   ItemsFiltersState,
@@ -7,6 +7,7 @@ import type {
 } from '../types/filters';
 
 const toNumber = (value: string): number | undefined => {
+  if (!value.trim()) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
@@ -26,23 +27,51 @@ const withLocationParams = (
   const lat = toNumber(filters.lat);
   const lng = toNumber(filters.lng);
   const km = toNumber(filters.km);
-  if (lat !== undefined && lng !== undefined) {
+  if (lat !== undefined && lng !== undefined && lat !== 0 && lng !== 0) {
     params.lat = lat;
     params.lng = lng;
   }
-  if (km !== undefined) {
+  if (km !== undefined && km !== 0) {
     params[radiusKey] = km;
   }
   return params;
 };
 
+const buildItemsLocationParams = (filters: {
+  city: string;
+  lat: string;
+  lng: string;
+  km: string;
+}) => {
+  const params: Record<string, string | number | boolean> = {};
+  const city = filters.city.trim();
+  if (city) {
+    params.city = city;
+    return params;
+  }
+
+  const lat = toNumber(filters.lat);
+  const lng = toNumber(filters.lng);
+  const km = toNumber(filters.km);
+  if (lat !== undefined && lng !== undefined && lat !== 0 && lng !== 0) {
+    params.lat = lat;
+    params.lng = lng;
+    if (km !== undefined && km !== 0) {
+      params.radius = km;
+    }
+  }
+  return params;
+};
+
 export const buildItemsParams = (filters: ItemsFiltersState) => {
+  const q = filters.q.trim();
   const params: Record<string, string | number | boolean> = {
     page: filters.page,
     per_page: filters.per_page,
-    ...withLocationParams(filters, { radiusKey: 'radius' }),
+    ...buildItemsLocationParams(filters),
   };
 
+  if (q) params.q = q;
   if (filters.sort) params.sort = filters.sort;
   if (filters.category_id) params.category_id = filters.category_id;
   if (filters.subcategory_id) params.subcategory_id = filters.subcategory_id;
@@ -83,12 +112,24 @@ export const buildShopsParams = (filters: ShopsFiltersState) => {
   return params;
 };
 
-export const fetchItemsCentral = async (filters: ItemsFiltersState): Promise<Item[]> => {
+export const fetchItemsCentral = async (
+  filters: ItemsFiltersState,
+  options?: { signal?: AbortSignal }
+): Promise<Item[]> => {
   const params = buildItemsParams(filters);
-  if (filters.q.trim()) {
-    return apiService.searchItemsIndex({ ...params, q: filters.q.trim() });
-  }
-  return apiService.getItemsIndex(params);
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === 'boolean') {
+      if (value) query.set(key, '1');
+      return;
+    }
+    query.set(key, String(value));
+  });
+  const queryString = query.toString();
+  const url = queryString ? `${API_BASE_URL}/items?${queryString}` : `${API_BASE_URL}/items`;
+  console.log('Items request:', { url, params: Object.fromEntries(query.entries()) });
+  return apiService.getItemsIndex(params, options);
 };
 
 export const fetchUsersCentral = async (filters: UsersFiltersState): Promise<PublicUser[]> => {

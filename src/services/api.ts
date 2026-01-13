@@ -1047,9 +1047,13 @@ class ApiService {
     return this.normalizeListResponse<Shop>(data);
   }
 
-  async getItemsIndex(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+  async getItemsIndex(
+    params?: Record<string, string | number | boolean>,
+    options?: { signal?: AbortSignal }
+  ): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items${this.buildQuery(params)}`, {
       headers: this.getHeaders(),
+      signal: options?.signal,
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
