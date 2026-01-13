@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
 import CategoryGrid from '../components/CategoryGrid';
+import { goToItemsCentral } from '../utils/navigation';
 import Footer from '../components/Footer';
 import LanguageButton from '../components/LanguageButton';
 import LoginModal from '../components/LoginModal';
@@ -136,7 +137,10 @@ export default function Categories() {
         <CategoryGrid
           primaryColor={primaryColor}
           onSubcategorySelect={(subcategory, category) =>
-            navigate(`/items?category=${category.id}&subcategory=${subcategory.id}`)
+            goToItemsCentral(navigate, {
+              categoryId: category.id,
+              subcategoryId: subcategory.id,
+            })
           }
         />
       </div>

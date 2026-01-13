@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
+import { goToItemsCentral } from '../utils/navigation';
 
 interface CategoryNavProps {
   primaryColor: string;
@@ -67,7 +68,9 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
                   type="button"
                   onMouseEnter={() => handleCategoryEnter(category.id)}
                   onFocus={() => handleCategoryEnter(category.id)}
-                  onClick={() => navigate(`/items?category=${category.id}`)}
+                  onClick={() =>
+                    goToItemsCentral(navigate, { categoryId: category.id })
+                  }
                   className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
                     activeCategoryId === category.id
                       ? 'bg-white text-slate-900 shadow-sm'
@@ -107,7 +110,10 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
                               key={sub.id}
                               type="button"
                               onClick={() =>
-                                navigate(`/items?category=${category.id}&subcategory=${sub.id}`)
+                                goToItemsCentral(navigate, {
+                                  categoryId: category.id,
+                                  subcategoryId: sub.id,
+                                })
                               }
                               className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-200 hover:bg-white hover:text-slate-900"
                             >
