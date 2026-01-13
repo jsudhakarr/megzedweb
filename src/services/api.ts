@@ -280,6 +280,66 @@ class ApiService {
     return params;
   }
 
+  private buildItemsLocationEndpoint(location?: {
+    city?: string | null;
+    lat?: number;
+    lng?: number;
+    distance?: number;
+  }): { endpoint: string; params: URLSearchParams } | null {
+    if (!location) return null;
+    const hasCoords = location.lat !== undefined && location.lng !== undefined;
+    if (hasCoords && location.distance !== undefined) {
+      return {
+        endpoint: `${API_BASE_URL}/items/nearby`,
+        params: new URLSearchParams({
+          lat: String(location.lat),
+          lng: String(location.lng),
+          radius: String(location.distance),
+        }),
+      };
+    }
+    if (hasCoords) {
+      return {
+        endpoint: `${API_BASE_URL}/items/by-location`,
+        params: new URLSearchParams({
+          lat: String(location.lat),
+          lng: String(location.lng),
+        }),
+      };
+    }
+    if (location.city) {
+      return {
+        endpoint: `${API_BASE_URL}/items/by-city`,
+        params: new URLSearchParams({ city: location.city }),
+      };
+    }
+    return null;
+  }
+
+  private async fetchItemsByLocation(
+    location: {
+      city?: string | null;
+      lat?: number;
+      lng?: number;
+      distance?: number;
+    },
+    extraParams?: Record<string, string | number | boolean | null | undefined>
+  ): Promise<Item[]> {
+    const locationEndpoint = this.buildItemsLocationEndpoint(location);
+    if (!locationEndpoint) return [];
+    if (extraParams) {
+      Object.entries(extraParams).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
+        locationEndpoint.params.append(key, String(value));
+      });
+    }
+    const url = `${locationEndpoint.endpoint}?${locationEndpoint.params.toString()}`;
+    const response = await fetch(url, { headers: this.getHeaders() });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
   private normalizeListResponse<T>(data: any): T[] {
     if (Array.isArray(data?.data)) return data.data as T[];
     if (Array.isArray(data)) return data as T[];
@@ -638,10 +698,26 @@ class ApiService {
     if (filters.distance !== undefined) params.append('distance', String(filters.distance));
 
     let endpoint = `${API_BASE_URL}/items`;
+    const locationEndpoint =
+      !subcategoryId && !categoryId
+        ? this.buildItemsLocationEndpoint({
+            city: filters.city,
+            lat: filters.lat,
+            lng: filters.lng,
+            distance: filters.distance,
+          })
+        : null;
     if (subcategoryId) {
       endpoint = `${API_BASE_URL}/items/by-subcategory/${subcategoryId}`;
     } else if (categoryId) {
       endpoint = `${API_BASE_URL}/items/by-category/${categoryId}`;
+    } else if (locationEndpoint) {
+      endpoint = locationEndpoint.endpoint;
+      params.delete('distance');
+      locationEndpoint.params.forEach((value, key) => {
+        params.delete(key);
+        params.append(key, value);
+      });
     } else {
       if (categoryId) params.append('category_id', String(categoryId));
       if (subcategoryId) params.append('subcategory_id', String(subcategoryId));
@@ -682,7 +758,7 @@ class ApiService {
       lat: String(lat),
       lng: String(lng),
     });
-    if (distance !== undefined) params.append('distance', String(distance));
+    if (distance !== undefined) params.append('radius', String(distance));
 
     const response = await fetch(
       `${API_BASE_URL}/items/nearby?${params.toString()}`,
@@ -1014,30 +1090,35 @@ class ApiService {
       const filter = section.data_source?.filter ?? 'all';
       const sourceId = section.data_source?.source_id;
       let items: Item[] = [];
+      const locationEndpoint = this.buildItemsLocationEndpoint(locationParams);
 
-      switch (filter) {
-        case 'featured':
-          items = await this.getItemsFeatured(queryParams);
-          break;
-        case 'most_viewed':
-          items = await this.getItemsMostViewed(queryParams);
-          break;
-        case 'most_favorited':
-          items = await this.getItemsMostFavorited(queryParams);
-          break;
-        case 'most_liked':
-          items = await this.getItemsMostLiked(queryParams);
-          break;
-        case 'category':
-          if (sourceId !== null && sourceId !== undefined) {
-            items = await this.getItemsByCategory(sourceId, queryParams);
-          } else {
+      if (locationEndpoint && filter === 'all') {
+        items = await this.fetchItemsByLocation(locationParams ?? {}, limitParams);
+      } else {
+        switch (filter) {
+          case 'featured':
+            items = await this.getItemsFeatured(queryParams);
+            break;
+          case 'most_viewed':
+            items = await this.getItemsMostViewed(queryParams);
+            break;
+          case 'most_favorited':
+            items = await this.getItemsMostFavorited(queryParams);
+            break;
+          case 'most_liked':
+            items = await this.getItemsMostLiked(queryParams);
+            break;
+          case 'category':
+            if (sourceId !== null && sourceId !== undefined) {
+              items = await this.getItemsByCategory(sourceId, queryParams);
+            } else {
+              items = await this.getItemsIndex(queryParams);
+            }
+            break;
+          default:
             items = await this.getItemsIndex(queryParams);
-          }
-          break;
-        default:
-          items = await this.getItemsIndex(queryParams);
-          break;
+            break;
+        }
       }
 
       return { ...section, resolvedData: { items: itemCount ? items.slice(0, itemCount) : items } };
