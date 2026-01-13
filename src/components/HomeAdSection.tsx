@@ -101,7 +101,7 @@ export default function HomeAdSection({
       <img
         src={ad.image as string}
         alt="Advertisement"
-        className="w-full h-auto object-cover"
+        className="w-full h-32 sm:h-36 object-cover"
       />
     </div>
   );
