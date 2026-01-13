@@ -124,6 +124,14 @@ export interface Slider {
   sort_order?: number | null;
 }
 
+export interface ListingType {
+  id: number;
+  name: string;
+  code: string;
+  icon?: string | null;
+  tag_color?: string | null;
+}
+
 // ✅ Chat Types
 export interface ChatMessage {
   id: number;
@@ -199,6 +207,7 @@ class ApiService {
   private categoriesCache: Category[] | null = null;
   private subcategoriesCache: Subcategory[] | null = null;
   private subcategoriesByCategoryCache: Record<string, Subcategory[]> = {};
+  private listingTypesCache: ListingType[] | null = null;
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
@@ -598,6 +607,22 @@ class ApiService {
       this.categoriesCache = categories;
     }
     return categories;
+  }
+
+  async getListingTypes(): Promise<ListingType[]> {
+    if (this.listingTypesCache) {
+      return this.listingTypesCache;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/listing-types`, {
+      headers: this.getHeaders(),
+    });
+
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    const listingTypes = this.normalizeListResponse<ListingType>(data);
+    this.listingTypesCache = listingTypes;
+    return listingTypes;
   }
 
   async getSubcategories(categoryId?: string | number): Promise<Subcategory[]> {
