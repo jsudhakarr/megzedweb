@@ -380,6 +380,26 @@ export default function PublicUserProfile() {
 
               <hr className="my-5 border-slate-100" />
 
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => openPicker('chat')}
+                  className="flex items-center gap-2 rounded-full px-5 py-3 text-white shadow-md"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPicker('request')}
+                  className="flex items-center gap-2 rounded-full px-5 py-3 bg-slate-900 text-white shadow-md"
+                >
+                  <Send className="w-4 h-4" />
+                  Send Request
+                </button>
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {stats.map((stat) => (
                   <div key={stat.label} className="flex flex-col items-center">
@@ -519,26 +539,6 @@ export default function PublicUserProfile() {
       </div>
 
       <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
-
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => openPicker('chat')}
-          className="flex items-center gap-2 rounded-full px-5 py-3 text-white shadow-lg"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <MessageCircle className="w-4 h-4" />
-          Chat
-        </button>
-        <button
-          type="button"
-          onClick={() => openPicker('request')}
-          className="flex items-center gap-2 rounded-full px-5 py-3 bg-slate-900 text-white shadow-lg"
-        >
-          <Send className="w-4 h-4" />
-          Send Request
-        </button>
-      </div>
     </div>
   );
 }
