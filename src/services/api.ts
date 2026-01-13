@@ -1135,6 +1135,13 @@ class ApiService {
     if (section.type === 'shops') {
       const filter = section.data_source?.filter ?? 'all';
       let shops: Shop[] = [];
+      const hasActiveItemsParams =
+        filter === 'has_active_items' ||
+        filter === 'has_active_items_verified' ||
+        filter === 'has_active_items_top_rated' ||
+        filter === 'only_sellers'
+          ? { has_active_items: 1 }
+          : {};
 
       switch (filter) {
         case 'verified':
@@ -1142,6 +1149,16 @@ class ApiService {
           break;
         case 'top_rated':
           shops = await this.getShopsTopRated(queryParams);
+          break;
+        case 'has_active_items_verified':
+          shops = await this.getShopsVerified({ ...queryParams, ...hasActiveItemsParams });
+          break;
+        case 'has_active_items_top_rated':
+          shops = await this.getShopsTopRated({ ...queryParams, ...hasActiveItemsParams });
+          break;
+        case 'has_active_items':
+        case 'only_sellers':
+          shops = await this.getShopsIndex({ ...queryParams, ...hasActiveItemsParams });
           break;
         default:
           shops = await this.getShopsIndex(queryParams);
@@ -1154,6 +1171,12 @@ class ApiService {
     if (section.type === 'users') {
       const filter = section.data_source?.filter ?? 'all';
       let users: PublicUser[] = [];
+      const onlySellersParams =
+        filter === 'only_sellers' ||
+        filter === 'only_sellers_verified' ||
+        filter === 'only_sellers_top_rated'
+          ? { only_sellers: 1 }
+          : {};
 
       switch (filter) {
         case 'highlights':
@@ -1164,6 +1187,15 @@ class ApiService {
           break;
         case 'top_rated':
           users = await this.getPublicUsersTopRated(queryParams);
+          break;
+        case 'only_sellers_verified':
+          users = await this.getPublicUsersVerified({ ...queryParams, ...onlySellersParams });
+          break;
+        case 'only_sellers_top_rated':
+          users = await this.getPublicUsersTopRated({ ...queryParams, ...onlySellersParams });
+          break;
+        case 'only_sellers':
+          users = await this.getPublicUsersIndex({ ...queryParams, ...onlySellersParams });
           break;
         default:
           users = await this.getPublicUsersIndex(queryParams);
