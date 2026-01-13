@@ -706,6 +706,20 @@ class ApiService {
     return data.data;
   }
 
+  async searchItemsIndex(
+    params?: Record<string, string | number | boolean>
+  ): Promise<Item[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/items/search${this.buildQuery(params)}`,
+      {
+        headers: this.getHeaders(),
+      }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return this.normalizeListResponse<Item>(data);
+  }
+
   async filterItems(filters: {
     categoryId?: number | null;
     subcategoryId?: number | null;

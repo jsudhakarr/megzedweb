@@ -16,6 +16,9 @@ import {
 
 import SearchBox from '../components/SearchBox';
 import CategoryGrid from '../components/CategoryGrid';
+import { buildItemsCentralUrl } from '../utils/navigation';
+import { writeFiltersToUrl } from '../utils/filters';
+import type { UsersFiltersState, ShopsFiltersState } from '../types/filters';
 import ItemsGrid from '../components/ItemsGrid';
 import FilterSidebar from '../components/FilterSidebar';
 import LocationPicker from '../components/LocationPicker';
@@ -159,7 +162,7 @@ export default function Home() {
       case 'categories':
         return '/categories';
       case 'featured_items':
-        return '/items?filter=featured';
+        return buildItemsCentralUrl({ featured: true });
       case 'all_items':
         return '/items';
       case 'all_shops':
@@ -179,13 +182,59 @@ export default function Home() {
       case 'categories':
         return '/categories';
       case 'items': {
-        if (section.data_source?.filter === 'featured') return '/items?filter=featured';
+        const filter = section.data_source?.filter ?? 'all';
+        if (filter === 'featured') return buildItemsCentralUrl({ featured: true });
+        if (filter === 'most_viewed') return buildItemsCentralUrl({ sort: 'most_viewed' });
+        if (filter === 'most_favorited') return buildItemsCentralUrl({ sort: 'most_favorited' });
+        if (filter === 'most_liked') return buildItemsCentralUrl({ sort: 'most_liked' });
+        if (filter === 'category' && section.data_source?.source_id) {
+          return buildItemsCentralUrl({ categoryId: Number(section.data_source.source_id) });
+        }
         return '/items';
       }
-      case 'shops':
-        return '/shops';
-      case 'users':
-        return '/users';
+      case 'shops': {
+        const filter = section.data_source?.filter ?? 'all';
+        const baseFilters: ShopsFiltersState = {
+          q: '',
+          sort: '',
+          page: 1,
+          per_page: 24,
+          city: '',
+          lat: '',
+          lng: '',
+          km: '',
+          verified: filter === 'verified' || filter === 'has_active_items_verified',
+          top_rated: filter === 'top_rated' || filter === 'has_active_items_top_rated',
+          has_active_items:
+            filter === 'has_active_items' ||
+            filter === 'has_active_items_verified' ||
+            filter === 'has_active_items_top_rated' ||
+            filter === 'only_sellers',
+        };
+        const query = writeFiltersToUrl(baseFilters).toString();
+        return query ? `/shops?${query}` : '/shops';
+      }
+      case 'users': {
+        const filter = section.data_source?.filter ?? 'all';
+        const baseFilters: UsersFiltersState = {
+          q: '',
+          sort: '',
+          page: 1,
+          per_page: 24,
+          city: '',
+          lat: '',
+          lng: '',
+          km: '',
+          verified: filter === 'verified' || filter === 'only_sellers_verified',
+          top_rated: filter === 'top_rated' || filter === 'only_sellers_top_rated',
+          only_sellers:
+            filter === 'only_sellers' ||
+            filter === 'only_sellers_verified' ||
+            filter === 'only_sellers_top_rated',
+        };
+        const query = writeFiltersToUrl(baseFilters).toString();
+        return query ? `/users?${query}` : '/users';
+      }
       default:
         return null;
     }
@@ -460,7 +509,14 @@ export default function Home() {
 
                 <button
                   type="button"
-                  onClick={() => navigate(`/items?subcategory=${selectedSubcategory.id}`)}
+                  onClick={() =>
+                    navigate(
+                      buildItemsCentralUrl({
+                        categoryId: filters.category ?? undefined,
+                        subcategoryId: selectedSubcategory.id,
+                      })
+                    )
+                  }
                   className="text-sm sm:text-base font-semibold text-blue-600 hover:text-blue-700 transition"
                 >
                   {t('view_all')}

@@ -11,7 +11,6 @@ import Home from './pages/Home';
 import Categories from './pages/Categories';
 import Blog from './pages/Blog';
 import PageDetail from './pages/PageDetail';
-import UsersDirectory from './pages/UsersDirectory';
 import PublicUserProfile from './pages/PublicUserProfile';
 import SubmissionDetails from './pages/SubmissionDetails';
 import ActionForm from './pages/ActionForm';
@@ -29,8 +28,9 @@ import Notifications from './pages/dashboard/Notifications';
 import Wallet from './pages/dashboard/Wallet';
 import CoinPackages from './pages/dashboard/CoinPackages';
 
-const Items = lazy(() => import('./pages/Items'));
-const Shops = lazy(() => import('./pages/Shops'));
+const ItemsCentralScreen = lazy(() => import('./pages/ItemsCentralScreen'));
+const ShopsCentralScreen = lazy(() => import('./pages/ShopsCentralScreen'));
+const UsersCentralScreen = lazy(() => import('./pages/UsersCentralScreen'));
 const ItemDetail = lazy(() => import('./pages/ItemDetail'));
 const ShopDetail = lazy(() => import('./pages/ShopDetail'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -114,7 +114,7 @@ function App() {
               path="/items"
               element={
                 <Suspense fallback={<AppLoader label="Loading search..." />}>
-                  <Items />
+                  <ItemsCentralScreen />
                 </Suspense>
               }
             />
@@ -122,7 +122,7 @@ function App() {
               path="/shops"
               element={
                 <Suspense fallback={<AppLoader label="Loading businesses..." />}>
-                  <Shops />
+                  <ShopsCentralScreen />
                 </Suspense>
               }
             />
@@ -143,7 +143,14 @@ function App() {
                 </Suspense>
               }
             />
-            <Route path="/users" element={<UsersDirectory />} />
+            <Route
+              path="/users"
+              element={
+                <Suspense fallback={<AppLoader label="Loading users..." />}>
+                  <UsersCentralScreen />
+                </Suspense>
+              }
+            />
             <Route path="/users/:id" element={<PublicUserProfile />} />
             <Route path="/blog" element={<BlogWrapper />} />
             <Route path="/blog/:slug" element={<PageDetailWrapper />} />
