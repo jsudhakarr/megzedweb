@@ -12,6 +12,8 @@ import {
   Loader2,
   MapPin,
   MoreHorizontal,
+  MessageCircle,
+  Send,
   Share2,
   Star,
   Zap,
@@ -22,8 +24,11 @@ import { useAppSettings } from '../contexts/AppSettingsContext';
 import { apiService, type Item, type Shop } from '../services/api';
 import Footer from '../components/Footer';
 import SiteHeader from '../components/SiteHeader';
+import Modal from '../components/ui/Modal';
+import type { ItemAction } from '../types/action';
 
 type TabKey = 'listings' | 'reviews' | 'details';
+type PickerMode = 'chat' | 'request';
 
 const normalizeItems = (items: any): Item[] => {
   if (Array.isArray(items)) return items;
@@ -31,6 +36,21 @@ const normalizeItems = (items: any): Item[] => {
   if (Array.isArray(items?.items)) return items.items;
   return [];
 };
+
+const normalizeCode = (code?: string | null) => (code ?? '').toLowerCase().trim();
+
+const NON_FORM_ACTIONS = new Set([
+  'price',
+  'navigate',
+  'call',
+  'whatsapp',
+  'chat',
+  'make_offer',
+  'edit',
+  'edit_item',
+  'promote',
+  'promote_item',
+]);
 
 export default function ShopDetail() {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +70,9 @@ export default function ShopDetail() {
   const [savedItemIds, setSavedItemIds] = useState<Set<number>>(new Set());
 
   const [tab, setTab] = useState<TabKey>('listings');
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<PickerMode>('chat');
+  const [pickerError, setPickerError] = useState<string | null>(null);
 
   const primaryColor = settings?.primary_color || '#0ea5e9';
   const isLoggedIn = !!localStorage.getItem('auth_token');
@@ -173,6 +196,62 @@ export default function ShopDetail() {
     return formatDate(shop.created_at);
   }, [shop?.created_at]);
 
+  const openPicker = (mode: PickerMode) => {
+    if (!isLoggedIn) {
+      alert('Please login to continue.');
+      navigate('/login');
+      return;
+    }
+    setPickerMode(mode);
+    setPickerError(null);
+    setIsPickerOpen(true);
+  };
+
+  const handlePickItem = async (item: Item) => {
+    if (!item?.id) return;
+
+    if (pickerMode === 'chat') {
+      const sellerId =
+        (item as any)?.shop?.user?.id ??
+        (shop as any)?.user_id ??
+        (shop as any)?.user?.id ??
+        (item as any)?.user?.id ??
+        null;
+      setIsPickerOpen(false);
+      navigate('/dashboard/chat', {
+        state: {
+          itemId: item.id,
+          sellerId,
+        },
+      });
+      return;
+    }
+
+    try {
+      const response = await apiService.getItemActions(item.id);
+      const data = (response as any)?.data ?? response;
+      const actionList = data?.actions ?? data ?? [];
+      const sorted = (Array.isArray(actionList) ? actionList : [])
+        .map((action: ItemAction) => ({ ...action, code: normalizeCode(action.code) }))
+        .sort((a: ItemAction, b: ItemAction) => (a.slot ?? 0) - (b.slot ?? 0));
+
+      const action = sorted.find(
+        (action: ItemAction) => !NON_FORM_ACTIONS.has(normalizeCode(action.code)) && !action.pending
+      );
+
+      if (action) {
+        setIsPickerOpen(false);
+        navigate('/action-form', { state: { item, action } });
+        return;
+      }
+
+      setPickerError('No request forms available for this item yet.');
+    } catch (err) {
+      console.error(err);
+      setPickerError('Unable to load request form. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-50">
@@ -274,6 +353,42 @@ export default function ShopDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/40 to-white flex flex-col">
       <SiteHeader />
+
+      <Modal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        title={pickerMode === 'chat' ? 'Select a listing to chat' : 'Select a listing to send request'}
+      >
+        <div className="space-y-4">
+          {shopItems.length === 0 ? (
+            <p className="text-sm text-slate-500">No listings available.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {shopItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handlePickItem(item)}
+                  className="w-full flex items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-blue-300 hover:bg-slate-50 transition"
+                >
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
+                    {item.feature_photo?.url ? (
+                      <img src={item.feature_photo.url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-slate-400">No image</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{item.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{item.category?.name || 'Listing'}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {pickerError && <p className="text-sm text-rose-500">{pickerError}</p>}
+        </div>
+      </Modal>
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
         {/* Navigation Header */}
@@ -588,6 +703,26 @@ export default function ShopDetail() {
       </div>
 
       <Footer settings={settings ?? undefined} primaryColor={primaryColor} />
+
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={() => openPicker('chat')}
+          className="flex items-center gap-2 rounded-full px-5 py-3 text-white shadow-lg"
+          style={{ backgroundColor: primaryColor }}
+        >
+          <MessageCircle className="w-4 h-4" />
+          Chat
+        </button>
+        <button
+          type="button"
+          onClick={() => openPicker('request')}
+          className="flex items-center gap-2 rounded-full px-5 py-3 bg-slate-900 text-white shadow-lg"
+        >
+          <Send className="w-4 h-4" />
+          Send Request
+        </button>
+      </div>
     </div>
   );
 }

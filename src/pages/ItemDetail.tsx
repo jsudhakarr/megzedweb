@@ -737,7 +737,24 @@ export default function ItemDetail() {
                   {actionsLoading && <span className="text-xs text-slate-400">Loading...</span>}
                 </div>
 
-                {visibleActions.length === 0 && !actionsLoading ? (
+                {!user ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      onClick={() => navigate("/login")}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all border bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    >
+                      <MessageCircle className="w-4 h-4 text-slate-500" />
+                      <span>Chat</span>
+                    </button>
+                    <button
+                      onClick={() => navigate("/login")}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all border bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    >
+                      <Phone className="w-4 h-4 text-slate-500" />
+                      <span>Contact</span>
+                    </button>
+                  </div>
+                ) : visibleActions.length === 0 && !actionsLoading ? (
                   <p className="text-sm text-slate-500">No actions available.</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
