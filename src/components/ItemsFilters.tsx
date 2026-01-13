@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { apiService, type Category, type Subcategory } from '../services/api';
+import {
+  apiService,
+  type Category,
+  type ListingType,
+  type Subcategory,
+} from '../services/api';
 import type { ItemsFiltersState } from '../types/filters';
 
 interface ItemsFiltersProps {
@@ -11,6 +16,7 @@ interface ItemsFiltersProps {
 export default function ItemsFilters({ filters, onChange, onReset }: ItemsFiltersProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -23,6 +29,19 @@ export default function ItemsFilters({ filters, onChange, onReset }: ItemsFilter
     };
 
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    const loadListingTypes = async () => {
+      try {
+        const data = await apiService.getListingTypes();
+        setListingTypes(data);
+      } catch (error) {
+        console.error('Failed to load listing types:', error);
+      }
+    };
+
+    loadListingTypes();
   }, []);
 
   useEffect(() => {
@@ -118,8 +137,11 @@ export default function ItemsFilters({ filters, onChange, onReset }: ItemsFilter
           className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
         >
           <option value="">All types</option>
-          <option value="sale">For sale</option>
-          <option value="rent">For rent</option>
+          {listingTypes.map((type) => (
+            <option key={type.id} value={type.code}>
+              {type.name}
+            </option>
+          ))}
         </select>
       </div>
 
