@@ -25,6 +25,7 @@ import AppLoader from '../components/AppLoader';
 
 // ✅ NEW
 import LanguageButton from '../components/LanguageButton';
+import CategoryNav from '../components/CategoryNav';
 import UsersSlider from '../components/UsersSlider';
 import HomeSlider from '../components/HomeSlider';
 import HomeAdSection from '../components/HomeAdSection';
@@ -382,6 +383,7 @@ export default function Home() {
           </div>
 
         </div>
+        <CategoryNav primaryColor={primaryColor} />
       </header>
 
       {/* MAIN CONTENT */}
