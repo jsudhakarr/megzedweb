@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
@@ -16,6 +16,14 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
     Record<number, Subcategory[]>
   >({});
   const [loadingCategoryId, setLoadingCategoryId] = useState<number | null>(null);
+
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({
+    left: 0,
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // CONSTANT: We increased this to 900 to use more horizontal space
+  const DROPDOWN_WIDTH = 900; 
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -45,10 +53,31 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
     }
   };
 
-  const handleCategoryEnter = (categoryId: number) => {
+  const handleCategoryEnter = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    categoryId: number
+  ) => {
     setActiveCategoryId(categoryId);
     void loadSubcategories(categoryId);
+
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const targetRect = e.currentTarget.getBoundingClientRect();
+
+      let calculatedLeft = targetRect.left - containerRect.left;
+      const containerWidth = containerRect.width;
+
+      // Logic to keep the dropdown within screen bounds
+      if (calculatedLeft + DROPDOWN_WIDTH > containerWidth) {
+        calculatedLeft = containerWidth - DROPDOWN_WIDTH - 20;
+        if (calculatedLeft < 0) calculatedLeft = 20;
+      }
+
+      setDropdownStyle({ left: calculatedLeft });
+    }
   };
+
+  const activeCategory = categories.find((c) => c.id === activeCategoryId);
 
   if (categories.length === 0) {
     return null;
@@ -56,18 +85,21 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
 
   return (
     <div
-      className="border-t border-slate-200 bg-white/70 backdrop-blur"
+      className="border-t border-slate-200 bg-white/70 backdrop-blur z-30 relative"
       onMouseLeave={() => setActiveCategoryId(null)}
     >
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="relative">
-          <ul className="flex items-center gap-2 py-2 overflow-x-auto overflow-y-visible scrollbar-hide">
+      <div 
+        ref={containerRef}
+        className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 relative"
+      >
+        <nav>
+          <ul className="flex items-center gap-2 py-2 overflow-x-auto scrollbar-hide">
             {categories.map((category) => (
-              <li key={category.id} className="relative">
+              <li key={category.id} className="flex-shrink-0">
                 <button
                   type="button"
-                  onMouseEnter={() => handleCategoryEnter(category.id)}
-                  onFocus={() => handleCategoryEnter(category.id)}
+                  onMouseEnter={(e) => handleCategoryEnter(e, category.id)}
+                  onFocus={(e) => handleCategoryEnter(e, category.id)}
                   onClick={() =>
                     goToItemsCentral(navigate, { categoryId: category.id })
                   }
@@ -80,72 +112,80 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
                   <span>{category.name}</span>
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
-
-                {activeCategoryId === category.id && (
-                  <div className="absolute left-0 top-full z-40 mt-2 w-[min(620px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white shadow-xl">
-                    <div className="flex items-start gap-6 p-5">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                          {category.name}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Browse popular subcategories
-                        </p>
-                      </div>
-                      {category.icon?.url && (
-                        <img
-                          src={category.icon.url}
-                          alt={category.name}
-                          className="w-10 h-10 object-contain"
-                        />
-                      )}
-                    </div>
-                    <div className="border-t border-slate-100 px-5 pb-5 pt-4">
-                      {loadingCategoryId === category.id ? (
-                        <div className="text-sm text-slate-500">Loading...</div>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {(subcategoriesByCategory[category.id] || []).map((sub) => (
-                            <button
-                              key={sub.id}
-                              type="button"
-                              onClick={() =>
-                                goToItemsCentral(navigate, {
-                                  categoryId: category.id,
-                                  subcategoryId: sub.id,
-                                })
-                              }
-                              className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-200 hover:bg-white hover:text-slate-900"
-                            >
-                              {sub.icon?.thumbnail ? (
-                                <img
-                                  src={sub.icon.thumbnail}
-                                  alt={sub.name}
-                                  className="w-6 h-6 rounded-lg object-cover"
-                                />
-                              ) : (
-                                <span
-                                  className="w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: primaryColor }}
-                                />
-                              )}
-                              <span className="truncate">{sub.name}</span>
-                            </button>
-                          ))}
-                          {!subcategoriesByCategory[category.id]?.length && (
-                            <div className="text-sm text-slate-500">
-                              No subcategories available.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </li>
             ))}
           </ul>
         </nav>
+
+        {activeCategory && (
+          <div
+            style={dropdownStyle}
+            // UPDATED: Width set to 900px to match logic and provide more space
+            className={`absolute top-full z-40 mt-1 w-[min(900px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white shadow-xl transition-all duration-200`}
+          >
+            <div className="p-5">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {activeCategory.name}
+                </h3>
+                {activeCategory.icon?.url && (
+                  <img
+                    src={activeCategory.icon.url}
+                    alt={activeCategory.name}
+                    className="w-6 h-6 object-contain"
+                  />
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Browse popular subcategories
+              </p>
+            </div>
+
+            <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+              {loadingCategoryId === activeCategory.id ? (
+                <div className="text-sm text-slate-500">Loading...</div>
+              ) : (
+                /* UPDATED: Changed to 'flex-wrap' so items wrap to next line when space is full */
+                <div className="flex flex-wrap gap-3">
+                  {(subcategoriesByCategory[activeCategory.id] || []).map(
+                    (sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() =>
+                          goToItemsCentral(navigate, {
+                            categoryId: activeCategory.id,
+                            subcategoryId: sub.id,
+                          })
+                        }
+                        className="flex-shrink-0 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-200 hover:bg-white hover:text-slate-900"
+                      >
+                        {sub.icon?.thumbnail ? (
+                          <img
+                            src={sub.icon.thumbnail}
+                            alt={sub.name}
+                            className="w-6 h-6 rounded-lg object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: primaryColor }}
+                          />
+                        )}
+                        <span className="whitespace-nowrap">{sub.name}</span>
+                      </button>
+                    )
+                  )}
+                  {!subcategoriesByCategory[activeCategory.id]?.length && (
+                    <div className="text-sm text-slate-500 w-full">
+                      No subcategories available.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
