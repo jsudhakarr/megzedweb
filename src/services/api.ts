@@ -300,7 +300,7 @@ class ApiService {
     const hasCoords = location.lat !== undefined && location.lng !== undefined;
     if (hasCoords && location.distance !== undefined) {
       return {
-        endpoint: `${API_BASE_URL}/items/nearby`,
+        endpoint: `${API_BASE_URL}/items/by-location`,
         params: new URLSearchParams({
           lat: String(location.lat),
           lng: String(location.lng),
@@ -690,7 +690,7 @@ class ApiService {
     subcategoryId?: number
   ): Promise<Item[]> {
     const params = new URLSearchParams();
-    if (query) params.append('search', query);
+    if (query) params.append('q', query);
     if (categoryId) params.append('category_id', categoryId.toString());
     if (subcategoryId) params.append('subcategory_id', subcategoryId.toString());
 
@@ -819,7 +819,7 @@ class ApiService {
     if (distance !== undefined) params.append('radius', String(distance));
 
     const response = await fetch(
-      `${API_BASE_URL}/items/nearby?${params.toString()}`,
+      `${API_BASE_URL}/items/by-location?${params.toString()}`,
       { headers: this.getHeaders() }
     );
     if (!response.ok) throw new Error(await this.readError(response));
@@ -869,7 +869,7 @@ class ApiService {
 
   async searchShops(query: string): Promise<Shop[]> {
     const params = new URLSearchParams();
-    if (query) params.append('search', query);
+    if (query) params.append('q', query);
 
     const response = await fetch(
       `${API_BASE_URL}/shops/search?${params.toString()}`,
@@ -968,7 +968,7 @@ class ApiService {
     params?: Record<string, string | number | boolean>
   ): Promise<PublicUser[]> {
     const response = await fetch(
-      `${API_BASE_URL}/users/highlights${this.buildQuery(params)}`,
+      `${API_BASE_URL}/users/public${this.buildQuery(params)}`,
       {
         headers: this.getHeaders(),
       }
