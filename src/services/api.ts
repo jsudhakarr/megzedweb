@@ -196,6 +196,10 @@ export type HomeSectionResolved = HomeSection & {
 // --- Service Class ---
 
 class ApiService {
+  private categoriesCache: Category[] | null = null;
+  private subcategoriesCache: Subcategory[] | null = null;
+  private subcategoriesByCategoryCache: Record<string, Subcategory[]> = {};
+
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -577,16 +581,42 @@ class ApiService {
   // ---------------- PUBLIC ----------------
 
   async getCategories(params?: Record<string, string | number | boolean>): Promise<Category[]> {
+    if (!params || Object.keys(params).length === 0) {
+      if (this.categoriesCache) {
+        return this.categoriesCache;
+      }
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories${this.buildQuery(params)}`, {
       headers: this.getHeaders(),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data: CategoriesResponse = await response.json();
-    return this.normalizeListResponse<Category>(data);
+    const categories = this.normalizeListResponse<Category>(data);
+    if (!params || Object.keys(params).length === 0) {
+      this.categoriesCache = categories;
+    }
+    return categories;
   }
 
   async getSubcategories(categoryId?: string | number): Promise<Subcategory[]> {
+    if (categoryId) {
+      const cacheKey = String(categoryId);
+      if (this.subcategoriesByCategoryCache[cacheKey]) {
+        return this.subcategoriesByCategoryCache[cacheKey];
+      }
+      if (this.subcategoriesCache) {
+        const filtered = this.subcategoriesCache.filter(
+          (subcategory) => String(subcategory.category_id) === cacheKey
+        );
+        this.subcategoriesByCategoryCache[cacheKey] = filtered;
+        return filtered;
+      }
+    } else if (this.subcategoriesCache) {
+      return this.subcategoriesCache;
+    }
+
     const url = categoryId
       ? `${API_BASE_URL}/subcategories?category_id=${encodeURIComponent(String(categoryId))}`
       : `${API_BASE_URL}/subcategories`;
@@ -596,7 +626,13 @@ class ApiService {
 
     const data: any = await response.json();
     // keep compatible with your existing response style
-    return data?.data ?? [];
+    const subcategories = data?.data ?? [];
+    if (categoryId) {
+      this.subcategoriesByCategoryCache[String(categoryId)] = subcategories;
+    } else {
+      this.subcategoriesCache = subcategories;
+    }
+    return subcategories;
   }
 
 

@@ -240,6 +240,14 @@ export default function Home() {
     loadSections();
   }, [locationKey, locationParams]);
 
+  useEffect(() => {
+    const warmCategoryData = async () => {
+      await Promise.allSettled([apiService.getCategories(), apiService.getSubcategories()]);
+    };
+
+    warmCategoryData();
+  }, []);
+
   const dynamicSections = useMemo<HomeSectionResolved[]>(() => {
     if (!homeSections.length) return [];
     return homeSections.filter((section) => section.type !== 'slider');
