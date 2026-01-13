@@ -123,6 +123,12 @@ export default function Home() {
       category: category.id,
       subcategory: subcategory.id,
     }));
+    navigate(
+      buildItemsCentralUrl({
+        categoryId: category.id,
+        subcategoryId: subcategory.id,
+      })
+    );
   };
 
   const handleClearFilter = () => {
