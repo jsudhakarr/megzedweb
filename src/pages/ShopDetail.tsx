@@ -2,20 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
+  Building2,
   Calendar,
   CheckCircle2,
-  Clock,
+  FileText,
   Grid,
   Heart,
   Info,
   Loader2,
   MapPin,
-  MessageCircle,
-  Search,
+  MoreHorizontal,
   Share2,
   Star,
-  Store,
-  User,
+  Users,
+  Zap,
+  Key,
+  BedDouble,
 } from 'lucide-react';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { apiService, type Item, type Shop } from '../services/api';
@@ -49,7 +51,6 @@ export default function ShopDetail() {
   const [savedItemIds, setSavedItemIds] = useState<Set<number>>(new Set());
 
   const [tab, setTab] = useState<TabKey>('listings');
-  const [q, setQ] = useState('');
 
   const primaryColor = settings?.primary_color || '#0ea5e9';
   const isLoggedIn = !!localStorage.getItem('auth_token');
@@ -59,7 +60,6 @@ export default function ShopDetail() {
     const shopId = parseInt(id, 10);
     if (!Number.isFinite(shopId)) return;
     loadAll(shopId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadAll = async (shopId: number) => {
@@ -164,43 +164,9 @@ export default function ShopDetail() {
     }
   };
 
-  const toggleItemSave = async (itemId: number) => {
-    if (!isLoggedIn) {
-      alert('Please login to save items.');
-      return;
-    }
-
-    setSavedItemIds((prev) => {
-      const s = new Set(prev);
-      if (s.has(itemId)) s.delete(itemId);
-      else s.add(itemId);
-      return s;
-    });
-
-    try {
-      await apiService.toggleSaveItem(itemId);
-    } catch (e) {
-      console.error(e);
-      setSavedItemIds((prev) => {
-        const s = new Set(prev);
-        if (s.has(itemId)) s.delete(itemId);
-        else s.add(itemId);
-        return s;
-      });
-      alert('Unable to update saved item.');
-    }
-  };
-
-  const filteredShopItems = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (!query) return shopItems;
-    return shopItems.filter((it: any) => (it.name || '').toLowerCase().includes(query));
-  }, [shopItems, q]);
-
   const location = useMemo(() => {
     if (!shop) return '';
-    const parts = [(shop as any).city, (shop as any).state, (shop as any).country].filter(Boolean);
-    return parts.join(', ');
+    return (shop as any).city || '';
   }, [shop]);
 
   const memberSince = useMemo(() => {
@@ -242,23 +208,33 @@ export default function ShopDetail() {
     );
   }
 
-  const coverImage = (shop as any)?.photo?.url || null;
   const profileImage = (shop as any)?.photo?.url || null;
   const shopName = (shop as any).shop_name || (shop as any).name || 'Business';
   const shopRating =
     (shop as any)?.avg_rating && !Number.isNaN(Number((shop as any).avg_rating))
       ? parseFloat((shop as any).avg_rating).toFixed(1)
-      : 'New';
+      : '0.0';
   const itemsCount = (shop as any).items_count ?? shopItems.length;
   const reviewsCount = (shop as any).reviews_count ?? reviews.length ?? 0;
   const shopType = (shop as any).shop_type || 'Business';
   const isVerified = (shop as any).is_verified === true || (shop as any).is_verified === 1;
 
   const stats = [
-    { label: 'Listings', value: itemsCount },
-    { label: 'Reviews', value: reviewsCount },
-    { label: 'Type', value: shopType },
-    { label: 'Rating', value: shopRating },
+    { 
+      label: 'Listings', 
+      value: itemsCount,
+      icon: <FileText className="w-3 h-3" />
+    },
+    { 
+      label: 'Reviews', 
+      value: reviewsCount,
+      icon: <Star className="w-3 h-3" />
+    },
+    { 
+      label: 'Type', 
+      value: shopType,
+      icon: <Building2 className="w-3 h-3" />
+    },
   ];
 
   const tabs: { key: TabKey; label: string; icon: JSX.Element }[] = [
@@ -271,28 +247,12 @@ export default function ShopDetail() {
     const rawLat = (shop as any).lat ?? (shop as any).latitude;
     const rawLng = (shop as any).lng ?? (shop as any).long ?? (shop as any).longitude;
 
-    if (rawLat == null || rawLng == null) {
-      return (
-        <div className="h-40 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-            Map not available
-          </span>
-        </div>
-      );
-    }
+    if (rawLat == null || rawLng == null) return null;
 
     const lat = Number(rawLat);
     const lng = Number(rawLng);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return (
-        <div className="h-40 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-            Invalid location
-          </span>
-        </div>
-      );
-    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
     const delta = 0.005;
     const left = lng - delta;
@@ -305,28 +265,9 @@ export default function ShopDetail() {
       `bbox=${left}%2C${bottom}%2C${right}%2C${top}` +
       `&layer=mapnik&marker=${lat}%2C${lng}`;
 
-    const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-
     return (
-      <div className="space-y-3">
-        <div className="h-52 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
-          <iframe title="Business Location" src={embedUrl} className="w-full h-full" loading="lazy" />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-slate-500 font-semibold">
-            {lat.toFixed(6)}, {lng.toFixed(6)}
-          </div>
-
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition"
-          >
-            Directions
-          </a>
-        </div>
+      <div className="mt-4 h-40 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
+         <iframe title="Business Location" src={embedUrl} className="w-full h-full" loading="lazy" />
       </div>
     );
   };
@@ -335,7 +276,8 @@ export default function ShopDetail() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/40 to-white flex flex-col">
       <SiteHeader />
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        {/* Navigation Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
@@ -352,116 +294,129 @@ export default function ShopDetail() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleShopFav}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
-              title={isShopFav ? 'Remove favourite' : 'Add favourite'}
-            >
-              <Heart className={`w-5 h-5 ${isShopFav ? 'fill-red-500 text-red-500' : 'text-slate-700'}`} />
-            </button>
             <button className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center" onClick={handleShare}>
               <Share2 className="w-5 h-5 text-slate-700" />
+            </button>
+            <button className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center">
+              <MoreHorizontal className="w-5 h-5 text-slate-700" />
             </button>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-6 items-start">
-          <aside className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-              {coverImage && (
-                <div className="h-36 sm:h-44 w-full relative">
-                  <img src={coverImage} alt={shopName} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+        {/* Flex Layout: 45% Sidebar / 55% Content */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          
+          {/* Sidebar - 45% width */}
+          <aside className="w-full lg:w-[45%] space-y-6">
+            <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-5">
+              
+              <div className="flex flex-row items-start gap-4">
+                {/* Avatar */}
+                <div className="w-20 h-20 shrink-0 rounded-2xl overflow-hidden border-2 border-white shadow bg-slate-100 flex items-center justify-center">
+                  {profileImage ? (
+                    <img
+                      src={profileImage}
+                      alt={shopName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Building2 className="w-10 h-10 text-slate-400" />
+                  )}
                 </div>
-              )}
 
-              <div className="p-5 sm:p-7">
-                <div className="flex flex-col sm:flex-row lg:flex-col sm:items-start sm:justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-24 h-24 rounded-3xl overflow-hidden border-4 border-white shadow bg-slate-100 -mt-10 sm:mt-0 flex items-center justify-center">
-                      {profileImage ? (
-                        <img src={profileImage} alt={shopName} className="w-full h-full object-cover" />
-                      ) : (
-                        <Store className="w-10 h-10 text-slate-400" />
+                {/* Info Container */}
+                <div className="flex-1 min-w-0 flex justify-between">
+                   
+                   {/* Left Side: Name, Verified, Location, Date */}
+                   <div>
+                      <h2 className="text-xl font-bold text-slate-900 truncate">{shopName}</h2>
+                      
+                      {isVerified && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <CheckCircle2 className="w-4 h-4 text-blue-500 fill-white" />
+                          <span className="text-xs font-semibold text-blue-600">Verified business</span>
+                        </div>
                       )}
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-xl font-bold text-slate-900">{shopName}</h2>
-                        {isVerified && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Verified
-                          </span>
-                        )}
-                      </div>
+                      
                       {location && (
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <MapPin className="w-4 h-4" />
+                        <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                          <MapPin className="w-3.5 h-3.5" />
                           <span>{location}</span>
                         </div>
                       )}
+
                       {memberSince && (
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Calendar className="w-4 h-4" />
+                        <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                          <Calendar className="w-3.5 h-3.5" />
                           <span>Joined {memberSince}</span>
                         </div>
                       )}
-                      <div className="flex flex-wrap gap-2">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-                          {shopType}
+                   </div>
+
+                   {/* Right Side: Actions (Follow + Rating) */}
+                   <div className="flex flex-col items-end gap-2 ml-2">
+                        <button
+                            type="button"
+                            onClick={toggleShopFav}
+                            className={`px-6 py-1.5 rounded-lg text-white text-sm font-semibold shadow w-full flex items-center justify-center gap-2 ${
+                                isShopFav ? 'bg-red-500' : ''
+                            }`}
+                            style={!isShopFav ? { backgroundColor: primaryColor } : {}}
+                        >
+                            {isShopFav ? (
+                                <>
+                                    <Heart className="w-3 h-3 fill-white" /> Saved
+                                </>
+                            ) : (
+                                <>
+                                    <Heart className="w-3 h-3" /> Save
+                                </>
+                            )}
+                        </button>
+
+                        <div className="flex flex-col items-center justify-center bg-amber-50 border border-amber-100 rounded-xl px-4 py-2 shadow-sm w-full min-w-[90px]">
+                            <div className="flex items-center gap-1">
+                                <span className="text-2xl font-extrabold text-amber-500">
+                                    {shopRating}
+                                </span>
+                                <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
+                            </div>
+                            <span className="text-[10px] font-medium text-amber-700/80 mt-0.5 whitespace-nowrap">
+                                {reviewsCount} reviews
+                            </span>
+                        </div>
+                   </div>
+
+                </div>
+              </div>
+
+              <hr className="my-5 border-slate-100" />
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {stats.map((stat) => (
+                  <div key={stat.label} className="flex flex-col items-center">
+                    <span className="text-lg font-bold text-slate-900 leading-none">{stat.value}</span>
+                    <div className="flex items-center gap-1 mt-1 text-slate-500">
+                        {stat.icon}
+                        <span className="text-[10px] uppercase tracking-wider font-medium">
+                          {stat.label}
                         </span>
-                        {(shop as any).address && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-                            {(shop as any).address}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  <div className="flex flex-col items-start sm:items-end lg:items-start gap-3">
-                    <button
-                      type="button"
-                      className="px-5 py-2 rounded-xl text-white font-semibold shadow"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      Contact
-                    </button>
-                    <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
-                      <Star className="w-5 h-5 text-amber-500" />
-                      <div>
-                        <div className="text-base font-semibold text-slate-900">{shopRating}</div>
-                        <div className="text-xs text-slate-500">{reviewsCount} reviews</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  {stats.map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center"
-                    >
-                      <div className="text-lg font-bold text-slate-900">{stat.value}</div>
-                      <div className="text-xs text-slate-500">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6">
-                  <h3 className="text-base font-semibold text-slate-900 mb-2">About</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {(shop as any).description || 'No description provided by the business.'}
-                  </p>
-                </div>
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-slate-900 mb-2">About</h3>
+                <p className="text-sm text-slate-600 leading-relaxed text-justify">
+                  {(shop as any).description || 'No description provided by the business owner.'}
+                </p>
               </div>
             </div>
           </aside>
 
-          <div className="lg:col-span-3 space-y-6">
+          {/* Main Content - 55% width */}
+          <div className="w-full lg:w-[55%] space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 flex flex-wrap gap-2">
               {tabs.map((tabItem) => {
                 const isActive = tab === tabItem.key;
@@ -471,7 +426,9 @@ export default function ShopDetail() {
                     type="button"
                     onClick={() => setTab(tabItem.key)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm transition-all ${
-                      isActive ? 'text-white shadow' : 'text-slate-600 bg-slate-50 border border-slate-200'
+                      isActive
+                        ? 'text-white shadow'
+                        : 'text-slate-600 bg-slate-50 border border-slate-200'
                     }`}
                     style={isActive ? { backgroundColor: primaryColor } : {}}
                   >
@@ -484,98 +441,90 @@ export default function ShopDetail() {
 
             {tab === 'listings' && (
               <section>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Grid className="w-5 h-5 text-slate-700" />
-                    <h3 className="text-lg font-bold text-slate-900">Business Listings</h3>
-                  </div>
-                  <div className="relative group w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-hover:text-slate-600" />
-                    <input
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      type="text"
-                      placeholder="Search items..."
-                      className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all shadow-sm"
-                    />
-                  </div>
-                </div>
+                {/* Search Box Removed Here */}
 
-                {itemsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-                  </div>
-                ) : filteredShopItems.length === 0 ? (
+                {shopItems.length === 0 ? (
                   <div className="text-slate-500 text-sm bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                     No listings found.
                   </div>
                 ) : (
-                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredShopItems.map((item: any) => {
-                      const isSaved = savedItemIds.has(item.id);
-                      const photo = item?.feature_photo?.url || null;
-                      const isRent = item?.listing_type === 'rent';
+                  <div className="flex flex-col gap-4">
+                    {shopItems.map((item: any) => (
+                      <Link
+                        key={item.id}
+                        to={`/item/${item.id}`}
+                        className="group flex flex-row bg-white rounded-2xl border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow-lg transition-all overflow-hidden h-40 sm:h-44"
+                      >
+                        <div className="w-32 sm:w-44 h-full relative shrink-0">
+                          {item.feature_photo?.url ? (
+                            <img
+                              src={item.feature_photo.url}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs text-center p-2">
+                              No image
+                            </div>
+                          )}
+                          <div className="absolute top-2 left-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm">
+                             <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
+                                <Zap className="w-3 h-3 text-white fill-white" />
+                             </div>
+                          </div>
+                        </div>
 
-                      return (
-                        <div
-                          key={item.id}
-                          className="group bg-white rounded-2xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md transition-all overflow-hidden"
-                        >
-                          <div className="relative w-full h-40 bg-slate-100 border-b border-slate-200">
-                            {photo ? (
-                              <img src={photo} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
-                                No image
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleItemSave(item.id);
-                              }}
-                              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 border border-slate-200 shadow-sm flex items-center justify-center"
-                              aria-label="Favourite listing"
-                            >
-                              <Heart
-                                className={`w-4.5 h-4.5 ${
-                                  isSaved ? 'fill-red-500 text-red-500' : 'text-slate-700'
-                                }`}
-                              />
-                            </button>
+                        <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between">
+                          <div className="flex justify-between items-start">
+                             <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                               <Building2 className="w-3 h-3" />
+                               {item.category?.name || "Product"}
+                             </span>
+                             <button className="text-slate-300 hover:text-red-500 transition-colors">
+                                <Heart className="w-5 h-5" />
+                             </button>
                           </div>
 
-                          <Link to={`/item/${item.id}`} className="block p-4 space-y-3">
-                            <div className="flex items-center justify-between gap-2">
-                              <h4 className="text-base font-semibold text-slate-900 line-clamp-1">
-                                {item.name}
-                              </h4>
-                              <span className="px-3 py-1 rounded-full bg-green-50 text-green-600 text-xs font-semibold whitespace-nowrap">
-                                ₹ {formatPrice(String(item.price ?? 0))}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-500">
-                              <MapPin className="w-4 h-4" />
-                              <span className="truncate">
-                                {[item.city, item.state].filter(Boolean).join(', ') || '—'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-200">
-                                {isRent ? 'Rent' : 'Sale'}
-                              </span>
-                              {Array.isArray(item.dynamic_fields) && item.dynamic_fields[0]?.value && (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-200">
-                                  {item.dynamic_fields[0].value}
-                                </span>
-                              )}
-                            </div>
-                          </Link>
+                          <h4 className="text-base sm:text-lg font-bold text-slate-900 line-clamp-1 mt-1">
+                            {item.name}
+                          </h4>
+
+                          <div className="flex items-center gap-4 text-xs text-slate-600 mt-1">
+                             {Array.isArray(item.dynamic_fields) && item.dynamic_fields.length > 0 ? (
+                               item.dynamic_fields.slice(0, 2).map((field:any, idx:number) => (
+                                 <span key={idx} className="flex items-center gap-1">
+                                    <BedDouble className="w-3.5 h-3.5 text-slate-400" />
+                                    {field.value}
+                                 </span>
+                               ))
+                             ) : (
+                               <span className="flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                                  Available
+                               </span>
+                             )}
+                          </div>
+
+                          <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span className="truncate">
+                                {(shop as any).city || 'Location not specified'}
+                            </span>
+                          </div>
+
+                          <div className="border-t border-slate-100 pt-2 mt-auto flex justify-between items-center">
+                             <span className="text-lg font-bold text-blue-700">
+                                ₹ {formatPrice(item.price)}
+                             </span>
+                             
+                             <span className="px-3 py-1 rounded-full bg-green-50 border border-green-100 text-green-700 text-xs font-bold flex items-center gap-1">
+                                <Key className="w-3 h-3" />
+                                {item.listing_type === 'rent' ? 'Rent' : 'Sale'}
+                             </span>
+                          </div>
                         </div>
-                      );
-                    })}
+                      </Link>
+                    ))}
                   </div>
                 )}
               </section>
@@ -583,54 +532,47 @@ export default function ShopDetail() {
 
             {tab === 'reviews' && (
               <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-amber-500" />
-                    <h3 className="text-lg font-bold text-slate-900">Reviews</h3>
-                  </div>
-                  <span className="text-sm text-slate-500">{reviews.length} total</span>
-                </div>
+                 <div className="flex items-center justify-between gap-3 mb-4">
+                   <div className="flex items-center gap-2">
+                     <Star className="w-5 h-5 text-amber-500" />
+                     <h3 className="text-lg font-bold text-slate-900">Reviews</h3>
+                   </div>
+                   <span className="text-sm text-slate-500">{reviews.length} total</span>
+                 </div>
 
-                {reviewsLoading ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
-                  </div>
-                ) : reviews.length ? (
-                  <div className="space-y-4">
-                    {reviews.slice(0, 10).map((r: any, idx: number) => (
-                      <div key={r.id ?? idx} className="border border-slate-100 rounded-2xl p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-bold text-slate-900">{r.user?.name || 'User'}</div>
-                          <div className="flex items-center gap-1 text-amber-500">
-                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                            <span className="text-sm font-semibold text-slate-800">{r.rating ?? '-'}</span>
-                          </div>
-                        </div>
-                        {r.comment && (
-                          <p className="text-slate-600 text-sm mt-2 leading-relaxed">{r.comment}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-500">No reviews yet.</p>
-                )}
+                 {reviewsLoading ? (
+                   <div className="flex justify-center py-10">
+                     <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+                   </div>
+                 ) : reviews.length ? (
+                   <div className="space-y-4">
+                     {reviews.slice(0, 10).map((r: any, idx: number) => (
+                       <div key={r.id ?? idx} className="border border-slate-100 rounded-2xl p-4">
+                         <div className="flex items-center justify-between gap-3">
+                           <div className="font-bold text-slate-900">{r.user?.name || 'User'}</div>
+                           <div className="flex items-center gap-1 text-amber-500">
+                             <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                             <span className="text-sm font-semibold text-slate-800">{r.rating ?? '-'}</span>
+                           </div>
+                         </div>
+                         {r.comment && (
+                           <p className="text-slate-600 text-sm mt-2 leading-relaxed">{r.comment}</p>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <p className="text-slate-500">No reviews yet.</p>
+                 )}
               </section>
             )}
 
             {tab === 'details' && (
               <section className="space-y-6">
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">Business Details</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    {(shop as any).description || 'No description provided by the business owner.'}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                   <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-slate-500" />
-                    Location
+                    Full Address
                   </h3>
                   <p className="text-slate-600 text-sm leading-relaxed mb-4">
                     {(shop as any).address || 'Address not provided'}
@@ -639,58 +581,9 @@ export default function ShopDetail() {
                   </p>
                   {renderMap()}
                 </div>
-
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Listed by</p>
-                    {isVerified && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-full text-[10px] font-bold text-blue-700 uppercase tracking-tight">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Verified
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="relative shrink-0">
-                      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm ring-1 ring-slate-100">
-                        {profileImage ? (
-                          <img src={profileImage} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-6 h-6 text-slate-400" />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-slate-900 text-base truncate leading-tight">
-                        {(shop as any)?.user?.name || 'Business Owner'}
-                      </h3>
-                      <div className="flex items-center gap-1.5 mt-1 text-slate-500">
-                        <MapPin className="w-3.5 h-3.5" />
-                        <p className="text-xs font-medium truncate">
-                          {(shop as any)?.user?.city || (shop as any)?.city || 'Location N/A'}
-                          {((shop as any)?.user?.state || (shop as any)?.state)
-                            ? `, ${(shop as any)?.user?.state || (shop as any)?.state}`
-                            : ''}
-                        </p>
-                      </div>
-                      {(shop as any)?.user?.created_at && (
-                        <div className="flex items-center gap-1.5 mt-1 text-slate-400">
-                          <Clock className="w-3.5 h-3.5" />
-                          <p className="text-xs">Since {formatDate((shop as any).user.created_at)}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <button className="w-full mt-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-lg shadow-slate-900/10 hover:bg-slate-800 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                    <MessageCircle className="w-4 h-4" />
-                    Contact Seller
-                  </button>
-                </div>
               </section>
             )}
+
           </div>
         </div>
       </div>
