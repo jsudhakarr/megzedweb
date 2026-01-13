@@ -60,7 +60,7 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
     >
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="relative">
-          <ul className="flex items-center gap-2 py-2 overflow-x-auto scrollbar-hide">
+          <ul className="flex items-center gap-2 py-2 overflow-x-auto overflow-y-visible scrollbar-hide">
             {categories.map((category) => (
               <li key={category.id} className="relative">
                 <button
