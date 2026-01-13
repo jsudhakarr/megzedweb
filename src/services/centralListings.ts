@@ -12,9 +12,25 @@ const toNumber = (value: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const appendQueryValue = (query: URLSearchParams, key: string, value: unknown) => {
+  if (value === null || value === undefined) return;
+  if (Array.isArray(value)) {
+    value.forEach((entry) => appendQueryValue(query, `${key}[]`, entry));
+    return;
+  }
+  if (typeof value === 'object') {
+    Object.entries(value as Record<string, unknown>).forEach(([childKey, childValue]) => {
+      appendQueryValue(query, `${key}[${childKey}]`, childValue);
+    });
+    return;
+  }
+  query.append(key, String(value));
+};
+
 const withLocationParams = (
   filters: {
     city: string;
+    state?: string;
     lat: string;
     lng: string;
     km: string;
@@ -24,6 +40,7 @@ const withLocationParams = (
   const radiusKey = options?.radiusKey ?? 'radius';
   const params: Record<string, string | number | boolean> = {};
   if (filters.city) params.city = filters.city;
+  if (filters.state) params.state = filters.state;
   const lat = toNumber(filters.lat);
   const lng = toNumber(filters.lng);
   const km = toNumber(filters.km);
@@ -39,16 +56,18 @@ const withLocationParams = (
 
 const buildItemsLocationParams = (filters: {
   city: string;
+  state?: string;
   lat: string;
   lng: string;
   km: string;
 }) => {
   const params: Record<string, string | number | boolean> = {};
   const city = filters.city.trim();
+  const state = filters.state?.trim() ?? '';
   if (city) {
     params.city = city;
-    return params;
   }
+  if (state) params.state = state;
 
   const lat = toNumber(filters.lat);
   const lng = toNumber(filters.lng);
@@ -65,7 +84,8 @@ const buildItemsLocationParams = (filters: {
 
 export const buildItemsParams = (filters: ItemsFiltersState) => {
   const q = filters.q.trim();
-  const params: Record<string, string | number | boolean> = {
+  const params: Record<string, string | number | boolean | Record<string, unknown> | Array<unknown>> =
+    {
     page: filters.page,
     per_page: filters.per_page,
     ...buildItemsLocationParams(filters),
@@ -80,6 +100,9 @@ export const buildItemsParams = (filters: ItemsFiltersState) => {
   if (filters.featured) params.featured = 1;
   if (filters.promoted) params.promoted = 1;
   if (filters.listing_type) params.listing_type = filters.listing_type;
+  if (Object.keys(filters.df).length > 0) params.df = filters.df;
+  if (Object.keys(filters.df_min).length > 0) params.df_min = filters.df_min;
+  if (Object.keys(filters.df_max).length > 0) params.df_max = filters.df_max;
 
   return params;
 };
@@ -119,12 +142,11 @@ export const fetchItemsCentral = async (
   const params = buildItemsParams(filters);
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value === null || value === undefined) return;
     if (typeof value === 'boolean') {
-      if (value) query.set(key, '1');
+      if (value) query.append(key, '1');
       return;
     }
-    query.set(key, String(value));
+    appendQueryValue(query, key, value);
   });
   const queryString = query.toString();
   const url = queryString ? `${API_BASE_URL}/items?${queryString}` : `${API_BASE_URL}/items`;

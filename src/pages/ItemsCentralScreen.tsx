@@ -19,6 +19,7 @@ const defaultFilters: ItemsFiltersState = {
   page: 1,
   per_page: 10,
   city: '',
+  state: '',
   lat: '',
   lng: '',
   km: '',
@@ -29,7 +30,9 @@ const defaultFilters: ItemsFiltersState = {
   featured: false,
   promoted: false,
   listing_type: '',
-  dynamic_fields: {},
+  df: {},
+  df_min: {},
+  df_max: {},
 };
 
 export default function ItemsCentralScreen() {
@@ -216,14 +219,15 @@ export default function ItemsCentralScreen() {
         onRemove: () => updateFilters({ listing_type: '', page: 1 }),
       });
     }
-    if (filters.city) {
+    const hasCoords = Boolean(filters.lat || filters.lng || filters.km);
+    if ((filters.city || filters.state) && !hasCoords) {
       nextChips.push({
         key: 'city',
-        label: `City: ${filters.city}`,
-        onRemove: () => updateFilters({ city: '', page: 1 }),
+        label: `City: ${filters.city || '—'}${filters.state ? `, ${filters.state}` : ''}`,
+        onRemove: () => updateFilters({ city: '', state: '', page: 1 }),
       });
     }
-    if (filters.lat || filters.lng || filters.km) {
+    if (hasCoords) {
       nextChips.push({
         key: 'coords',
         label: `Coords: ${filters.lat || '—'}, ${filters.lng || '—'} (${filters.km || '—'} km)`,
@@ -251,7 +255,12 @@ export default function ItemsCentralScreen() {
         <div className="flex flex-col lg:flex-row gap-6">
           <aside className="hidden lg:block w-72 flex-shrink-0">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <ItemsFilters filters={filters} onChange={updateFilters} onReset={resetFilters} />
+              <ItemsFilters
+                primaryColor={primaryColor}
+                filters={filters}
+                onChange={updateFilters}
+                onReset={resetFilters}
+              />
             </div>
           </aside>
 
@@ -358,6 +367,7 @@ export default function ItemsCentralScreen() {
 
       <FilterDrawer open={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title="Filters">
         <ItemsFilters
+          primaryColor={primaryColor}
           filters={filters}
           onChange={(next) => updateFilters(next)}
           onReset={resetFilters}

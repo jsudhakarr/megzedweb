@@ -16,6 +16,7 @@ const baseItemsFilters = (): ItemsFiltersState => ({
   page: 1,
   per_page: 10,
   city: '',
+  state: '',
   lat: '',
   lng: '',
   km: '',
@@ -26,7 +27,9 @@ const baseItemsFilters = (): ItemsFiltersState => ({
   featured: false,
   promoted: false,
   listing_type: '',
-  dynamic_fields: {},
+  df: {},
+  df_min: {},
+  df_max: {},
 });
 
 export const buildItemsCentralUrl = (options: ItemsCentralNavigationOptions = {}) => {

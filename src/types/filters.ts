@@ -4,6 +4,7 @@ export type ItemsFiltersState = {
   page: number;
   per_page: number;
   city: string;
+  state: string;
   lat: string;
   lng: string;
   km: string;
@@ -14,7 +15,9 @@ export type ItemsFiltersState = {
   featured: boolean;
   promoted: boolean;
   listing_type: string;
-  dynamic_fields: Record<string, string | number | boolean>;
+  df: Record<string, string | string[]>;
+  df_min: Record<string, string>;
+  df_max: Record<string, string>;
 };
 
 export type UsersFiltersState = {
