@@ -26,7 +26,7 @@ export default function ShopCard({ shop, accentColor }: ShopCardProps) {
   return (
     <Link
       to={`/shop/${shop.id}`}
-      className="group w-64 shrink-0 bg-white rounded-3xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md transition-all duration-300 p-4 flex flex-col items-center text-center"
+      className="group w-full max-w-[22rem] sm:max-w-none bg-white rounded-3xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md transition-all duration-300 p-4 flex flex-col items-center text-center"
     >
       {/* 1. Updated 3D Title Tag (Hexagonal Shape with Gloss) */}
       <div className="mb-4 w-full flex justify-center filter drop-shadow-sm">

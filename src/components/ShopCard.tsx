@@ -26,7 +26,7 @@ export default function ShopCard({ shop, accentColor }: ShopCardProps) {
   return (
     <Link
       to={`/shop/${shop.id}`}
-      className="group w-64 shrink-0 bg-white rounded-3xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md transition-all duration-300 p-5 pt-8 flex flex-col items-center text-center"
+      className="group w-full max-w-[22rem] sm:max-w-none bg-white rounded-3xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md transition-all duration-300 p-5 pt-8 flex flex-col items-center text-center"
     >
       <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         {shop.photo?.url ? (
