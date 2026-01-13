@@ -19,9 +19,26 @@ export default function ItemsResults({
   cardStyle,
 }: ItemsResultsProps) {
   if (loading) {
+    const skeletons = Array.from({ length: 8 }, (_, index) => (
+      <div
+        key={`skeleton-${index}`}
+        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm animate-pulse"
+      >
+        <div className="h-32 w-full rounded-xl bg-slate-100" />
+        <div className="mt-4 h-4 w-3/4 rounded bg-slate-100" />
+        <div className="mt-2 h-3 w-1/2 rounded bg-slate-100" />
+        <div className="mt-4 h-6 w-24 rounded bg-slate-100" />
+      </div>
+    ));
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div
+        className={`grid gap-4 ${
+          layout === 'list'
+            ? 'grid-cols-1'
+            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+        }`}
+      >
+        {skeletons}
       </div>
     );
   }
