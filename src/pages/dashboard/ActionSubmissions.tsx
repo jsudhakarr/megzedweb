@@ -61,7 +61,7 @@ export default function ActionSubmissions({ variant }: { variant: 'received' | '
           variant === 'received'
             ? await apiService.getReceivedActionSubmissions()
             : await apiService.getMyActionSubmissions();
-        setRequests(Array.isArray(data) ? data : data?.data || []);
+        setRequests(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to fetch action submissions:', error);
       } finally {

@@ -18,12 +18,7 @@ import {
   Key,
   BedDouble,
 } from 'lucide-react';
-import {
-  apiService,
-  type Item,
-  type Shop,
-  type PublicUserDetails,
-} from '../services/api';
+import { apiService, type Item, type PublicUserDetails } from '../services/api';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
 import Footer from '../components/Footer';
@@ -34,13 +29,6 @@ type TabKey = 'all' | 'listings';
 const normalizeItems = (items: any): Item[] => {
   if (Array.isArray(items)) return items;
   if (Array.isArray(items?.data)) return items.data;
-  return [];
-};
-
-const normalizeShops = (shops: any): Shop[] => {
-  if (Array.isArray(shops)) return shops;
-  if (Array.isArray(shops?.data)) return shops.data;
-  if (Array.isArray(shops?.shops)) return shops.shops;
   return [];
 };
 
@@ -58,7 +46,6 @@ export default function PublicUserProfile() {
 
   const [user, setUser] = useState<PublicUserDetails | null>(null);
   const [items, setItems] = useState<Item[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
   const [tab, setTab] = useState<TabKey>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,21 +63,18 @@ export default function PublicUserProfile() {
     setLoading(true);
     setError(null);
     try {
-      const [profile, userItems, userShops] = await Promise.all([
+      const [profile, userItems] = await Promise.all([
         apiService.getPublicUser(userId),
         apiService.getItemsByUser(userId).catch(() => []),
-        apiService.getPublicUserShops(userId).catch(() => []),
       ]);
 
       setUser(profile);
       setItems(normalizeItems(userItems));
-      setShops(normalizeShops(userShops));
     } catch (err) {
       console.error(err);
       setError('Failed to load user profile');
       setUser(null);
       setItems([]);
-      setShops([]);
     } finally {
       setLoading(false);
     }
