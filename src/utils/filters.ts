@@ -22,16 +22,24 @@ const parsePage = (value: string | null, fallback: number): number => {
   return parsed && parsed > 0 ? parsed : fallback;
 };
 
-const parsePerPage = (value: string | null, fallback: number): number => {
+const parsePerPage = (
+  value: string | null,
+  fallback: number,
+  max?: number
+): number => {
   const parsed = parseNumber(value);
-  return parsed && parsed > 0 ? parsed : fallback;
+  if (!parsed || parsed <= 0) return fallback;
+  if (typeof max === 'number') {
+    return Math.min(parsed, max);
+  }
+  return parsed;
 };
 
 export const parseItemsFilters = (searchParams: URLSearchParams): ItemsFiltersState => ({
   q: parseString(searchParams.get('q')),
   sort: parseString(searchParams.get('sort')),
   page: parsePage(searchParams.get('page'), 1),
-  per_page: parsePerPage(searchParams.get('per_page'), 20),
+  per_page: parsePerPage(searchParams.get('per_page'), 10, 10),
   city: parseString(searchParams.get('city')),
   lat: parseString(searchParams.get('lat')),
   lng: parseString(searchParams.get('lng')),
