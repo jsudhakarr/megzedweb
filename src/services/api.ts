@@ -264,19 +264,25 @@ class ApiService {
     return queryString ? `?${queryString}` : '';
   }
 
-  private buildLocationParams(location?: {
-    city?: string | null;
-    state?: string | null;
-    lat?: number;
-    lng?: number;
-    distance?: number;
-  }): Record<string, string | number> {
+  private buildLocationParams(
+    location?: {
+      city?: string | null;
+      state?: string | null;
+      lat?: number;
+      lng?: number;
+      distance?: number;
+    },
+    options?: { includeCoordinates?: boolean }
+  ): Record<string, string | number> {
     const params: Record<string, string | number> = {};
+    const includeCoordinates = options?.includeCoordinates ?? true;
     if (location?.city) params.city = location.city;
     if (location?.state) params.state = location.state;
-    if (location?.lat !== undefined) params.lat = location.lat;
-    if (location?.lng !== undefined) params.lng = location.lng;
-    if (location?.distance !== undefined) params.distance = location.distance;
+    if (includeCoordinates) {
+      if (location?.lat !== undefined) params.lat = location.lat;
+      if (location?.lng !== undefined) params.lng = location.lng;
+      if (location?.distance !== undefined) params.distance = location.distance;
+    }
     return params;
   }
 
@@ -713,6 +719,8 @@ class ApiService {
       endpoint = `${API_BASE_URL}/items/by-category/${categoryId}`;
     } else if (locationEndpoint) {
       endpoint = locationEndpoint.endpoint;
+      params.delete('city');
+      params.delete('state');
       params.delete('distance');
       locationEndpoint.params.forEach((value, key) => {
         params.delete(key);
@@ -1068,7 +1076,7 @@ class ApiService {
     const itemCount = section.item_count ?? undefined;
     const limitParams =
       typeof itemCount === 'number' && itemCount > 0 ? { per_page: itemCount } : undefined;
-    const locationQuery = this.buildLocationParams(locationParams);
+    const locationQuery = this.buildLocationParams(locationParams, { includeCoordinates: false });
     const queryParams = { ...locationQuery, ...(limitParams ?? {}) };
 
     if (section.type === 'slider') {
