@@ -17,6 +17,19 @@ const parseBoolean = (value: string | null): boolean => {
   return value === '1' || value.toLowerCase() === 'true';
 };
 
+const parseJsonObject = <T extends Record<string, unknown>>(value: string | null): T => {
+  if (!value) return {} as T;
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as T;
+    }
+  } catch {
+    return {} as T;
+  }
+  return {} as T;
+};
+
 const parsePage = (value: string | null, fallback: number): number => {
   const parsed = parseNumber(value);
   return parsed && parsed > 0 ? parsed : fallback;
@@ -41,6 +54,7 @@ export const parseItemsFilters = (searchParams: URLSearchParams): ItemsFiltersSt
   page: parsePage(searchParams.get('page'), 1),
   per_page: parsePerPage(searchParams.get('per_page'), 10, 10),
   city: parseString(searchParams.get('city')),
+  state: parseString(searchParams.get('state')),
   lat: parseString(searchParams.get('lat')),
   lng: parseString(searchParams.get('lng')),
   km: parseString(searchParams.get('km')),
@@ -51,7 +65,9 @@ export const parseItemsFilters = (searchParams: URLSearchParams): ItemsFiltersSt
   featured: parseBoolean(searchParams.get('featured')),
   promoted: parseBoolean(searchParams.get('promoted')),
   listing_type: parseString(searchParams.get('listing_type')),
-  dynamic_fields: {},
+  df: parseJsonObject<Record<string, string | string[]>>(searchParams.get('df')),
+  df_min: parseJsonObject<Record<string, string>>(searchParams.get('df_min')),
+  df_max: parseJsonObject<Record<string, string>>(searchParams.get('df_max')),
 });
 
 export const parseUsersFilters = (searchParams: URLSearchParams): UsersFiltersState => ({

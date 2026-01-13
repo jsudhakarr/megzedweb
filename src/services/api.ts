@@ -17,6 +17,16 @@ import type { ActionSubmission, ActionSubmissionPayload } from '../types/action'
 
 export const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
+type QueryParamValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | QueryParamValue[]
+  | Record<string, QueryParamValue>;
+type QueryParams = Record<string, QueryParamValue>;
+
 // --- Interfaces ---
 
 export interface LoginCredentials {
@@ -266,12 +276,26 @@ class ApiService {
     return `${API_BASE_URL}${route.startsWith('/') ? '' : '/'}${route}`;
   }
 
-  private buildQuery(params?: Record<string, string | number | boolean | null | undefined>) {
+  private buildQuery(params?: QueryParams) {
     if (!params) return '';
     const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
+    const appendValue = (key: string, value: QueryParamValue) => {
       if (value === null || value === undefined) return;
+      if (Array.isArray(value)) {
+        value.forEach((entry) => appendValue(`${key}[]`, entry));
+        return;
+      }
+      if (typeof value === 'object') {
+        Object.entries(value).forEach(([childKey, childValue]) => {
+          appendValue(`${key}[${childKey}]`, childValue);
+        });
+        return;
+      }
       searchParams.append(key, String(value));
+    };
+
+    Object.entries(params).forEach(([key, value]) => {
+      appendValue(key, value);
     });
     const queryString = searchParams.toString();
     return queryString ? `?${queryString}` : '';
@@ -1073,7 +1097,7 @@ class ApiService {
   }
 
   async getItemsIndex(
-    params?: Record<string, string | number | boolean>,
+    params?: QueryParams,
     options?: { signal?: AbortSignal }
   ): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items${this.buildQuery(params)}`, {
