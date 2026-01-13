@@ -7,7 +7,7 @@ export default function LanguageButton() {
   const current = languages.find((l) => l.code === lang);
 
   return (
-    <div className="relative flex items-center gap-1 px-2 py-1 rounded-full hover:bg-slate-100 transition">
+    <div className="relative flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition">
       <Globe className="w-5 h-5 text-slate-600" />
 
       {/* Current language code */}

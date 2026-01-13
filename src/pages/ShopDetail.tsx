@@ -14,7 +14,6 @@ import {
   MoreHorizontal,
   Share2,
   Star,
-  Users,
   Zap,
   Key,
   BedDouble,

@@ -34,7 +34,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
     limit,
     categoryId,
     subcategoryId,
-    showFilters = false,
+    showFilters: _showFilters = false,
     layout = 'grid',
     cardStyle,
     listingType,

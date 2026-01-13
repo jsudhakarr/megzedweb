@@ -54,7 +54,7 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
   };
 
   const handleCategoryEnter = (
-    e: React.MouseEvent<HTMLButtonElement>,
+    e: React.SyntheticEvent<HTMLButtonElement>,
     categoryId: number
   ) => {
     setActiveCategoryId(categoryId);
