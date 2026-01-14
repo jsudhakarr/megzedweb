@@ -186,6 +186,7 @@ export default function Items() {
                 items={items}
                 limit={items.length}
                 layout="grid"
+                gridColumns={3}
                 cardStyle={itemsCardStyle}
               />
             )}
