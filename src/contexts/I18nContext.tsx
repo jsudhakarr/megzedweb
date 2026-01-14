@@ -44,8 +44,11 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
 
   /* ---------- change language ---------- */
   const setLang = (l: string) => {
-    setLangState(l);
-    localStorage.setItem("lang", l);
+    const nextLang = l.trim() || "en";
+    if (nextLang === lang) return;
+    setLangState(nextLang);
+    localStorage.setItem("lang", nextLang);
+    window.location.reload();
   };
 
   /* ---------- load available languages ---------- */
