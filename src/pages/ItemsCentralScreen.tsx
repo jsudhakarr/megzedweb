@@ -403,6 +403,7 @@ export default function ItemsCentralScreen() {
               error={error}
               primaryColor={primaryColor}
               layout={layout}
+              listVariant="stacked"
               cardStyle={itemsCardStyle}
             />
 
