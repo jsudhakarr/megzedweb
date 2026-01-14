@@ -650,11 +650,22 @@ export default function ShopDetail() {
                              <span className="text-lg font-bold text-blue-700">
                                 ₹ {formatPrice(item.price)}
                              </span>
-                             
-                             <span className="px-3 py-1 rounded-full bg-green-50 border border-green-100 text-green-700 text-xs font-bold flex items-center gap-1">
-                                <Key className="w-3 h-3" />
-                                {item.listing_type === 'rent' ? 'Rent' : 'Sale'}
-                             </span>
+                             {(() => {
+                               const listingDetail = item?.listing_type_detail || {};
+                               const listingName =
+                                 listingDetail?.name || (item?.listing_type === 'rent' ? 'Rent' : 'Sale');
+                               const listingIcon = listingDetail?.icon || null;
+                               return (
+                                 <span className="px-3 py-1 rounded-full bg-green-50 border border-green-100 text-green-700 text-xs font-bold flex items-center gap-1">
+                                   {listingIcon ? (
+                                     <img src={listingIcon} alt="" className="w-3 h-3 object-contain" />
+                                   ) : (
+                                     <Key className="w-3 h-3" />
+                                   )}
+                                   {listingName}
+                                 </span>
+                               );
+                             })()}
                           </div>
                         </div>
                       </Link>
