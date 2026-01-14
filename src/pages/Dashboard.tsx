@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppSettings } from "../contexts/AppSettingsContext";
-import { apiService } from "../services/api";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -21,6 +20,7 @@ import {
   Coins, // Keep generic icon for "Buy Coins"
 } from "lucide-react";
 import Footer from "../components/Footer";
+import { useDashboardSummary } from "../hooks/useDashboardSummary";
 
 // --- Asset Imports ---
 // Adjust path if needed (e.g. "../../assets/icons/...")
@@ -44,61 +44,11 @@ export default function Dashboard() {
 
   const primaryColor = settings?.primary_color || "#0073f0";
 
-  // State
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [coinsBalance, setCoinsBalance] = useState(0);
-
-  const toInt = (v: any, d = 0) => {
-    if (v == null) return d;
-    if (typeof v === "number") return Math.trunc(v);
-    if (typeof v === "string") return parseInt(v, 10) || d;
-    return d;
-  };
-
-  useEffect(() => {
-    let alive = true;
-
-    const loadBadges = async () => {
-      try {
-        const results = await Promise.allSettled([
-          apiService.getUnreadNotificationCount(),
-          apiService.getConversations(),
-          apiService.getWallet(),
-        ]);
-
-        if (!alive) return;
-
-        // 1. Notifications
-        const notifData = results[0].status === "fulfilled" ? results[0].value : 0;
-        setUnreadNotifications(
-          typeof notifData === "object" ? notifData.count || 0 : Number(notifData) || 0
-        );
-
-        // 2. Messages
-        const conversations = results[1].status === "fulfilled" ? results[1].value : [];
-        const chats = Array.isArray(conversations) ? conversations : (conversations as any).data || [];
-        const totalUnreadMessages = Array.isArray(chats)
-          ? chats.reduce((sum: number, c: any) => sum + (c.unread_count || 0), 0)
-          : 0;
-        setUnreadMessages(totalUnreadMessages);
-
-        // 3. Wallet
-        const wallet = results[2].status === "fulfilled" ? results[2].value : null;
-        const w = (wallet as any)?.data ?? wallet;
-        setCoinsBalance(toInt(w?.coins_balance, 0));
-      } catch (e) {
-        if (!alive) return;
-        // Fail silently or reset
-      }
-    };
-
-    loadBadges();
-
-    return () => {
-      alive = false;
-    };
-  }, []); // Run once on mount
+  const { data: summary } = useDashboardSummary();
+  const unreadNotifications = summary?.unread_count ?? 0;
+  const unreadMessages =
+    summary?.recent_conversations?.filter((conversation) => conversation.unread).length ?? 0;
+  const coinsBalance = summary?.wallet_balance ?? 0;
 
   const navItems: NavItem[] = [
     { 

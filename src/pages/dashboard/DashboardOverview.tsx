@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppSettings } from "../../contexts/AppSettingsContext";
-import { apiService } from "../../services/api";
 import {
   ShoppingBag,
   Store,
@@ -17,6 +15,7 @@ import {
   Wallet,
   Coins,
 } from "lucide-react";
+import { useDashboardSummary } from "../../hooks/useDashboardSummary";
 
 export default function DashboardOverview() {
   const navigate = useNavigate();
@@ -24,119 +23,24 @@ export default function DashboardOverview() {
   const { settings } = useAppSettings();
   const primaryColor = settings?.primary_color || "#0073f0";
 
-  const [itemsCount, setItemsCount] = useState(0);
-  const [shopsCount, setShopsCount] = useState(0);
-  const [favoritesCount, setFavoritesCount] = useState(0);
-  const [receivedRequestsCount, setReceivedRequestsCount] = useState(0);
-  const [sentRequestsCount, setSentRequestsCount] = useState(0);
+  const { data: summary, isLoading } = useDashboardSummary();
+  const unreadNotifications = summary?.unread_count ?? 0;
+  const unreadMessages =
+    summary?.recent_conversations?.filter((conversation) => conversation.unread).length ?? 0;
+  const itemsCount = summary?.my_items_count ?? 0;
+  const shopsCount = summary?.my_shops_count ?? 0;
+  const favoritesCount = summary?.saved_items_count ?? 0;
+  const pendingActionsCount = summary?.pending_action_submissions ?? 0;
+  const walletBalance = summary?.wallet_balance ?? 0;
+  const recentTransactions = summary?.recent_transactions ?? [];
+  const recentConversations = summary?.recent_conversations ?? [];
 
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-
-  // ✅ NEW: wallet + history
-  const [coinsBalance, setCoinsBalance] = useState(0);
-  const [walletTxCount, setWalletTxCount] = useState(0);
-
-  const [loading, setLoading] = useState(true);
-
-  const safeLen = (v: any) => (Array.isArray(v) ? v.length : 0);
-  const toInt = (v: any, d = 0) => {
-    if (v === null || v === undefined) return d;
-    if (typeof v === "number") return Math.trunc(v);
-    if (typeof v === "string") return parseInt(v, 10) || d;
-    return d;
+  const walletTxCount = recentTransactions.length;
+  const formatAmount = (amount: number) => {
+    const absAmount = Math.abs(amount);
+    const formatted = absAmount.toLocaleString();
+    return amount < 0 ? `-${formatted}` : `+${formatted}`;
   };
-
-  useEffect(() => {
-    let alive = true;
-
-    const fetchUserData = async () => {
-      setLoading(true);
-
-      try {
-        const results = await Promise.allSettled([
-          apiService.getUserItems(),
-          apiService.getUserShops(),
-          apiService.getUserFavorites(),
-          apiService.getReceivedActionSubmissions(),
-          apiService.getMyActionSubmissions(),
-
-          apiService.getUnreadNotificationCount(),
-          apiService.getConversations(),
-
-          // ✅ wallet
-          apiService.getWallet(),
-          apiService.getWalletTransactions(),
-        ]);
-
-        if (!alive) return;
-
-        // 1. Items
-        const items = results[0].status === "fulfilled" ? results[0].value : [];
-        setItemsCount(safeLen(items));
-
-        // 2. Shops
-        const shops = results[1].status === "fulfilled" ? results[1].value : [];
-        setShopsCount(safeLen(shops));
-
-        // 3. Favorites
-        const favorites = results[2].status === "fulfilled" ? results[2].value : [];
-        setFavoritesCount(safeLen(favorites));
-
-        // 4. Requests
-        const receivedRequests = results[3].status === "fulfilled" ? results[3].value : [];
-        setReceivedRequestsCount(safeLen(receivedRequests));
-
-        const sentRequests = results[4].status === "fulfilled" ? results[4].value : [];
-        setSentRequestsCount(safeLen(sentRequests));
-
-        // 5. Notifications (Handle { count: 5 } or plain number)
-        const notifData = results[5].status === "fulfilled" ? results[5].value : 0;
-        setUnreadNotifications(
-          typeof notifData === "object" ? notifData.count || 0 : Number(notifData) || 0
-        );
-
-        // 6. Chat unread total
-        const conversations = results[6].status === "fulfilled" ? results[6].value : [];
-        const chats = Array.isArray(conversations) ? conversations : (conversations as any).data || [];
-        const totalUnreadMessages = Array.isArray(chats)
-          ? chats.reduce((sum: number, c: any) => sum + (c.unread_count || 0), 0)
-          : 0;
-        setUnreadMessages(totalUnreadMessages);
-
-        // 7. Wallet balance
-        const wallet = results[7].status === "fulfilled" ? results[7].value : null;
-        const w = (wallet as any)?.data ?? wallet; // supports either shape
-        setCoinsBalance(toInt(w?.coins_balance, 0));
-
-        // 8. Wallet tx count
-        const tx = results[8].status === "fulfilled" ? results[8].value : [];
-        const txList = Array.isArray(tx) ? tx : (tx as any)?.data || [];
-        setWalletTxCount(Array.isArray(txList) ? txList.length : 0);
-      } catch (error) {
-        console.error("Failed to fetch user data:", error);
-        if (!alive) return;
-
-        setItemsCount(0);
-        setShopsCount(0);
-        setFavoritesCount(0);
-        setReceivedRequestsCount(0);
-        setSentRequestsCount(0);
-        setUnreadNotifications(0);
-        setUnreadMessages(0);
-        setCoinsBalance(0);
-        setWalletTxCount(0);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    };
-
-    fetchUserData();
-
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const stats = [
     {
@@ -152,7 +56,7 @@ export default function DashboardOverview() {
     // ✅ Wallet coins
     {
       title: "Wallet Coins",
-      value: loading ? "..." : String(coinsBalance),
+      value: isLoading ? "..." : String(walletBalance),
       subtitle: "Available balance",
       icon: <Wallet className="w-6 h-6" />,
       bgColor: "#ecfeff",
@@ -163,7 +67,7 @@ export default function DashboardOverview() {
     // ✅ Wallet history count
     {
       title: "Wallet History",
-      value: loading ? "..." : String(walletTxCount),
+      value: isLoading ? "..." : String(walletTxCount),
       subtitle: "Transactions",
       icon: <TrendingUp className="w-6 h-6" />,
       bgColor: "#f1f5f9",
@@ -184,7 +88,7 @@ export default function DashboardOverview() {
 
     {
       title: "Notifications",
-      value: loading ? "..." : String(unreadNotifications),
+      value: isLoading ? "..." : String(unreadNotifications),
       subtitle: "Unread alerts",
       icon: <Bell className="w-6 h-6" />,
       bgColor: "#fff7ed",
@@ -194,7 +98,7 @@ export default function DashboardOverview() {
 
     {
       title: "Messages",
-      value: loading ? "..." : String(unreadMessages),
+      value: isLoading ? "..." : String(unreadMessages),
       subtitle: "Unread chats",
       icon: <MessageCircle className="w-6 h-6" />,
       bgColor: "#eff6ff",
@@ -204,7 +108,7 @@ export default function DashboardOverview() {
 
     {
       title: "My Items",
-      value: loading ? "..." : String(itemsCount),
+      value: isLoading ? "..." : String(itemsCount),
       subtitle: "Active listings",
       icon: <ShoppingBag className="w-6 h-6" />,
       bgColor: "#dcfce7",
@@ -213,7 +117,7 @@ export default function DashboardOverview() {
     },
     {
       title: "My Businesses",
-      value: loading ? "..." : String(shopsCount),
+      value: isLoading ? "..." : String(shopsCount),
       subtitle: "Active businesses",
       icon: <Store className="w-6 h-6" />,
       bgColor: "#fed7aa",
@@ -222,7 +126,7 @@ export default function DashboardOverview() {
     },
     {
       title: "Favorites",
-      value: loading ? "..." : String(favoritesCount),
+      value: isLoading ? "..." : String(favoritesCount),
       subtitle: "Saved items",
       icon: <Heart className="w-6 h-6" />,
       bgColor: "#fecdd3",
@@ -230,18 +134,18 @@ export default function DashboardOverview() {
       onClick: () => navigate("/dashboard/likes"),
     },
     {
-      title: "Received Requests",
-      value: loading ? "..." : String(receivedRequestsCount),
-      subtitle: "Seller inbox",
+      title: "Pending Actions",
+      value: isLoading ? "..." : String(pendingActionsCount),
+      subtitle: "Awaiting response",
       icon: <Inbox className="w-6 h-6" />,
       bgColor: "#ddd6fe",
       iconColor: "#7c3aed",
       onClick: () => navigate("/dashboard/requests/received"),
     },
     {
-      title: "Sent Requests",
-      value: loading ? "..." : String(sentRequestsCount),
-      subtitle: "Buyer submissions",
+      title: "Action Submissions",
+      value: isLoading ? "..." : String(pendingActionsCount),
+      subtitle: "Your pending requests",
       icon: <Send className="w-6 h-6" />,
       bgColor: "#e0f2fe",
       iconColor: "#0284c7",
@@ -289,22 +193,103 @@ export default function DashboardOverview() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-slate-200">
-        <div className="flex items-center gap-2 sm:gap-3 mb-4">
-          <div className="p-2 sm:p-3 rounded-lg flex-shrink-0" style={{ backgroundColor: `${primaryColor}20` }}>
-            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: primaryColor }} />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-slate-200">
+          <div className="flex items-center gap-2 sm:gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-lg flex-shrink-0" style={{ backgroundColor: `${primaryColor}20` }}>
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: primaryColor }} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Recent Transactions</h2>
+              <p className="text-xs sm:text-sm text-slate-500">Latest wallet activity</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">Recent Activity</h2>
-            <p className="text-xs sm:text-sm text-slate-500">Your latest actions and updates</p>
-          </div>
+
+          {isLoading ? (
+            <div className="text-sm text-slate-500">Loading transactions...</div>
+          ) : recentTransactions.length === 0 ? (
+            <div className="text-center py-6 sm:py-8">
+              <p className="text-sm sm:text-base text-slate-500">No recent transactions.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between gap-3 border border-slate-100 rounded-lg px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {tx.description || "Transaction"}
+                    </p>
+                    <p className="text-xs text-slate-500">{tx.created_at}</p>
+                  </div>
+                  <span className={tx.amount < 0 ? "text-rose-600 font-semibold" : "text-emerald-600 font-semibold"}>
+                    {formatAmount(tx.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="text-center py-8 sm:py-12">
-          <p className="text-sm sm:text-base text-slate-500">No recent activity to display</p>
-          <p className="text-xs sm:text-sm text-slate-400 mt-2">
-            Start by creating items or businesses to see activity here
-          </p>
+        <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-slate-200">
+          <div className="flex items-center gap-2 sm:gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-lg flex-shrink-0" style={{ backgroundColor: `${primaryColor}20` }}>
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: primaryColor }} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Recent Conversations</h2>
+              <p className="text-xs sm:text-sm text-slate-500">Latest chat updates</p>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="text-sm text-slate-500">Loading conversations...</div>
+          ) : recentConversations.length === 0 ? (
+            <div className="text-center py-6 sm:py-8">
+              <p className="text-sm sm:text-base text-slate-500">No recent conversations.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentConversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => navigate("/dashboard/chat")}
+                  className="w-full flex items-center gap-3 text-left border border-slate-100 rounded-lg px-3 py-2 hover:bg-slate-50"
+                >
+                  {conversation.other_user.avatar ? (
+                    <img
+                      src={conversation.other_user.avatar}
+                      alt={conversation.other_user.name}
+                      className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm">
+                      {conversation.other_user.name?.[0] || "?"}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {conversation.other_user.name}
+                      </p>
+                      <span className="text-xs text-slate-400">{conversation.updated_at}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">
+                      {conversation.last_message || "No messages yet"}
+                    </p>
+                  </div>
+                  {conversation.unread && (
+                    <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                      New
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
