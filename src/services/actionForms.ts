@@ -31,9 +31,15 @@ const appendFormValue = (formData: FormData, fieldId: number, value: ActionFormV
   formData.append(key, String(value));
 };
 
+const getLangQueryParam = () => {
+  const lang = localStorage.getItem('lang');
+  if (!lang || !lang.trim()) return '';
+  return `?lang=${encodeURIComponent(lang.trim())}`;
+};
+
 export const fetchFields = async (categoryId: number): Promise<ActionFormSchema> => {
   const response = await apiRequest<{ success: boolean; data: ActionFormSchema }>({
-    endpoint: `/categories/${categoryId}/form-fields`,
+    endpoint: `/categories/${categoryId}/form-fields${getLangQueryParam()}`,
     method: 'GET',
   });
 

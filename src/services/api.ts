@@ -215,8 +215,11 @@ export type HomeSectionResolved = HomeSection & {
 
 class ApiService {
   private categoriesCache: Category[] | null = null;
+  private categoriesCacheByLang: Record<string, Category[]> = {};
   private subcategoriesCache: Subcategory[] | null = null;
   private subcategoriesByCategoryCache: Record<string, Subcategory[]> = {};
+  private subcategoriesCacheByLang: Record<string, Subcategory[]> = {};
+  private subcategoriesByCategoryCacheByLang: Record<string, Record<string, Subcategory[]>> = {};
   private listingTypesCache: ListingType[] | null = null;
 
   private getHeaders(includeAuth = false): HeadersInit {
@@ -231,6 +234,26 @@ class ApiService {
     }
 
     return headers;
+  }
+
+  private getLang(): string | null {
+    const lang = localStorage.getItem('lang');
+    if (!lang) return null;
+    const normalized = lang.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private getLangCacheKey(lang?: QueryParamValue): string {
+    if (typeof lang === 'string' && lang.trim()) return lang.trim();
+    if (typeof lang === 'number') return String(lang);
+    return 'default';
+  }
+
+  private withLangParams(params?: QueryParams): QueryParams | undefined {
+    const lang = this.getLang();
+    if (!lang) return params;
+    if (params && Object.prototype.hasOwnProperty.call(params, 'lang')) return params;
+    return { ...(params ?? {}), lang };
   }
 
   private getPublicHeaders() {
@@ -614,21 +637,34 @@ class ApiService {
   // ---------------- PUBLIC ----------------
 
   async getCategories(params?: Record<string, string | number | boolean>): Promise<Category[]> {
-    if (!params || Object.keys(params).length === 0) {
-      if (this.categoriesCache) {
+    const requestParams = this.withLangParams(params);
+    const onlyLangParam =
+      !requestParams ||
+      Object.keys(requestParams).length === 0 ||
+      Object.keys(requestParams).every((key) => key === 'lang');
+    const cacheKey = this.getLangCacheKey(requestParams?.lang);
+
+    if (onlyLangParam) {
+      if (this.categoriesCacheByLang[cacheKey]) {
+        return this.categoriesCacheByLang[cacheKey];
+      }
+      if (!requestParams && this.categoriesCache) {
         return this.categoriesCache;
       }
     }
 
-    const response = await fetch(`${API_BASE_URL}/categories${this.buildQuery(params)}`, {
+    const response = await fetch(`${API_BASE_URL}/categories${this.buildQuery(requestParams)}`, {
       headers: this.getHeaders(),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data: CategoriesResponse = await response.json();
     const categories = this.normalizeListResponse<Category>(data);
-    if (!params || Object.keys(params).length === 0) {
-      this.categoriesCache = categories;
+    if (onlyLangParam) {
+      this.categoriesCacheByLang[cacheKey] = categories;
+      if (!requestParams) {
+        this.categoriesCache = categories;
+      }
     }
     return categories;
   }
@@ -650,25 +686,40 @@ class ApiService {
   }
 
   async getSubcategories(categoryId?: string | number): Promise<Subcategory[]> {
+    const requestParams = this.withLangParams(
+      categoryId ? { category_id: String(categoryId) } : undefined
+    );
+    const langKey = this.getLangCacheKey(requestParams?.lang);
+    const subcategoriesByCategoryCache =
+      this.subcategoriesByCategoryCacheByLang[langKey] ?? {};
+
     if (categoryId) {
-      const cacheKey = String(categoryId);
-      if (this.subcategoriesByCategoryCache[cacheKey]) {
-        return this.subcategoriesByCategoryCache[cacheKey];
+      const categoryKey = String(categoryId);
+      if (subcategoriesByCategoryCache[categoryKey]) {
+        return subcategoriesByCategoryCache[categoryKey];
+      }
+      if (this.subcategoriesCacheByLang[langKey]) {
+        const filtered = this.subcategoriesCacheByLang[langKey].filter(
+          (subcategory) => String(subcategory.category_id) === categoryKey
+        );
+        subcategoriesByCategoryCache[categoryKey] = filtered;
+        this.subcategoriesByCategoryCacheByLang[langKey] = subcategoriesByCategoryCache;
+        return filtered;
       }
       if (this.subcategoriesCache) {
         const filtered = this.subcategoriesCache.filter(
-          (subcategory) => String(subcategory.category_id) === cacheKey
+          (subcategory) => String(subcategory.category_id) === categoryKey
         );
-        this.subcategoriesByCategoryCache[cacheKey] = filtered;
+        this.subcategoriesByCategoryCache[categoryKey] = filtered;
         return filtered;
       }
+    } else if (this.subcategoriesCacheByLang[langKey]) {
+      return this.subcategoriesCacheByLang[langKey];
     } else if (this.subcategoriesCache) {
       return this.subcategoriesCache;
     }
 
-    const url = categoryId
-      ? `${API_BASE_URL}/subcategories?category_id=${encodeURIComponent(String(categoryId))}`
-      : `${API_BASE_URL}/subcategories`;
+    const url = `${API_BASE_URL}/subcategories${this.buildQuery(requestParams)}`;
 
     const response = await fetch(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -677,8 +728,10 @@ class ApiService {
     // keep compatible with your existing response style
     const subcategories = data?.data ?? [];
     if (categoryId) {
-      this.subcategoriesByCategoryCache[String(categoryId)] = subcategories;
+      subcategoriesByCategoryCache[String(categoryId)] = subcategories;
+      this.subcategoriesByCategoryCacheByLang[langKey] = subcategoriesByCategoryCache;
     } else {
+      this.subcategoriesCacheByLang[langKey] = subcategories;
       this.subcategoriesCache = subcategories;
     }
     return subcategories;
@@ -687,11 +740,15 @@ class ApiService {
 
   async getSubcategoryFields(subcategoryId: string | number): Promise<any> {
     const id = encodeURIComponent(String(subcategoryId));
+    const requestParams = this.withLangParams();
 
-    const response = await fetch(`${API_BASE_URL}/subcategories/${id}/fields`, {
+    const response = await fetch(
+      `${API_BASE_URL}/subcategories/${id}/fields${this.buildQuery(requestParams)}`,
+      {
       method: "GET",
       headers: this.getHeaders(true),
-    });
+      }
+    );
 
     if (!response.ok) throw new Error(await this.readError(response));
     return response.json();
@@ -993,9 +1050,12 @@ class ApiService {
   }
 
   async getFrontWebSections(): Promise<HomeSection[]> {
-    const response = await fetch(`${API_BASE_URL}/front-web/sections`, {
+    const response = await fetch(
+      `${API_BASE_URL}/front-web/sections${this.buildQuery(this.withLangParams())}`,
+      {
       headers: this.getHeaders(),
-    });
+      }
+    );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     return this.normalizeListResponse<HomeSection>(data);
