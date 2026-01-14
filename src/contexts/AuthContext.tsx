@@ -110,17 +110,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     initAuth();
   }, []);
 
-  const handleAuthResponse = (response: AuthResponse) => {
+  const handleAuthResponse = async (response: AuthResponse) => {
     setToken(response.token);
     setUser(response.user);
     localStorage.setItem('auth_token', response.token);
     localStorage.setItem('user', JSON.stringify(response.user));
+    try {
+      const profileData = await apiService.getProfile();
+      const updatedUser: User = {
+        id: profileData.id,
+        name: profileData.name,
+        email: profileData.email,
+        mobile: profileData.mobile,
+        about: profileData.about,
+        address: profileData.address,
+        city: profileData.city,
+        state: profileData.state,
+        country: profileData.country,
+        profile_photo: profileData.profile_photo,
+        profile_photo_url: profileData.profile_photo_url || profileData.avatar_url,
+        notification: profileData.notification,
+        is_verified: profileData.is_verified || false,
+        kyc_status: profileData.kyc_status || 'pending',
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error('Failed to refresh profile after auth:', error);
+    }
   };
 
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await apiService.login(credentials);
-      handleAuthResponse(response);
+      await handleAuthResponse(response);
     } catch (error) {
       console.error('AuthContext: Login error:', error);
       throw error;
@@ -129,7 +152,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (data: RegisterData) => {
     const response = await apiService.register(data);
-    handleAuthResponse(response);
+    await handleAuthResponse(response);
   };
 
   // ✅ FIX: send access_token field (not id_token/provider_id)
@@ -156,7 +179,7 @@ const response = await apiService.socialLogin({
 });
 
 
-    handleAuthResponse(response);
+    await handleAuthResponse(response);
   } catch (error) {
     console.error('Google login error:', error);
     throw error;
@@ -196,7 +219,7 @@ const response = await apiService.socialLogin({
         mobile: phoneNumber ? phoneNumber.replace('+', '') : undefined, // ✅ optional
       });
 
-      handleAuthResponse(response);
+      await handleAuthResponse(response);
     } catch (error) {
       console.error('OTP verification error:', error);
       throw error;
