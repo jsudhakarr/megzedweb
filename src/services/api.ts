@@ -1455,6 +1455,10 @@ class ApiService {
     return response.json();
   }
 
+  async toggleItemFavorite(itemId: number): Promise<any> {
+    return this.toggleSaveItem(itemId);
+  }
+
   async getFavoriteShops(): Promise<Shop[]> {
     const response = await fetch(`${API_BASE_URL}/shops/favorites`, {
       headers: this.getHeaders(true),
