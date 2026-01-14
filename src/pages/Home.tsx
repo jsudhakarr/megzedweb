@@ -40,8 +40,8 @@ import type { Subcategory } from '../types/category';
 
 const ScanQrModal = lazy(() => import('../components/ScanQrModal'));
 
-let cachedHomeSections: HomeSectionResolved[] | null = null;
-let cachedHomeSectionsByLocation: Record<string, HomeSectionResolved[]> = {};
+const cachedHomeSectionsByLang: Record<string, HomeSectionResolved[] | undefined> = {};
+const cachedHomeSectionsByLocation: Record<string, HomeSectionResolved[] | undefined> = {};
 
 interface FilterState {
   category: number | null;
@@ -84,7 +84,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { settings } = useAppSettings();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const [loginOpen, setLoginOpen] = useState(false);
 
@@ -109,11 +109,16 @@ export default function Home() {
     () => getLocationKey(filters),
     [filters.city, filters.state, filters.lat, filters.lng, filters.distance]
   );
+  const homeCacheKey = useMemo(
+    () => `${lang || 'en'}:${locationKey}`,
+    [lang, locationKey]
+  );
   const [homeSections, setHomeSections] = useState<HomeSectionResolved[]>(
-    () => cachedHomeSectionsByLocation[locationKey] ?? cachedHomeSections ?? []
+    () => cachedHomeSectionsByLocation[homeCacheKey] ?? cachedHomeSectionsByLang[lang] ?? []
   );
   const [sectionsLoading, setSectionsLoading] = useState(
-    cachedHomeSectionsByLocation[locationKey] === undefined && cachedHomeSections === null
+    cachedHomeSectionsByLocation[homeCacheKey] === undefined &&
+      cachedHomeSectionsByLang[lang] === undefined
   );
 
   const handleSubcategorySelect = (subcategory: Subcategory, category: Category) => {
@@ -258,7 +263,7 @@ export default function Home() {
   const sectionTitleWrapperClass = 'space-y-1';
 
   useEffect(() => {
-    const cachedSections = cachedHomeSectionsByLocation[locationKey];
+    const cachedSections = cachedHomeSectionsByLocation[homeCacheKey];
     if (cachedSections) {
       setHomeSections(cachedSections);
       setSectionsLoading(false);
@@ -280,13 +285,13 @@ export default function Home() {
           return { ...sections[index], resolvedData: {} } as HomeSectionResolved;
         });
 
-        cachedHomeSectionsByLocation[locationKey] = resolvedSections;
-        cachedHomeSections = resolvedSections;
+        cachedHomeSectionsByLocation[homeCacheKey] = resolvedSections;
+        cachedHomeSectionsByLang[lang] = resolvedSections;
         setHomeSections(resolvedSections);
       } catch (error) {
         console.error('Failed to load home sections:', error);
-        cachedHomeSectionsByLocation[locationKey] = [];
-        cachedHomeSections = [];
+        cachedHomeSectionsByLocation[homeCacheKey] = [];
+        cachedHomeSectionsByLang[lang] = [];
         setHomeSections([]);
       } finally {
         setSectionsLoading(false);
@@ -294,7 +299,7 @@ export default function Home() {
     };
 
     loadSections();
-  }, [locationKey, locationParams]);
+  }, [homeCacheKey, locationParams, lang]);
 
   useEffect(() => {
     const warmCategoryData = async () => {
