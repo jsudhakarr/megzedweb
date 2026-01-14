@@ -48,6 +48,11 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     if (nextLang === lang) return;
     setLangState(nextLang);
     localStorage.setItem("lang", nextLang);
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith("translations_")) {
+        localStorage.removeItem(key);
+      }
+    });
     window.location.reload();
   };
 
