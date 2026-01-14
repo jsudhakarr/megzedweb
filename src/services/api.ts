@@ -122,6 +122,13 @@ export interface User {
   profile_photo_url?: string;
 }
 
+export interface DashboardSummaryUser {
+  id: number;
+  name: string;
+  avatar?: string | null;
+  profile_photo_url?: string | null;
+}
+
 export interface Slider {
   id: number;
   title: string;
@@ -157,6 +164,33 @@ export interface Conversation {
   last_message_time?: string;
   unread_count: number;
   
+}
+
+export interface DashboardSummaryTransaction {
+  id: number;
+  amount: number;
+  type: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface DashboardSummaryConversation {
+  id: number;
+  other_user: DashboardSummaryUser;
+  last_message: string | null;
+  unread: boolean;
+  updated_at: string;
+}
+
+export interface DashboardSummary {
+  unread_count: number;
+  wallet_balance: number;
+  my_items_count: number;
+  saved_items_count: number;
+  my_shops_count: number;
+  pending_action_submissions: number;
+  recent_transactions: DashboardSummaryTransaction[];
+  recent_conversations: DashboardSummaryConversation[];
 }
 
 export type Language = {
@@ -1837,6 +1871,17 @@ class ApiService {
     });
     if (!response.ok) throw new Error(await this.readError(response));
     return response.json();
+  }
+
+  // --- DASHBOARD SUMMARY ---
+
+  async getDashboardSummary(): Promise<DashboardSummary> {
+    const response = await fetch(`${API_BASE_URL}/dashboard/summary`, {
+      headers: this.getHeaders(true),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const json = await response.json();
+    return (json?.data ?? json) as DashboardSummary;
   }
 
   // --- CHAT ENDPOINTS ---
