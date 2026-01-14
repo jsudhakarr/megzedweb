@@ -482,6 +482,12 @@ export default function ItemDetail() {
   const contactMobile = (item as any).user?.mobile || (item as any).shop?.user?.mobile || "";
   const sellerType = hasShop ? (item as any).shop!.shop_type || "Business" : "Individual";
   const categoryId = Number((item as any).category_id || 0);
+  const listingDetail = (item as any)?.listing_type_detail || {};
+  const listingName =
+    listingDetail?.name || ((item as any).listing_type === "rent" ? "Rent" : "Sale");
+  const listingCode = normalizeCode(listingDetail?.code || (item as any).listing_type);
+  const isRentListing = listingCode === "rent";
+  const durationLabel = (item as any)?.duration_detail?.name || (item as any).rent_duration || "";
 
   // -----------------------------
   // UI
@@ -609,10 +615,10 @@ export default function ItemDetail() {
                       )}
                       <span
                         className={`px-3 py-1 text-xs font-bold text-white rounded-full shadow-sm uppercase tracking-wider ${
-                          (item as any).listing_type === "rent" ? "bg-amber-500" : "bg-emerald-500"
+                          isRentListing ? "bg-amber-500" : "bg-emerald-500"
                         }`}
                       >
-                        {(item as any).listing_type}
+                        {listingName}
                       </span>
                     </div>
                   </>
@@ -649,8 +655,8 @@ export default function ItemDetail() {
                 <span className="text-3xl font-bold" style={{ color: primaryColor }}>
                   {formatPrice((item as any).price)}
                 </span>
-                {(item as any).listing_type === "rent" && (item as any).rent_duration && (
-                  <span className="text-lg text-slate-500 font-medium">/ {(item as any).rent_duration}</span>
+                {isRentListing && durationLabel && (
+                  <span className="text-lg text-slate-500 font-medium">/ {durationLabel}</span>
                 )}
               </div>
             </div>
@@ -724,8 +730,8 @@ export default function ItemDetail() {
                   <span className="text-4xl font-extrabold tracking-tight" style={{ color: primaryColor }}>
                     {formatPrice((item as any).price)}
                   </span>
-                  {(item as any).listing_type === "rent" && (item as any).rent_duration && (
-                    <span className="text-lg text-slate-400 font-medium">/ {(item as any).rent_duration}</span>
+                  {isRentListing && durationLabel && (
+                    <span className="text-lg text-slate-400 font-medium">/ {durationLabel}</span>
                   )}
                 </div>
               </div>

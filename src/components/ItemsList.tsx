@@ -53,6 +53,12 @@ export default function ItemsList({
         const fields = getDynamicFields(item);
         const photo = item?.feature_photo?.url || null;
         const isSaved = savedItemIds?.has(item.id) ?? false;
+        const listingDetail = item?.listing_type_detail || {};
+        const listingName =
+          listingDetail?.name || (item?.listing_type === 'rent' ? 'Rent' : 'Sale');
+        const listingCode = (listingDetail?.code || item?.listing_type || '').toLowerCase();
+        const durationLabel = item?.duration_detail?.name || item?.rent_duration || '—';
+        const isRentListing = listingCode === 'rent';
 
         return (
           <Link
@@ -138,13 +144,13 @@ export default function ItemsList({
                     ₹ {formatPrice(item.price)}
                   </div>
 
-                  {item.listing_type === 'rent' ? (
+                  {isRentListing ? (
                     <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold whitespace-nowrap">
-                      Rent • {item.rent_duration || '—'}
+                      {listingName} • {durationLabel}
                     </span>
                   ) : (
                     <span className="px-3 py-1 rounded-full bg-green-50 text-green-600 text-xs font-semibold whitespace-nowrap">
-                      Sale
+                      {listingName}
                     </span>
                   )}
                 </div>

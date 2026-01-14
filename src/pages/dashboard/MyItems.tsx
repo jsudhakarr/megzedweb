@@ -214,6 +214,12 @@ export default function MyItems() {
             
             const isPendingApproval = item.approval_status === 'pending';
             const isRejected = item.approval_status === 'rejected';
+            const listingDetail = item?.listing_type_detail || {};
+            const listingName =
+              listingDetail?.name || (item?.listing_type === 'rent' ? 'Rent' : 'Sale');
+            const listingCode = (listingDetail?.code || item?.listing_type || '').toLowerCase();
+            const durationLabel = item?.duration_detail?.name || item?.rent_duration || 'mo';
+            const isRentListing = listingCode === 'rent';
 
             return (
               <div
@@ -243,7 +249,7 @@ export default function MyItems() {
                   {/* Type Badge (Rent/Sale) */}
                   <div className="absolute bottom-3 left-3 z-10">
                     <span className="px-2.5 py-1 text-[10px] font-bold bg-slate-900/90 text-white backdrop-blur-md rounded-md uppercase shadow-sm">
-                      {item.listing_type}
+                      {listingName}
                     </span>
                   </div>
 
@@ -310,9 +316,9 @@ export default function MyItems() {
                         {settings?.currency || '$'}
                         {Number(item.price || 0).toLocaleString()}
                       </p>
-                      {item.listing_type === 'rent' && (
+                      {isRentListing && (
                         <p className="text-[10px] text-slate-400 font-medium">
-                          /{item.rent_duration || 'mo'}
+                          /{durationLabel}
                         </p>
                       )}
                     </div>

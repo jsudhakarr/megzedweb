@@ -166,9 +166,15 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const resolvedCardStyle = normalizeCardStyle(cardStyle);
 
   const resolvedItems = typeof limit === 'number' ? items.slice(0, limit) : items;
-  const isListLayout = layout === 'list';
-  const isCarouselList = isListLayout && listVariant === 'carousel';
-  const isStackedList = isListLayout && listVariant === 'stacked';
+  const isListCardStyle = resolvedCardStyle === 'list_card_1' || resolvedCardStyle === 'list_card_2';
+  const isGridCarouselStyle = resolvedCardStyle === 'grid_card_2';
+  const shouldForceCarousel = isListCardStyle || isGridCarouselStyle;
+  const effectiveLayout = shouldForceCarousel ? 'list' : layout;
+  const effectiveListVariant = shouldForceCarousel ? 'carousel' : listVariant;
+  const effectiveGridColumns = resolvedCardStyle === 'grid_card_1' ? 4 : gridColumns;
+  const isListLayout = effectiveLayout === 'list';
+  const isCarouselList = isListLayout && effectiveListVariant === 'carousel';
+  const isStackedList = isListLayout && effectiveListVariant === 'stacked';
 
   useEffect(() => {
     if (!isCarouselList) return;
@@ -238,9 +244,11 @@ export default function ItemsGrid(props: ItemsGridProps) {
     ? isCarouselList
       ? `flex gap-3 overflow-x-auto pb-4 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
       : 'flex flex-col gap-3'
-    : gridColumns === 3
-      ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3'
-      : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-3';
+    : effectiveGridColumns === 4
+      ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-3'
+      : effectiveGridColumns === 3
+        ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3'
+        : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-3';
 
   const formatDuration = (item: any) =>
     item?.duration_detail?.name || item?.rent_duration || '';
@@ -298,6 +306,8 @@ export default function ItemsGrid(props: ItemsGridProps) {
             const fields = getDynamicFields(item);
             const durationLabel = formatDuration(item);
             const listingTag = getListingTag(item);
+            const listingCode = (item?.listing_type_detail?.code || item?.listing_type || '').toLowerCase();
+            const isRentListing = listingCode === 'rent';
             const tagStyles = listingTag.color
               ? {
                   backgroundColor: `${listingTag.color}1a`,
@@ -414,7 +424,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_1') {
               const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow-lg transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[320px] max-w-[420px] w-[360px] flex-shrink-0' : ''
+                effectiveLayout === 'list' ? 'min-w-[320px] max-w-[420px] w-[360px] flex-shrink-0' : ''
               } h-36 sm:h-40`;
               const imageClass = 'w-32 sm:w-40 h-full';
               const priceClass = 'text-sky-600 font-bold text-lg sm:text-xl';
@@ -505,7 +515,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                     <div className="border-t border-slate-100 pt-2 mt-auto flex items-center justify-between">
                       <div className={`${priceClass} flex items-baseline`}>
                         ₹ {formatPrice(item.price)}
-                        {durationLabel && item.listing_type === 'rent' && (
+                        {durationLabel && isRentListing && (
                           <span className="text-[11px] font-medium text-slate-400 ml-1.5 relative -top-0.5">
                             /{durationLabel}
                           </span>
@@ -522,7 +532,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_2') {
               const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[300px] max-w-[380px] w-[320px] flex-shrink-0' : ''
+                effectiveLayout === 'list' ? 'min-w-[300px] max-w-[380px] w-[320px] flex-shrink-0' : ''
               } h-32 sm:h-36`;
               const imageClass = 'w-28 sm:w-36 h-full';
               const priceClass = 'text-sky-600 font-bold text-base sm:text-lg';
@@ -608,7 +618,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                     <div className="border-t border-slate-100 pt-2 mt-auto flex items-center justify-between">
                       <div className={`${priceClass} flex items-baseline`}>
                         ₹ {formatPrice(item.price)}
-                        {durationLabel && item.listing_type === 'rent' && (
+                        {durationLabel && isRentListing && (
                           <span className="text-[10px] font-medium text-slate-400 ml-1.5 relative -top-0.5">
                             /{durationLabel}
                           </span>
@@ -625,7 +635,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'grid_card_1') {
               const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[300px] max-w-[380px] w-[340px] flex-shrink-0' : ''
+                effectiveLayout === 'list' ? 'min-w-[300px] max-w-[380px] w-[340px] flex-shrink-0' : ''
               }`;
               const imageHeight = 'h-52';
               const priceClass = 'text-sky-600 font-bold text-2xl';
@@ -682,7 +692,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   <div className="px-4 pb-4 pt-1">
                     <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
-                      {durationLabel && item.listing_type === 'rent' && (
+                      {durationLabel && isRentListing && (
                         <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
                         </span>
@@ -732,7 +742,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'grid_card_2') {
               const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[280px] max-w-[340px] w-[320px] flex-shrink-0' : ''
+                effectiveLayout === 'list' ? 'min-w-[280px] max-w-[340px] w-[320px] flex-shrink-0' : ''
               }`;
               const imageHeight = 'h-48';
               const priceClass = 'text-sky-600 font-bold text-xl';
@@ -789,7 +799,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   <div className="px-4 pb-4 pt-1">
                     <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
-                      {durationLabel && item.listing_type === 'rent' && (
+                      {durationLabel && isRentListing && (
                         <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
                         </span>
@@ -838,7 +848,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // DEFAULT CARD (UPDATED)
             // ----------------------------------------------------------------------
             const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-              layout === 'list' ? 'min-w-[300px] max-w-[380px] w-[340px] flex-shrink-0' : ''
+              effectiveLayout === 'list' ? 'min-w-[300px] max-w-[380px] w-[340px] flex-shrink-0' : ''
             }`;
             const imageHeight = 'h-52';
             const priceClass = 'text-green-600 font-bold text-xl';
@@ -897,7 +907,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                     ₹ {formatPrice(item.price)}
                     {/* ✅ DURATION: Smaller text-xs */}
-                    {durationLabel && item.listing_type === 'rent' && (
+                    {durationLabel && isRentListing && (
                       <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                         /{durationLabel}
                       </span>
