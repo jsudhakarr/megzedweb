@@ -756,12 +756,14 @@ class ApiService {
   }
 
   async searchItemsIndex(
-    params?: Record<string, string | number | boolean>
+    params?: Record<string, string | number | boolean>,
+    options?: { signal?: AbortSignal }
   ): Promise<Item[]> {
     const response = await fetch(
       `${API_BASE_URL}/items/search${this.buildQuery(params)}`,
       {
         headers: this.getHeaders(true),
+        signal: options?.signal,
       }
     );
     if (!response.ok) throw new Error(await this.readError(response));

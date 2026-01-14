@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiService, type Item, type Shop } from './api';
+import { apiService, type Item, type Shop } from './api';
 import type { PublicUser } from '../types/user';
 import type {
   ItemsFiltersState,
@@ -10,21 +10,6 @@ const toNumber = (value: string): number | undefined => {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
-};
-
-const appendQueryValue = (query: URLSearchParams, key: string, value: unknown) => {
-  if (value === null || value === undefined) return;
-  if (Array.isArray(value)) {
-    value.forEach((entry) => appendQueryValue(query, `${key}[]`, entry));
-    return;
-  }
-  if (typeof value === 'object') {
-    Object.entries(value as Record<string, unknown>).forEach(([childKey, childValue]) => {
-      appendQueryValue(query, `${key}[${childKey}]`, childValue);
-    });
-    return;
-  }
-  query.append(key, String(value));
 };
 
 const withLocationParams = (
@@ -140,17 +125,10 @@ export const fetchItemsCentral = async (
   options?: { signal?: AbortSignal }
 ): Promise<Item[]> => {
   const params = buildItemsParams(filters);
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (typeof value === 'boolean') {
-      if (value) query.append(key, '1');
-      return;
-    }
-    appendQueryValue(query, key, value);
-  });
-  const queryString = query.toString();
-  const url = queryString ? `${API_BASE_URL}/items?${queryString}` : `${API_BASE_URL}/items`;
-  console.log('Items request:', { url, params: Object.fromEntries(query.entries()) });
+  const hasSearch = typeof params.q === 'string' && params.q.trim().length > 0;
+  if (hasSearch) {
+    return apiService.searchItemsIndex(params, options);
+  }
   return apiService.getItemsIndex(params, options);
 };
 
