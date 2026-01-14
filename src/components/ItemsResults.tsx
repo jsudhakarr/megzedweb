@@ -7,6 +7,7 @@ interface ItemsResultsProps {
   error?: string | null;
   primaryColor: string;
   layout: 'grid' | 'list';
+  listVariant?: 'carousel' | 'stacked';
   cardStyle?: string;
 }
 
@@ -16,6 +17,7 @@ export default function ItemsResults({
   error,
   primaryColor,
   layout,
+  listVariant,
   cardStyle,
 }: ItemsResultsProps) {
   if (loading) {
@@ -65,6 +67,7 @@ export default function ItemsResults({
       items={items}
       limit={items.length}
       layout={layout}
+      listVariant={listVariant}
       cardStyle={cardStyle}
     />
   );
