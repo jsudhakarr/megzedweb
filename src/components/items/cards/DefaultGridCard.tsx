@@ -118,7 +118,7 @@ export default function DefaultGridCard({
                 key={field.field_id}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200"
               >
-                <img src={field.image} alt="" className="w-4 h-4 object-contain" />
+                <img src={field.image ?? undefined} alt="" className="w-4 h-4 object-contain" />
                 <span className="text-xs font-medium text-slate-700">{field.value}</span>
               </div>
             ))}

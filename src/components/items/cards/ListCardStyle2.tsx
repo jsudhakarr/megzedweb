@@ -123,7 +123,7 @@ export default function ListCardStyle2({
           <div className="flex items-center gap-2 mt-1 flex-wrap text-slate-600 text-xs">
             {fields.map((field) => (
               <div key={field.field_id} className="flex items-center gap-1">
-                <img src={field.image} alt="" className="w-4 h-4 object-contain" />
+                <img src={field.image ?? undefined} alt="" className="w-4 h-4 object-contain" />
                 <span className="font-medium">{field.value}</span>
               </div>
             ))}
