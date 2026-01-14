@@ -10,6 +10,7 @@ interface ItemsGridProps {
   primaryColor: string;
   items?: Item[];
   limit?: number;
+  gridColumns?: 3 | 4;
   categoryId?: number | null;
   subcategoryId?: number | null;
   subcategoryName?: string | null;
@@ -32,6 +33,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const {
     items: itemsOverride,
     limit,
+    gridColumns = 4,
     categoryId,
     subcategoryId,
     showFilters: _showFilters = false,
@@ -217,7 +219,9 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const gridClass =
     layout === 'list'
       ? `flex gap-4 overflow-x-auto pb-4 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
-      : 'grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4';
+      : gridColumns === 3
+        ? 'grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4'
+        : 'grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4';
 
   const formatDuration = (item: any) =>
     item?.duration_detail?.name || item?.rent_duration || '';
@@ -239,27 +243,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
       color: detail?.tag_color || null,
     };
   };
-
-  const getCardImageHeight = (variant: string) => {
-    if (variant === 'grid_card_2') return 'h-48'; 
-    if (variant === 'grid_card_1') return 'h-52'; 
-    if (variant === 'list_card_2') return 'h-52'; 
-    if (variant === 'list_card_1') return 'h-56'; 
-    return 'h-56'; 
-  };
-
-  const getCardPriceClass = (variant: string) => {
-    if (variant === 'list_card_1' || variant === 'grid_card_1') {
-      return 'text-sky-600 font-bold text-2xl';
-    }
-    if (variant === 'list_card_2' || variant === 'grid_card_2') {
-      return 'text-sky-600 font-bold text-xl';
-    }
-    return 'text-green-600 font-bold text-xl';
-  };
-
-  const cardImageHeight = getCardImageHeight(resolvedCardStyle);
-  const priceClass = getCardPriceClass(resolvedCardStyle);
 
   return (
     <div className="space-y-4">
@@ -305,19 +288,231 @@ export default function ItemsGrid(props: ItemsGridProps) {
               : undefined;
             const isFavourite = item?.is_favorite === true;
 
-            const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-              layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
-            }`;
-
             // ----------------------------------------------------------------------
             // LIST CARD 1
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_1') {
+              const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow-lg transition-all overflow-hidden ${
+                layout === 'list' ? 'min-w-[320px] max-w-[420px] w-96 flex-shrink-0' : ''
+              } h-36 sm:h-40`;
+              const imageClass = 'w-32 sm:w-40 h-full';
+              const priceClass = 'text-sky-600 font-bold text-lg sm:text-xl';
+              const titleClass = 'text-base sm:text-lg font-bold text-slate-900 line-clamp-1';
+              return (
+                <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
+                  <div className={`${imageClass} relative shrink-0`}>
+                    {item.feature_photo?.url ? (
+                      <img
+                        src={item.feature_photo.url}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs text-center p-2">
+                        No image
+                      </div>
+                    )}
+
+                    {isPromoted(item) && (
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500 text-white text-[11px] font-semibold shadow">
+                        <Star className="w-3.5 h-3.5" />
+                        Promoted
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center"
+                      aria-label="Favourite"
+                    >
+                      <Heart
+                        className={`w-4 h-4 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
+                      />
+                    </button>
+
+                    {isVerified(item) && (
+                      <div
+                        title="Verified"
+                        className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                      >
+                        <img src={verifiedIcon} alt="Verified" className="w-4 h-4 object-contain" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" />
+                        {item.category?.name || 'Product'}
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
+                        style={tagStyles}
+                      >
+                        {listingTag.icon ? (
+                          <img src={listingTag.icon} alt="" className="w-3.5 h-3.5 object-contain" />
+                        ) : (
+                          <KeyRound className="w-3.5 h-3.5" />
+                        )}
+                        {listingTag.name}
+                      </span>
+                    </div>
+
+                    <h3 className={titleClass}>{item.name}</h3>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-600 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{formatCount(item.total_view)} views</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3.5 h-3.5" />
+                        <span>{formatCount(item.favorites_count)} favs</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span className="truncate">{item.city || '—'}</span>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-2 mt-auto flex items-center justify-between">
+                      <div className={`${priceClass} flex items-baseline`}>
+                        ₹ {formatPrice(item.price)}
+                        {durationLabel && item.listing_type === 'rent' && (
+                          <span className="text-[11px] font-medium text-slate-400 ml-1.5 relative -top-0.5">
+                            /{durationLabel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            // ----------------------------------------------------------------------
+            // LIST CARD 2
+            // ----------------------------------------------------------------------
+            if (resolvedCardStyle === 'list_card_2') {
+              const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all overflow-hidden ${
+                layout === 'list' ? 'min-w-[300px] max-w-[380px] w-80 flex-shrink-0' : ''
+              } h-32 sm:h-36`;
+              const imageClass = 'w-28 sm:w-36 h-full';
+              const priceClass = 'text-sky-600 font-bold text-base sm:text-lg';
+              const titleClass = 'text-sm sm:text-base font-semibold text-slate-900 line-clamp-2';
+              return (
+                <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
+                  <div className={`${imageClass} relative shrink-0`}>
+                    {item.feature_photo?.url ? (
+                      <img
+                        src={item.feature_photo.url}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs text-center p-2">
+                        No image
+                      </div>
+                    )}
+
+                    {isPromoted(item) && (
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500 text-white text-[11px] font-semibold shadow">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        Promoted
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow flex items-center justify-center"
+                      aria-label="Favourite"
+                    >
+                      <Heart
+                        className={`w-3.5 h-3.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
+                      />
+                    </button>
+
+                    {isVerified(item) && (
+                      <div
+                        title="Verified"
+                        className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
+                      >
+                        <img src={verifiedIcon} alt="Verified" className="w-3.5 h-3.5 object-contain" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 p-3 flex flex-col justify-between">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {item.city || '—'}
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap"
+                        style={tagStyles}
+                      >
+                        {listingTag.icon ? (
+                          <img src={listingTag.icon} alt="" className="w-3 h-3 object-contain" />
+                        ) : (
+                          <KeyRound className="w-3 h-3" />
+                        )}
+                        {listingTag.name}
+                      </span>
+                    </div>
+
+                    <h3 className={`${titleClass} mt-1`}>{item.name}</h3>
+
+                    {fields.length > 0 && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap text-slate-600 text-xs">
+                        {fields.map((field: any) => (
+                          <div key={field.field_id} className="flex items-center gap-1">
+                            <img src={field.image} alt="" className="w-4 h-4 object-contain" />
+                            <span className="font-medium">{field.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="border-t border-slate-100 pt-2 mt-auto flex items-center justify-between">
+                      <div className={`${priceClass} flex items-baseline`}>
+                        ₹ {formatPrice(item.price)}
+                        {durationLabel && item.listing_type === 'rent' && (
+                          <span className="text-[10px] font-medium text-slate-400 ml-1.5 relative -top-0.5">
+                            /{durationLabel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            // ----------------------------------------------------------------------
+            // GRID CARD 1
+            // ----------------------------------------------------------------------
+            if (resolvedCardStyle === 'grid_card_1') {
+              const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
+                layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+              }`;
+              const imageHeight = 'h-52';
+              const priceClass = 'text-sky-600 font-bold text-2xl';
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
                   <div className="p-1.5">
                     <div
-                      className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
+                      className={`relative w-full ${imageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                     >
                       {item.feature_photo?.url ? (
                         <img
@@ -331,15 +526,13 @@ export default function ItemsGrid(props: ItemsGridProps) {
                         </div>
                       )}
 
-                      {/* ✅ PROMOTED: Top-2 Left-2 */}
                       {isPromoted(item) && (
                         <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
-                          <Star className="w-3.5 h-3.5" />
+                          <TrendingUp className="w-3.5 h-3.5" />
                           Promoted
                         </span>
                       )}
 
-                      {/* ✅ HEART: Top-2 Right-2 */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -354,7 +547,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
                         />
                       </button>
 
-                      {/* ✅ VERIFIED: Bottom-2 Right-2 */}
                       {isVerified(item) && (
                         <div
                           title="Verified"
@@ -369,7 +561,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   <div className="px-4 pb-4 pt-1">
                     <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
-                      {/* ✅ DURATION: Smaller text-xs */}
                       {durationLabel && item.listing_type === 'rent' && (
                         <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
@@ -416,14 +607,19 @@ export default function ItemsGrid(props: ItemsGridProps) {
             }
 
             // ----------------------------------------------------------------------
-            // LIST CARD 2
+            // GRID CARD 2
             // ----------------------------------------------------------------------
-            if (resolvedCardStyle === 'list_card_2') {
+            if (resolvedCardStyle === 'grid_card_2') {
+              const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
+                layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+              }`;
+              const imageHeight = 'h-48';
+              const priceClass = 'text-sky-600 font-bold text-xl';
               return (
                 <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
                   <div className="p-1.5">
                     <div
-                      className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
+                      className={`relative w-full ${imageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                     >
                       {item.feature_photo?.url ? (
                         <img
@@ -437,7 +633,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
                         </div>
                       )}
 
-                      {/* ✅ PROMOTED: Top-2 Left-2 */}
                       {isPromoted(item) && (
                         <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
                           <TrendingUp className="w-3.5 h-3.5" />
@@ -445,7 +640,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
                         </span>
                       )}
 
-                      {/* ✅ HEART: Top-2 Right-2 */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -460,7 +654,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
                         />
                       </button>
 
-                      {/* ✅ VERIFIED: Bottom-2 Right-2 */}
                       {isVerified(item) && (
                         <div
                           title="Verified"
@@ -475,7 +668,6 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   <div className="px-4 pb-4 pt-1">
                     <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
                       ₹ {formatPrice(item.price)}
-                      {/* ✅ DURATION: Smaller text-xs */}
                       {durationLabel && item.listing_type === 'rent' && (
                         <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
                           /{durationLabel}
@@ -522,132 +714,18 @@ export default function ItemsGrid(props: ItemsGridProps) {
             }
 
             // ----------------------------------------------------------------------
-            // GRID CARDS 1 & 2
-            // ----------------------------------------------------------------------
-            if (resolvedCardStyle === 'grid_card_1' || resolvedCardStyle === 'grid_card_2') {
-              return (
-                <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
-                  <div className="p-1.5">
-                    <div
-                      className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
-                    >
-                      {item.feature_photo?.url ? (
-                        <img
-                          src={item.feature_photo.url}
-                          alt={item.name}
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
-                          No image
-                        </div>
-                      )}
-
-                      {/* ✅ PROMOTED: Top-2 Left-2 */}
-                      {isPromoted(item) && (
-                        <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow">
-                          <TrendingUp className="w-3.5 h-3.5" />
-                          Promoted
-                        </span>
-                      )}
-
-                      {/* ✅ HEART: Top-2 Right-2 */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
-                        aria-label="Favourite"
-                      >
-                        <Heart
-                          className={`w-4.5 h-4.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
-                        />
-                      </button>
-
-                      {/* ✅ VERIFIED: Bottom-2 Right-2 */}
-                      {isVerified(item) && (
-                        <div
-                          title="Verified"
-                          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center"
-                        >
-                          <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="px-4 pb-4 pt-1">
-                    <div className={`${priceClass} leading-tight mb-1 flex items-baseline`}>
-                      ₹ {formatPrice(item.price)}
-                      {/* ✅ DURATION: Smaller text-xs */}
-                      {durationLabel && item.listing_type === 'rent' && (
-                        <span className="text-xs font-medium text-slate-400 ml-1.5 relative -top-0.5">
-                          /{durationLabel}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="text-slate-900 font-semibold text-base line-clamp-1 mb-3">
-                      {item.name}
-                    </div>
-
-                    {resolvedCardStyle === 'grid_card_1' && (
-                      <div className="flex items-center gap-6 text-slate-500 text-sm mb-3">
-                        <div className="flex items-center gap-2">
-                          <Eye className="w-4 h-4" />
-                          <span>{formatCount(item.total_view)} Views</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Heart className="w-4 h-4" />
-                          <span>{formatCount(item.favorites_count)} Favorites</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {resolvedCardStyle === 'grid_card_2' && fields.length > 0 && (
-                      <div className="flex items-center gap-3 mb-3 flex-wrap text-slate-600 text-sm">
-                        {fields.map((field: any) => (
-                          <div key={field.field_id} className="flex items-center gap-2">
-                            <img src={field.image} alt="" className="w-5 h-5 object-contain" />
-                            <span className="font-medium">{field.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-slate-500 min-w-0">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-sm truncate">{item.city || '—'}</span>
-                      </div>
-
-                      <span
-                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
-                        style={tagStyles}
-                      >
-                        {listingTag.icon ? (
-                          <img src={listingTag.icon} alt="" className="w-4 h-4 object-contain" />
-                        ) : (
-                          <KeyRound className="w-4 h-4" />
-                        )}
-                        {listingTag.name}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            }
-
-            // ----------------------------------------------------------------------
             // DEFAULT CARD
             // ----------------------------------------------------------------------
+            const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
+              layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+            }`;
+            const imageHeight = 'h-56';
+            const priceClass = 'text-green-600 font-bold text-xl';
             return (
               <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
                 <div className="p-1.5">
                   <div
-                    className={`relative w-full ${cardImageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
+                    className={`relative w-full ${imageHeight} bg-white rounded-xl overflow-hidden border border-slate-200`}
                   >
                     {item.feature_photo?.url ? (
                       <img
