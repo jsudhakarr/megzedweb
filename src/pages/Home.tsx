@@ -351,6 +351,24 @@ export default function Home() {
     </div>
   );
 
+  const renderHeroSkeleton = () => (
+    <div className="grid gap-6 mb-8 lg:grid-cols-2">
+      <div className={`h-72 sm:h-80 lg:h-[420px] ${shimmerBaseClass}`} />
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
+        <div className="space-y-3 mb-5">
+          <div className={`h-7 w-2/3 ${shimmerBaseClass}`} />
+          <div className={`h-4 w-4/5 ${shimmerBaseClass}`} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          {Array.from({ length: 4 }).map((__, index) => (
+            <div key={`hero-action-${index}`} className={`h-16 rounded-xl ${shimmerBaseClass}`} />
+          ))}
+        </div>
+        <div className={`h-12 rounded-2xl ${shimmerBaseClass}`} />
+      </div>
+    </div>
+  );
+
   const normalizeCardStyle = (style?: string) => {
     if (!style) return 'default';
     const normalized = style.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -454,58 +472,62 @@ export default function Home() {
       {/* MAIN CONTENT */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* HERO SLIDER + SEARCH */}
-        <div className={`grid gap-6 mb-8 ${hasSlider ? 'lg:grid-cols-2' : ''}`}>
-          {hasSlider && <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">
-              Welcome back{user?.name ? `, ${user.name}` : ''}!
-            </h2>
-            <p className="text-sm text-slate-500 mb-5 text-center">
-              Discover fresh listings curated for you and your location.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
-              <button
-                onClick={() => setScanOpen(true)}
-                className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
-                title="Scan View details"
-              >
-                <QrCode className="w-5 h-5" />
-                <span className="text-xs font-semibold">Scan View details</span>
-              </button>
+        {sectionsLoading ? (
+          renderHeroSkeleton()
+        ) : (
+          <div className={`grid gap-6 mb-8 ${hasSlider ? 'lg:grid-cols-2' : ''}`}>
+            {hasSlider && <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />}
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
+              <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">
+                Welcome back{user?.name ? `, ${user.name}` : ''}!
+              </h2>
+              <p className="text-sm text-slate-500 mb-5 text-center">
+                Discover fresh listings curated for you and your location.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
+                <button
+                  onClick={() => setScanOpen(true)}
+                  className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
+                  title="Scan View details"
+                >
+                  <QrCode className="w-5 h-5" />
+                  <span className="text-xs font-semibold">Scan View details</span>
+                </button>
 
-              <button
-                onClick={() => handleAuthNavigation('/dashboard/chat')}
-                className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
-                title={t('messages')}
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-xs font-semibold">{t('messages')}</span>
-              </button>
+                <button
+                  onClick={() => handleAuthNavigation('/dashboard/chat')}
+                  className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
+                  title={t('messages')}
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span className="text-xs font-semibold">{t('messages')}</span>
+                </button>
 
-              <button
-                onClick={() => handleAuthNavigation('/dashboard/likes')}
-                className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
-                title={t('favorites')}
-              >
-                <Heart className="w-5 h-5" />
-                <span className="text-xs font-semibold">{t('favorites')}</span>
-              </button>
+                <button
+                  onClick={() => handleAuthNavigation('/dashboard/likes')}
+                  className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors"
+                  title={t('favorites')}
+                >
+                  <Heart className="w-5 h-5" />
+                  <span className="text-xs font-semibold">{t('favorites')}</span>
+                </button>
 
-              <button
-                onClick={() => handleAuthNavigation('/dashboard/notifications')}
-                className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors relative"
-                title={t('notifications')}
-              >
-                <Bell className="w-5 h-5" />
-                <span className="text-xs font-semibold">{t('notifications')}</span>
-                {user && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                )}
-              </button>
+                <button
+                  onClick={() => handleAuthNavigation('/dashboard/notifications')}
+                  className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-slate-100 transition-colors relative"
+                  title={t('notifications')}
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="text-xs font-semibold">{t('notifications')}</span>
+                  {user && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                  )}
+                </button>
+              </div>
+              <SearchBox primaryColor={primaryColor} containerClassName="max-w-none mx-0" />
             </div>
-            <SearchBox primaryColor={primaryColor} containerClassName="max-w-none mx-0" />
           </div>
-        </div>
+        )}
 
         {selectedSubcategory ? (
           <div className="flex gap-6 mb-6 mt-5">
@@ -620,13 +642,15 @@ export default function Home() {
                 if (section.type === 'items') {
                   const items = section.resolvedData.items ?? [];
                   const resolvedCardStyle = normalizeCardStyle(section.style?.card_style ?? undefined);
-                  const forceCarousel =
-                    section.layout === 'list' ||
-                    resolvedCardStyle === 'list_card_1' ||
-                    resolvedCardStyle === 'list_card_2' ||
-                    resolvedCardStyle === 'grid_card_2';
+                  const isListCardStyle =
+                    resolvedCardStyle === 'list_card_1' || resolvedCardStyle === 'list_card_2';
+                  const isGridCardStyle =
+                    resolvedCardStyle === 'grid_card_1' || resolvedCardStyle === 'grid_card_2';
+                  const forceGridLayout = isListCardStyle || isGridCardStyle;
                   const useSliderLayout =
-                    forceCarousel || (resolvedCardStyle === 'default' && items.length > 5);
+                    !forceGridLayout &&
+                    (section.layout === 'list' || (resolvedCardStyle === 'default' && items.length > 5));
+                  const gridColumns = isGridCardStyle ? 4 : isListCardStyle ? 3 : undefined;
                   return (
                     <section
                       key={section.id}
@@ -665,6 +689,8 @@ export default function Home() {
                           items={items}
                           limit={itemCount}
                           layout={useSliderLayout ? 'list' : 'grid'}
+                          listVariant={forceGridLayout ? 'stacked' : undefined}
+                          gridColumns={gridColumns}
                           cardStyle={section.style?.card_style ?? undefined}
                         />
                       </div>

@@ -117,7 +117,7 @@ export default function GridCardStyle2({
           <div className="flex items-center gap-3 mb-3 flex-wrap text-slate-600 text-sm">
             {fields.map((field) => (
               <div key={field.field_id} className="flex items-center gap-2">
-                <img src={field.image} alt="" className="w-5 h-5 object-contain" />
+                <img src={field.image ?? undefined} alt="" className="w-5 h-5 object-contain" />
                 <span className="font-medium">{field.value}</span>
               </div>
             ))}
