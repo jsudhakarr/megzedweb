@@ -524,10 +524,10 @@ export default function PublicUserProfile() {
                              </span>
 
                              {(() => {
-                               const listingDetail = item?.listing_type_detail || {};
+                               const listingDetail = item?.listing_type_detail ?? null;
                                const listingName =
                                  listingDetail?.name || (item?.listing_type === 'rent' ? 'Rent' : 'Sale');
-                               const listingIcon = listingDetail?.icon || null;
+                               const listingIcon = listingDetail?.icon ?? undefined;
                                return (
                                  <span className="px-3 py-1 rounded-full bg-green-50 border border-green-100 text-green-700 text-xs font-bold flex items-center gap-1">
                                    {listingIcon ? (

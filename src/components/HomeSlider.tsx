@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiService, type Slider } from '../services/api';
 
@@ -79,8 +79,14 @@ export default function HomeSlider({ primaryColor, slides }: HomeSliderProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[280px] rounded-2xl border border-slate-200 bg-white">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+      <div className="relative min-h-[280px] rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200" />
+        <div className="absolute bottom-6 left-6 right-6 space-y-3">
+          <div className="h-4 w-24 rounded bg-slate-300/70" />
+          <div className="h-6 w-2/3 rounded bg-slate-300/70" />
+          <div className="h-4 w-1/2 rounded bg-slate-300/70" />
+          <div className="h-10 w-32 rounded-full bg-slate-300/70" />
+        </div>
       </div>
     );
   }

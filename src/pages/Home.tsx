@@ -351,6 +351,16 @@ export default function Home() {
     </div>
   );
 
+  const normalizeCardStyle = (style?: string) => {
+    if (!style) return 'default';
+    const normalized = style.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (['style1', 'listcard1', 'list_card_1', '1'].includes(normalized)) return 'list_card_1';
+    if (['style2', 'listcard2', 'list_card_2', '2'].includes(normalized)) return 'list_card_2';
+    if (['gridcard1', 'grid_card_1'].includes(normalized)) return 'grid_card_1';
+    if (['gridcard2', 'grid_card_2'].includes(normalized)) return 'grid_card_2';
+    return 'default';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* HEADER */}
@@ -609,7 +619,14 @@ export default function Home() {
 
                 if (section.type === 'items') {
                   const items = section.resolvedData.items ?? [];
-                  const useSliderLayout = section.layout === 'list' || items.length > 5;
+                  const resolvedCardStyle = normalizeCardStyle(section.style?.card_style ?? undefined);
+                  const forceCarousel =
+                    section.layout === 'list' ||
+                    resolvedCardStyle === 'list_card_1' ||
+                    resolvedCardStyle === 'list_card_2' ||
+                    resolvedCardStyle === 'grid_card_2';
+                  const useSliderLayout =
+                    forceCarousel || (resolvedCardStyle === 'default' && items.length > 5);
                   return (
                     <section
                       key={section.id}

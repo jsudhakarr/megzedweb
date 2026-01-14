@@ -37,8 +37,9 @@ export default function ListCardStyle2({
       }
     : undefined;
   const isFavourite = item?.is_favorite === true;
+  const listingIcon = listingTag.icon ?? undefined;
   const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all overflow-hidden ${
-    isCarousel ? 'min-w-[300px] max-w-[380px] w-[320px] flex-shrink-0' : ''
+    isCarousel ? 'min-w-[360px] max-w-[480px] w-[420px] flex-shrink-0' : ''
   } h-32 sm:h-36`;
   const imageClass = 'w-28 sm:w-36 h-full';
   const priceClass = 'text-sky-600 font-bold text-base sm:text-lg';
@@ -107,8 +108,8 @@ export default function ListCardStyle2({
             className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap"
             style={tagStyles}
           >
-            {listingTag.icon ? (
-              <img src={listingTag.icon} alt="" className="w-3 h-3 object-contain" />
+            {listingIcon ? (
+              <img src={listingIcon} alt="" className="w-3 h-3 object-contain" />
             ) : (
               <KeyRound className="w-3 h-3" />
             )}
