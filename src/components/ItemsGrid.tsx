@@ -47,7 +47,8 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const {
     items: itemsOverride,
     limit,
-    gridColumns = 4,
+    // ✅ Default to 3 columns (Wider cards)
+    gridColumns = 3,
     categoryId,
     subcategoryId,
     showFilters: _showFilters = false,
@@ -130,16 +131,13 @@ export default function ItemsGrid(props: ItemsGridProps) {
     return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
   };
 
-  // ✅ REAL API: promoted
   const isPromoted = (item: any) => item?.is_promoted === true;
 
-  // ✅ REAL API: verified
   const isVerified = (item: any) =>
     item?.shop?.user?.verified === true ||
     item?.shop?.is_verified === true ||
     item?.is_verified === true;
 
-  // ✅ Dynamic fields
   const getDynamicFields = (item: any) => {
     if (!Array.isArray(item?.dynamic_fields)) return [];
     return item.dynamic_fields
@@ -233,13 +231,16 @@ export default function ItemsGrid(props: ItemsGridProps) {
     setIsDragging(false);
   };
 
+  // ✅ UPDATED: Reduced Gap Logic
+  // - Replaced `gap-6` (24px) with `gap-3` (12px)
+  // - Replaced `gap-5` with `gap-3`
   const gridClass = isListLayout
     ? isCarouselList
-      ? `flex gap-4 overflow-x-auto pb-4 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
-      : 'flex flex-col gap-4'
+      ? `flex gap-3 overflow-x-auto pb-4 scrollbar-hide ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`
+      : 'flex flex-col gap-3'
     : gridColumns === 3
-      ? 'grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4'
-      : 'grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4';
+      ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3'
+      : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-3';
 
   const formatDuration = (item: any) =>
     item?.duration_detail?.name || item?.rent_duration || '';
@@ -306,6 +307,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
               : undefined;
             const isFavourite = item?.is_favorite === true;
 
+            // STACKED LIST
             if (isStackedList) {
               const previewFields = Array.isArray(item?.dynamic_fields)
                 ? item.dynamic_fields.filter((field: any) => field?.value).slice(0, 2)
@@ -412,7 +414,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_1') {
               const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow-lg transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[320px] max-w-[420px] w-96 flex-shrink-0' : ''
+                layout === 'list' ? 'min-w-[320px] max-w-[420px] w-[360px] flex-shrink-0' : ''
               } h-36 sm:h-40`;
               const imageClass = 'w-32 sm:w-40 h-full';
               const priceClass = 'text-sky-600 font-bold text-lg sm:text-xl';
@@ -520,7 +522,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'list_card_2') {
               const cardClass = `group flex bg-white rounded-2xl border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[300px] max-w-[380px] w-80 flex-shrink-0' : ''
+                layout === 'list' ? 'min-w-[300px] max-w-[380px] w-[320px] flex-shrink-0' : ''
               } h-32 sm:h-36`;
               const imageClass = 'w-28 sm:w-36 h-full';
               const priceClass = 'text-sky-600 font-bold text-base sm:text-lg';
@@ -619,11 +621,11 @@ export default function ItemsGrid(props: ItemsGridProps) {
             }
 
             // ----------------------------------------------------------------------
-            // GRID CARD 1
+            // GRID CARD 1 (UPDATED)
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'grid_card_1') {
               const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+                layout === 'list' ? 'min-w-[300px] max-w-[380px] w-[340px] flex-shrink-0' : ''
               }`;
               const imageHeight = 'h-52';
               const priceClass = 'text-sky-600 font-bold text-2xl';
@@ -726,11 +728,11 @@ export default function ItemsGrid(props: ItemsGridProps) {
             }
 
             // ----------------------------------------------------------------------
-            // GRID CARD 2
+            // GRID CARD 2 (UPDATED)
             // ----------------------------------------------------------------------
             if (resolvedCardStyle === 'grid_card_2') {
               const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-                layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+                layout === 'list' ? 'min-w-[280px] max-w-[340px] w-[320px] flex-shrink-0' : ''
               }`;
               const imageHeight = 'h-48';
               const priceClass = 'text-sky-600 font-bold text-xl';
@@ -833,12 +835,12 @@ export default function ItemsGrid(props: ItemsGridProps) {
             }
 
             // ----------------------------------------------------------------------
-            // DEFAULT CARD
+            // DEFAULT CARD (UPDATED)
             // ----------------------------------------------------------------------
             const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
-              layout === 'list' ? 'min-w-[240px] max-w-[280px] w-64 flex-shrink-0' : ''
+              layout === 'list' ? 'min-w-[300px] max-w-[380px] w-[340px] flex-shrink-0' : ''
             }`;
-            const imageHeight = 'h-56';
+            const imageHeight = 'h-52';
             const priceClass = 'text-green-600 font-bold text-xl';
             return (
               <Link key={item.id} to={`/item/${item.id}`} className={cardClass}>
