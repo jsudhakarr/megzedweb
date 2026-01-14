@@ -420,8 +420,8 @@ export default function ShopDetail() {
         {/* Flex Layout: 45% Sidebar / 55% Content */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           
-          {/* Sidebar - 45% width */}
-          <aside className="w-full lg:w-[45%] space-y-6">
+          {/* UPDATED: Sidebar - 45% width, Sticky */}
+          <aside className="w-full lg:w-[45%] space-y-6 lg:sticky lg:top-24 lg:self-start">
             <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-5">
               
               <div className="flex flex-row items-start gap-4">
@@ -506,26 +506,6 @@ export default function ShopDetail() {
 
               <hr className="my-5 border-slate-100" />
 
-              <div className="flex flex-wrap justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => openPicker('chat')}
-                  className="flex items-center gap-2 rounded-full px-5 py-3 text-white shadow-md"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Chat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openPicker('request')}
-                  className="flex items-center gap-2 rounded-full px-5 py-3 bg-slate-900 text-white shadow-md"
-                >
-                  <Send className="w-4 h-4" />
-                  Send Request
-                </button>
-              </div>
-
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {stats.map((stat) => (
                   <div key={stat.label} className="flex flex-col items-center">
@@ -546,6 +526,28 @@ export default function ShopDetail() {
                   {(shop as any).description || 'No description provided by the business owner.'}
                 </p>
               </div>
+
+              {/* UPDATED: Chat & Request Buttons moved inside the Sidebar (Profile Half), at the bottom */}
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={() => openPicker('chat')}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-white font-semibold shadow-md active:scale-95 transition-transform"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPicker('request')}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 bg-slate-900 text-white font-semibold shadow-md hover:bg-slate-800 active:scale-95 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  Request
+                </button>
+              </div>
+
             </div>
           </aside>
 
@@ -575,8 +577,6 @@ export default function ShopDetail() {
 
             {tab === 'listings' && (
               <section>
-                {/* Search Box Removed Here */}
-
                 {shopItems.length === 0 ? (
                   <div className="text-slate-500 text-sm bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                     No listings found.

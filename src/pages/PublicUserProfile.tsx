@@ -302,7 +302,8 @@ export default function PublicUserProfile() {
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           
-          <aside className="w-full lg:w-[45%] space-y-6">
+          {/* UPDATED: Sidebar - 45% width, Sticky */}
+          <aside className="w-full lg:w-[45%] space-y-6 lg:sticky lg:top-24 lg:self-start">
             <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-5">
               
               <div className="flex flex-row items-start gap-4">
@@ -328,7 +329,6 @@ export default function PublicUserProfile() {
                    <div>
                       <h2 className="text-xl font-bold text-slate-900 truncate">{user.name}</h2>
                       
-                      {/* UPDATED: Verified Status below name */}
                       {verified && (
                         <div className="flex items-center gap-1.5 mt-1">
                           <CheckCircle2 className="w-4 h-4 text-blue-500 fill-white" />
@@ -352,7 +352,6 @@ export default function PublicUserProfile() {
                    </div>
 
                    {/* Right Side: Actions (Follow + Rating) */}
-                   {/* UPDATED: Follow button stacked above rating box */}
                    <div className="flex flex-col items-end gap-2 ml-2">
                         <button
                             type="button"
@@ -380,26 +379,6 @@ export default function PublicUserProfile() {
 
               <hr className="my-5 border-slate-100" />
 
-              <div className="flex flex-wrap justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => openPicker('chat')}
-                  className="flex items-center gap-2 rounded-full px-5 py-3 text-white shadow-md"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Chat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openPicker('request')}
-                  className="flex items-center gap-2 rounded-full px-5 py-3 bg-slate-900 text-white shadow-md"
-                >
-                  <Send className="w-4 h-4" />
-                  Send Request
-                </button>
-              </div>
-
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {stats.map((stat) => (
                   <div key={stat.label} className="flex flex-col items-center">
@@ -420,6 +399,28 @@ export default function PublicUserProfile() {
                   {user.about || t('no_bio_provided')}
                 </p>
               </div>
+
+              {/* UPDATED: Chat & Request Buttons added to bottom of sidebar (50-50 split) */}
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={() => openPicker('chat')}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-white font-semibold shadow-md active:scale-95 transition-transform"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPicker('request')}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 bg-slate-900 text-white font-semibold shadow-md hover:bg-slate-800 active:scale-95 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  Request
+                </button>
+              </div>
+
             </div>
           </aside>
 
