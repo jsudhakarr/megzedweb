@@ -63,6 +63,8 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [favoriteMessages, setFavoriteMessages] = useState<Record<number, string>>({});
+  const favoriteMessageTimeouts = useRef<Record<number, number>>({});
 
   useEffect(() => {
     if (itemsOverride) {
@@ -159,6 +161,14 @@ export default function ItemsGrid(props: ItemsGridProps) {
     };
   }, [isCarouselList, resolvedItems.length]);
 
+  useEffect(() => {
+    return () => {
+      Object.values(favoriteMessageTimeouts.current).forEach((timeout) =>
+        window.clearTimeout(timeout)
+      );
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -199,13 +209,52 @@ export default function ItemsGrid(props: ItemsGridProps) {
     setIsDragging(false);
   };
 
+  const setFavoriteMessage = (itemId: number, message: string) => {
+    setFavoriteMessages((prev) => ({ ...prev, [itemId]: message }));
+    const existingTimeout = favoriteMessageTimeouts.current[itemId];
+    if (existingTimeout) {
+      window.clearTimeout(existingTimeout);
+    }
+    favoriteMessageTimeouts.current[itemId] = window.setTimeout(() => {
+      setFavoriteMessages((prev) => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      delete favoriteMessageTimeouts.current[itemId];
+    }, 2000);
+  };
+
   const toggleFavorite = async (itemId: number) => {
-    const res = await apiService.toggleItemFavorite(itemId);
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, is_favorite: res.is_favorite } : item
-      )
-    );
+    const currentItem = items.find((item) => item.id === itemId);
+    const currentIsFavorite = currentItem?.is_favorite === true;
+    try {
+      const res = await apiService.toggleItemFavorite(itemId);
+      const resolved =
+        res?.is_favorite ??
+        res?.data?.is_favorite ??
+        res?.data?.is_saved ??
+        res?.data?.favorite ??
+        res?.favorite;
+      const nextIsFavorite =
+        typeof resolved === 'boolean'
+          ? resolved
+          : typeof resolved === 'number'
+            ? resolved === 1
+            : typeof resolved === 'string'
+              ? resolved.toLowerCase() === 'true'
+              : !currentIsFavorite;
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? { ...item, is_favorite: nextIsFavorite } : item
+        )
+      );
+      setFavoriteMessage(itemId, nextIsFavorite ? 'Added to favorites' : 'Removed from favorites');
+    } catch (error) {
+      console.error('Failed to update favorite:', error);
+      setFavoriteMessage(itemId, 'Unable to update favorite');
+    }
   };
 
   // ✅ UPDATED: Reduced Gap Logic
@@ -257,9 +306,19 @@ export default function ItemsGrid(props: ItemsGridProps) {
 
             if (isCentralScreen) {
               return isListLayout ? (
-                <CentralItemListCard key={item.id} item={item} onToggleFavorite={handleToggle} />
+                <CentralItemListCard
+                  key={item.id}
+                  item={item}
+                  onToggleFavorite={handleToggle}
+                  favoriteMessage={favoriteMessages[item.id]}
+                />
               ) : (
-                <CentralItemGridCard key={item.id} item={item} onToggleFavorite={handleToggle} />
+                <CentralItemGridCard
+                  key={item.id}
+                  item={item}
+                  onToggleFavorite={handleToggle}
+                  favoriteMessage={favoriteMessages[item.id]}
+                />
               );
             }
 
@@ -270,6 +329,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   item={item}
                   onToggleFavorite={handleToggle}
                   isCarousel={isCarouselList}
+                  favoriteMessage={favoriteMessages[item.id]}
                 />
               );
             }
@@ -281,6 +341,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   item={item}
                   onToggleFavorite={handleToggle}
                   isCarousel={isCarouselList}
+                  favoriteMessage={favoriteMessages[item.id]}
                 />
               );
             }
@@ -292,6 +353,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   item={item}
                   onToggleFavorite={handleToggle}
                   isCarousel={isCarouselList}
+                  favoriteMessage={favoriteMessages[item.id]}
                 />
               );
             }
@@ -303,6 +365,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                   item={item}
                   onToggleFavorite={handleToggle}
                   isCarousel={isCarouselList}
+                  favoriteMessage={favoriteMessages[item.id]}
                 />
               );
             }
@@ -313,6 +376,7 @@ export default function ItemsGrid(props: ItemsGridProps) {
                 item={item}
                 onToggleFavorite={handleToggle}
                 isCarousel={isCarouselList}
+                favoriteMessage={favoriteMessages[item.id]}
               />
             );
           })}

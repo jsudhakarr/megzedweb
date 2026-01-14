@@ -6,11 +6,13 @@ import { formatPrice, getListingTag, isPromoted } from '../../../utils/itemCardU
 interface CentralItemListCardProps {
   item: Item;
   onToggleFavorite?: () => void;
+  favoriteMessage?: string;
 }
 
 export default function CentralItemListCard({
   item,
   onToggleFavorite,
+  favoriteMessage,
 }: CentralItemListCardProps) {
   const listingTag = getListingTag(item);
   const tagStyles = listingTag.color
@@ -58,20 +60,27 @@ export default function CentralItemListCard({
             <Building2 className="w-3 h-3" />
             {item.category?.name || 'Product'}
           </span>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onToggleFavorite?.();
-            }}
-            className="text-slate-300 hover:text-red-500 transition-colors"
-            aria-label="Favourite"
-          >
-            <Heart
-              className={`w-5 h-5 ${isFavourite ? 'fill-red-500 text-red-500' : ''}`}
-            />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onToggleFavorite?.();
+              }}
+              className="text-slate-300 hover:text-red-500 transition-colors"
+              aria-label="Favourite"
+            >
+              <Heart
+                className={`w-5 h-5 ${isFavourite ? 'fill-red-500 text-red-500' : ''}`}
+              />
+            </button>
+            {favoriteMessage && (
+              <span className="absolute right-0 top-6 rounded-full bg-slate-900/85 px-2.5 py-1 text-[10px] font-medium text-white shadow">
+                {favoriteMessage}
+              </span>
+            )}
+          </div>
         </div>
 
         <h4 className="text-base sm:text-lg font-bold text-slate-900 line-clamp-1 mt-1">

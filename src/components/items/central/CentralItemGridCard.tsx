@@ -14,11 +14,13 @@ import {
 interface CentralItemGridCardProps {
   item: Item;
   onToggleFavorite?: () => void;
+  favoriteMessage?: string;
 }
 
 export default function CentralItemGridCard({
   item,
   onToggleFavorite,
+  favoriteMessage,
 }: CentralItemGridCardProps) {
   const listingTag = getListingTag(item);
   const durationLabel = formatDuration(item);
@@ -78,6 +80,12 @@ export default function CentralItemGridCard({
               className={`w-4.5 h-4.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
             />
           </button>
+
+          {favoriteMessage && (
+            <span className="absolute top-12 right-2 rounded-full bg-slate-900/85 px-3 py-1 text-[11px] font-medium text-white shadow">
+              {favoriteMessage}
+            </span>
+          )}
 
           {isVerified(item) && (
             <div
