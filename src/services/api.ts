@@ -377,7 +377,7 @@ class ApiService {
       });
     }
     const url = `${locationEndpoint.endpoint}?${locationEndpoint.params.toString()}`;
-    const response = await fetch(url, { headers: this.getHeaders() });
+    const response = await fetch(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     return this.normalizeListResponse<Item>(data);
@@ -670,7 +670,7 @@ class ApiService {
       ? `${API_BASE_URL}/subcategories?category_id=${encodeURIComponent(String(categoryId))}`
       : `${API_BASE_URL}/subcategories`;
 
-    const response = await fetch(url, { headers: this.getHeaders() });
+    const response = await fetch(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
 
     const data: any = await response.json();
@@ -716,7 +716,7 @@ class ApiService {
     params.append('per_page', perPage.toString());
 
     const url = `${API_BASE_URL}/items?${params.toString()}`;
-    const response = await fetch(url, { headers: this.getHeaders() });
+    const response = await fetch(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
 
     const data: ItemsResponse = await response.json();
@@ -725,7 +725,7 @@ class ApiService {
 
   async getItem(id: number): Promise<Item> {
     const response = await fetch(`${API_BASE_URL}/items/${id}`, {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
@@ -746,7 +746,7 @@ class ApiService {
     const response = await fetch(
       `${API_BASE_URL}/items/search?${params.toString()}`,
       {
-        headers: this.getHeaders(),
+        headers: this.getHeaders(true),
       }
     );
 
@@ -761,7 +761,7 @@ class ApiService {
     const response = await fetch(
       `${API_BASE_URL}/items/search${this.buildQuery(params)}`,
       {
-        headers: this.getHeaders(),
+        headers: this.getHeaders(true),
       }
     );
     if (!response.ok) throw new Error(await this.readError(response));
@@ -834,7 +834,7 @@ class ApiService {
     const url = queryString ? `${endpoint}?${queryString}` : endpoint;
 
     const response = await fetch(url, {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
@@ -844,7 +844,7 @@ class ApiService {
 
   async getFeaturedItems(): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items/featured`, {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data: ItemsResponse = await response.json();
@@ -854,7 +854,7 @@ class ApiService {
   async scanItemByUid(uid: string): Promise<any> {
     const response = await fetch(
       `${API_BASE_URL}/items/scan/${encodeURIComponent(uid)}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     return response.json();
@@ -869,7 +869,7 @@ class ApiService {
 
     const response = await fetch(
       `${API_BASE_URL}/items/by-location?${params.toString()}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     const data: ItemsResponse = await response.json();
@@ -878,7 +878,7 @@ class ApiService {
 
   async getItemsBySubcategory(subcategoryId: number): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items/by-subcategory/${subcategoryId}`, {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data: ItemsResponse = await response.json();
@@ -887,7 +887,7 @@ class ApiService {
 
   async getItemsByUser(userId: number): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items/by-user/${userId}`, {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data: ItemsResponse = await response.json();
@@ -1101,7 +1101,7 @@ class ApiService {
     options?: { signal?: AbortSignal }
   ): Promise<Item[]> {
     const response = await fetch(`${API_BASE_URL}/items${this.buildQuery(params)}`, {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
       signal: options?.signal,
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1112,7 +1112,7 @@ class ApiService {
   async getItemsFeatured(params?: Record<string, string | number | boolean>): Promise<Item[]> {
     const response = await fetch(
       `${API_BASE_URL}/items/featured${this.buildQuery(params)}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
@@ -1122,7 +1122,7 @@ class ApiService {
   async getItemsMostViewed(params?: Record<string, string | number | boolean>): Promise<Item[]> {
     const response = await fetch(
       `${API_BASE_URL}/items/most-viewed${this.buildQuery(params)}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
@@ -1134,7 +1134,7 @@ class ApiService {
   ): Promise<Item[]> {
     const response = await fetch(
       `${API_BASE_URL}/items/most-favorited${this.buildQuery(params)}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
@@ -1144,7 +1144,7 @@ class ApiService {
   async getItemsMostLiked(params?: Record<string, string | number | boolean>): Promise<Item[]> {
     const response = await fetch(
       `${API_BASE_URL}/items/most-liked${this.buildQuery(params)}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
@@ -1159,7 +1159,7 @@ class ApiService {
       `${API_BASE_URL}/items/by-category/${encodeURIComponent(
         String(categoryId)
       )}${this.buildQuery(params)}`,
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders(true) }
     );
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
@@ -1452,7 +1452,8 @@ class ApiService {
       body: JSON.stringify({}),
     });
     if (!response.ok) throw new Error(await this.readError(response));
-    return response.json();
+    const data = await response.json();
+    return data?.data ?? data;
   }
 
   async toggleItemFavorite(itemId: number): Promise<any> {
