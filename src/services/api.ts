@@ -696,6 +696,7 @@ class ApiService {
     const requestParams = this.withLangParams(
       categoryId ? { category_id: String(categoryId) } : undefined
     );
+    const hasLangParam = Boolean(requestParams?.lang);
     const langKey = this.getLangCacheKey(requestParams?.lang);
     const subcategoriesByCategoryCache =
       this.subcategoriesByCategoryCacheByLang[langKey] ?? {};
@@ -713,7 +714,7 @@ class ApiService {
         this.subcategoriesByCategoryCacheByLang[langKey] = subcategoriesByCategoryCache;
         return filtered;
       }
-      if (this.subcategoriesCache) {
+      if (!hasLangParam && this.subcategoriesCache) {
         const filtered = this.subcategoriesCache.filter(
           (subcategory) => String(subcategory.category_id) === categoryKey
         );
@@ -722,7 +723,7 @@ class ApiService {
       }
     } else if (this.subcategoriesCacheByLang[langKey]) {
       return this.subcategoriesCacheByLang[langKey];
-    } else if (this.subcategoriesCache) {
+    } else if (!hasLangParam && this.subcategoriesCache) {
       return this.subcategoriesCache;
     }
 
@@ -739,7 +740,9 @@ class ApiService {
       this.subcategoriesByCategoryCacheByLang[langKey] = subcategoriesByCategoryCache;
     } else {
       this.subcategoriesCacheByLang[langKey] = subcategories;
-      this.subcategoriesCache = subcategories;
+      if (!hasLangParam) {
+        this.subcategoriesCache = subcategories;
+      }
     }
     return subcategories;
   }
