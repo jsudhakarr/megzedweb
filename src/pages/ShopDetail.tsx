@@ -26,16 +26,11 @@ import Footer from '../components/Footer';
 import SiteHeader from '../components/SiteHeader';
 import Modal from '../components/ui/Modal';
 import type { ItemAction } from '../types/action';
+import { useCachedResource } from '../hooks/useCachedResource';
+import { CACHE_TTL_MS } from '../lib/cache';
 
 type TabKey = 'listings' | 'reviews' | 'details';
 type PickerMode = 'chat' | 'request';
-
-const normalizeItems = (items: any): Item[] => {
-  if (Array.isArray(items)) return items;
-  if (Array.isArray(items?.data)) return items.data;
-  if (Array.isArray(items?.items)) return items.items;
-  return [];
-};
 
 const normalizeCode = (code?: string | null) => (code ?? '').toLowerCase().trim();
 
@@ -57,12 +52,8 @@ export default function ShopDetail() {
   const navigate = useNavigate();
   const { settings } = useAppSettings();
 
-  const [shop, setShop] = useState<Shop | null>(null);
-  const [shopItems, setShopItems] = useState<Item[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [itemsLoading, setItemsLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,70 +68,89 @@ export default function ShopDetail() {
   const primaryColor = settings?.primary_color || '#0ea5e9';
   const isLoggedIn = !!localStorage.getItem('auth_token');
 
-  useEffect(() => {
-    if (!id) return;
-    const shopId = parseInt(id, 10);
-    if (!Number.isFinite(shopId)) return;
-    loadAll(shopId);
+  const shopId = useMemo(() => {
+    if (!id) return null;
+    const parsed = parseInt(id, 10);
+    return Number.isFinite(parsed) ? parsed : null;
   }, [id]);
 
-  const loadAll = async (shopId: number) => {
+  const shopCacheKey = useMemo(
+    () => (shopId ? apiService.getShopByIdCacheKey(shopId) : null),
+    [shopId]
+  );
+  const {
+    data: shop,
+    loading: loading,
+    error: shopError,
+    refreshing: shopRefreshing,
+  } = useCachedResource<Shop>(shopCacheKey, () => apiService.fetchShopById(shopId as number), {
+    ttlMs: CACHE_TTL_MS.shopDetails,
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    enabled: Boolean(shopId),
+  });
+
+  const shopItemsKey = useMemo(
+    () => (shopId ? apiService.getShopItemsCacheKey(shopId) : null),
+    [shopId]
+  );
+  const {
+    data: shopItemsData = [],
+    refreshing: itemsRefreshing,
+  } = useCachedResource<Item[]>(
+    shopItemsKey,
+    () => apiService.fetchShopItems(shopId as number),
+    { ttlMs: CACHE_TTL_MS.shopItems, enabled: Boolean(shopId) }
+  );
+  const shopItems = Array.isArray(shopItemsData) ? shopItemsData : [];
+
+  const errorMessage = shopError ? shopError.message : error;
+
+  useEffect(() => {
+    if (!shopId) return;
     setError(null);
-    setLoading(true);
+    setReviewsLoading(true);
 
-    try {
-      const shopData = await apiService.getShop(shopId);
-      setShop(shopData);
-
-      setItemsLoading(true);
-      setReviewsLoading(true);
-
-      const tasks: Promise<any>[] = [
-        apiService.getShopItems(shopId),
-        apiService.getShopReviewsPublic(shopId),
-      ];
-
-      if (isLoggedIn) {
-        tasks.push(apiService.getFavoriteShops());
-        tasks.push(apiService.getUserFavorites());
-      }
-
-      const results = await Promise.allSettled(tasks);
-
-      const itemsRes = results[0];
-      if (itemsRes.status === 'fulfilled') setShopItems(normalizeItems(itemsRes.value));
-      else setShopItems([]);
-
-      const revRes = results[1];
-      if (revRes.status === 'fulfilled') setReviews(Array.isArray(revRes.value) ? revRes.value : []);
-      else setReviews([]);
-
-      if (isLoggedIn) {
-        const favShopRes = results[2];
-        if (favShopRes && favShopRes.status === 'fulfilled') {
-          const favShops: any[] = favShopRes.value || [];
-          setIsShopFav(favShops.some((s: any) => Number(s.id) === Number(shopId)));
-        }
-
-        const savedItemsRes = results[3];
-        if (savedItemsRes && savedItemsRes.status === 'fulfilled') {
-          const saved: any[] = savedItemsRes.value || [];
-          const set = new Set<number>(
-            saved.map((x: any) => Number(x.id)).filter((n) => Number.isFinite(n))
-          );
-          setSavedItemIds(set);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      setShop(null);
-      setError('Failed to load business details');
-    } finally {
-      setLoading(false);
-      setItemsLoading(false);
-      setReviewsLoading(false);
+    const tasks: Promise<any>[] = [apiService.getShopReviewsPublic(shopId)];
+    if (isLoggedIn) {
+      tasks.push(apiService.getFavoriteShops());
+      tasks.push(apiService.getUserFavorites());
     }
-  };
+
+    Promise.allSettled(tasks)
+      .then((results) => {
+        const revRes = results[0];
+        if (revRes.status === 'fulfilled') {
+          setReviews(Array.isArray(revRes.value) ? revRes.value : []);
+        } else {
+          setReviews([]);
+        }
+
+        if (isLoggedIn) {
+          const favShopRes = results[1];
+          if (favShopRes && favShopRes.status === 'fulfilled') {
+            const favShops: any[] = favShopRes.value || [];
+            setIsShopFav(favShops.some((s: any) => Number(s.id) === Number(shopId)));
+          }
+
+          const savedItemsRes = results[2];
+          if (savedItemsRes && savedItemsRes.status === 'fulfilled') {
+            const saved: any[] = savedItemsRes.value || [];
+            const set = new Set<number>(
+              saved.map((x: any) => Number(x.id)).filter((n) => Number.isFinite(n))
+            );
+            setSavedItemIds(set);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setError('Failed to load business details');
+      })
+      .finally(() => {
+        setReviewsLoading(false);
+      });
+  }, [isLoggedIn, shopId]);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
@@ -264,13 +274,13 @@ export default function ShopDetail() {
     );
   }
 
-  if (error || !shop) {
+  if (errorMessage || !shop) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-50 px-4">
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 text-center space-y-4">
-            <p className="text-slate-700">{error || 'Business not found'}</p>
+            <p className="text-slate-700">{errorMessage || 'Business not found'}</p>
             <button
               type="button"
               onClick={() => navigate('/')}
@@ -403,7 +413,15 @@ export default function ShopDetail() {
             </button>
             <div>
               <p className="text-sm text-slate-500">Business profile</p>
-              <h1 className="text-2xl font-bold text-slate-900">{shopName}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-slate-900">{shopName}</h1>
+                {(shopRefreshing || itemsRefreshing) && (
+                  <span className="flex items-center gap-1 text-xs text-slate-400">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Refreshing
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

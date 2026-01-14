@@ -10,6 +10,8 @@ import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
 import PromoteModal from "../components/PromoteModal";
 import AppLoader from "../components/AppLoader";
+import { useCachedResource } from "../hooks/useCachedResource";
+import { CACHE_TTL_MS } from "../lib/cache";
 
 import {
   ArrowLeft,
@@ -82,12 +84,9 @@ export default function ItemDetail() {
   const { settings } = useAppSettings();
   const { user } = useAuth();
 
-  const [item, setItem] = useState<Item | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [favoriteToast, setFavoriteToast] = useState<string | null>(null);
 
   const [actions, setActions] = useState<ItemAction[]>([]);
   const [actionsLoading, setActionsLoading] = useState(false);
@@ -101,8 +100,25 @@ export default function ItemDetail() {
 
   const primaryColor = settings?.primary_color || "#0ea5e9";
 
+  const itemCacheKey = useMemo(() => (id ? apiService.getItemByIdCacheKey(id) : null), [id]);
+  const {
+    data: item,
+    loading,
+    error,
+    refreshing,
+    mutate: mutateItem,
+  } = useCachedResource<Item>(
+    itemCacheKey,
+    () => apiService.fetchItemById(id as string),
+    {
+      ttlMs: CACHE_TTL_MS.itemDetails,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      enabled: Boolean(id),
+    }
+  );
+
   useEffect(() => {
-    if (id) loadItem(Number(id));
     if (id) loadItemActions(Number(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -113,26 +129,16 @@ export default function ItemDetail() {
     return () => window.clearTimeout(timer);
   }, [actionToast]);
 
-  const loadItem = async (itemId: number) => {
-    try {
-      setLoading(true);
-      setError(null);
+  useEffect(() => {
+    if (!favoriteToast) return;
+    const timer = window.setTimeout(() => setFavoriteToast(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [favoriteToast]);
 
-      const response: any = await apiService.getItem(itemId);
-
-      // ✅ Handles: {data: {...}} OR {data:[...]} OR direct object
-      const data = response?.data ?? response;
-      const normalized: Item | null = Array.isArray(data) ? data[0] ?? null : data ?? null;
-
-      setItem(normalized);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load item details");
-      setItem(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!item) return;
+    setIsWishlisted(Boolean((item as any).is_favorite));
+  }, [item]);
 
   const loadItemActions = async (itemId: number) => {
     try {
@@ -150,6 +156,64 @@ export default function ItemDetail() {
       setActionsContact({});
     } finally {
       setActionsLoading(false);
+    }
+  };
+
+  const resolveFavoriteFromResponse = (response: any, fallback: boolean) => {
+    const resolved =
+      response?.is_favorite ??
+      response?.data?.is_favorite ??
+      response?.data?.is_saved ??
+      response?.data?.favorite ??
+      response?.favorite;
+    if (typeof resolved === "boolean") return resolved;
+    if (typeof resolved === "number") return resolved === 1;
+    if (typeof resolved === "string") return resolved.toLowerCase() === "true";
+    return fallback;
+  };
+
+  const handleFavoriteToggle = async () => {
+    if (!item) return;
+    if (!user) {
+      setFavoriteToast("Please login to save this item.");
+      return;
+    }
+
+    const current = isWishlisted;
+    const next = !current;
+    setIsWishlisted(next);
+    mutateItem((currentItem) => {
+      if (!currentItem) return currentItem as Item;
+      const currentCount =
+        typeof (currentItem as any).favorites_count === "number"
+          ? (currentItem as any).favorites_count
+          : undefined;
+      const nextCount =
+        currentCount !== undefined ? Math.max(0, currentCount + (next ? 1 : -1)) : currentCount;
+      return {
+        ...(currentItem as Item),
+        is_favorite: next,
+        ...(nextCount !== undefined ? { favorites_count: nextCount } : {}),
+      };
+    });
+
+    try {
+      const response = await apiService.toggleItemFavorite((item as any).id);
+      const resolved = resolveFavoriteFromResponse(response, next);
+      setIsWishlisted(resolved);
+      mutateItem((currentItem) => {
+        if (!currentItem) return currentItem as Item;
+        return { ...(currentItem as Item), is_favorite: resolved };
+      });
+      setFavoriteToast(resolved ? "Added to favorites" : "Removed from favorites");
+    } catch (err) {
+      console.error(err);
+      setIsWishlisted(current);
+      mutateItem((currentItem) => {
+        if (!currentItem) return currentItem as Item;
+        return { ...(currentItem as Item), is_favorite: current };
+      });
+      setFavoriteToast("Unable to update favorite. Please try again.");
     }
   };
 
@@ -172,6 +236,8 @@ export default function ItemDetail() {
   const sortedActions = useMemo(() => {
     return [...actions].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
   }, [actions]);
+
+  const errorMessage = error ? error.message : null;
 
   // ✅ robust owner detection (string/number safe)
   const isOwner = useMemo(() => {
@@ -361,10 +427,16 @@ export default function ItemDetail() {
     setActiveAction(null);
   };
 
+  const refreshItemDetails = async () => {
+    if (!item?.id) return;
+    const refreshed = await apiService.fetchItemById(item.id);
+    mutateItem(refreshed);
+  };
+
   const handleActionSuccess = async () => {
     if (item?.id) {
       await loadItemActions(item.id);
-      await loadItem(item.id); // ✅ refresh promoted flag etc
+      await refreshItemDetails();
     }
     setActionToast("Submitted successfully.");
     handleCloseActionModal();
@@ -373,7 +445,7 @@ export default function ItemDetail() {
   const handlePromoteSuccess = async () => {
     if (item?.id) {
       await loadItemActions(item.id);
-      await loadItem(item.id);
+      await refreshItemDetails();
     }
     setActionToast("Submitted successfully.");
     setIsPromoteModalOpen(false);
@@ -443,7 +515,7 @@ export default function ItemDetail() {
     );
   }
 
-  if (error || !item) {
+  if (errorMessage || !item) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <SiteHeader />
@@ -453,7 +525,9 @@ export default function ItemDetail() {
               <Tag className="w-8 h-8 text-red-500" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">Item Not Found</h2>
-            <p className="text-slate-500 mb-6">{error || "The item you requested could not be found."}</p>
+            <p className="text-slate-500 mb-6">
+              {errorMessage || "The item you requested could not be found."}
+            </p>
             <button onClick={() => navigate("/")} className="w-full px-4 py-2 bg-slate-900 text-white rounded-xl">
               Back to Home
             </button>
@@ -531,6 +605,11 @@ export default function ItemDetail() {
           <Toast message={actionToast} variant="success" />
         </div>
       ) : null}
+      {favoriteToast ? (
+        <div className="fixed right-6 top-32 z-50 max-w-sm">
+          <Toast message={favoriteToast} variant="success" />
+        </div>
+      ) : null}
 
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 supports-[backdrop-filter]:bg-white/60">
@@ -553,11 +632,17 @@ export default function ItemDetail() {
               <span className="hidden sm:inline text-sm font-medium text-slate-900 truncate max-w-[200px]">
                 {(item as any).name}
               </span>
+              {refreshing && (
+                <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Refreshing
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                onClick={handleFavoriteToggle}
                 className={`p-2.5 rounded-full transition-all active:scale-95 ${
                   isWishlisted ? "bg-red-50 text-red-500" : "hover:bg-slate-100 text-slate-600"
                 }`}
