@@ -11,7 +11,7 @@ import FilterChips from '../components/FilterChips';
 import type { ItemsFiltersState } from '../types/filters';
 import { parseItemsFilters, writeFiltersToUrl } from '../utils/filters';
 import { buildItemsParams, fetchItemsCentral } from '../services/centralListings';
-import { apiService, type Item } from '../services/api';
+import { apiService, type Category, type Item, type Subcategory } from '../services/api';
 
 const defaultFilters: ItemsFiltersState = {
   q: '',
@@ -54,6 +54,8 @@ export default function ItemsCentralScreen() {
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [itemsCardStyle, setItemsCardStyle] = useState<string | undefined>(undefined);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   const updateFilters = useCallback((next: Partial<ItemsFiltersState>) => {
     setFilters((prev) => {
@@ -100,6 +102,66 @@ export default function ItemsCentralScreen() {
     }, 400);
     return () => window.clearTimeout(timeout);
   }, [filters.q, searchInput, updateFilters]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadCategories = async () => {
+      try {
+        const data = await apiService.getCategories();
+        if (isMounted) {
+          setCategories(data);
+        }
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      }
+    };
+
+    loadCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSubcategories = async () => {
+      if (!filters.subcategory_id) {
+        setSubcategories([]);
+        return;
+      }
+      try {
+        const data = filters.category_id
+          ? await apiService.getSubcategories(filters.category_id)
+          : await apiService.getSubcategories();
+        if (isMounted) {
+          setSubcategories(data);
+        }
+      } catch (error) {
+        console.error('Failed to load subcategories:', error);
+        if (isMounted) {
+          setSubcategories([]);
+        }
+      }
+    };
+
+    loadSubcategories();
+    return () => {
+      isMounted = false;
+    };
+  }, [filters.category_id, filters.subcategory_id]);
+
+  const selectedCategoryName = useMemo(() => {
+    if (!filters.category_id) return '';
+    return categories.find((category) => String(category.id) === String(filters.category_id))
+      ?.name;
+  }, [categories, filters.category_id]);
+
+  const selectedSubcategoryName = useMemo(() => {
+    if (!filters.subcategory_id) return '';
+    return subcategories.find(
+      (subcategory) => String(subcategory.id) === String(filters.subcategory_id)
+    )?.name;
+  }, [subcategories, filters.subcategory_id]);
 
   const requestParams = useMemo(() => buildItemsParams(filters), [filters]);
   const queryKey = useMemo(() => JSON.stringify(requestParams), [requestParams]);
@@ -180,14 +242,18 @@ export default function ItemsCentralScreen() {
     if (filters.category_id) {
       nextChips.push({
         key: 'category',
-        label: `Category #${filters.category_id}`,
+        label: selectedCategoryName
+          ? selectedCategoryName
+          : `Category #${filters.category_id}`,
         onRemove: () => updateFilters({ category_id: null, subcategory_id: null, page: 1 }),
       });
     }
     if (filters.subcategory_id) {
       nextChips.push({
         key: 'subcategory',
-        label: `Subcategory #${filters.subcategory_id}`,
+        label: selectedSubcategoryName
+          ? selectedSubcategoryName
+          : `Subcategory #${filters.subcategory_id}`,
         onRemove: () => updateFilters({ subcategory_id: null, page: 1 }),
       });
     }
