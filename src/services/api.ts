@@ -14,6 +14,16 @@ import type {
 } from '../types/category';
 import type { PublicUser, PublicUserDetails } from '../types/user';
 import type { ActionSubmission, ActionSubmissionPayload } from '../types/action';
+import {
+  CACHE_TTL_MS,
+  getCacheEntry,
+  getCacheKeys,
+  invalidate,
+  invalidateExact,
+  notify,
+  updateCacheEntry,
+} from '../lib/cache';
+import { swrFetch } from '../lib/swrFetch';
 
 export const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
@@ -26,6 +36,29 @@ type QueryParamValue =
   | QueryParamValue[]
   | Record<string, QueryParamValue>;
 type QueryParams = Record<string, QueryParamValue>;
+
+export type FilterItemsParams = {
+  q?: string;
+  sort?: string;
+  page?: number;
+  perPage?: number;
+  categoryId?: number | null;
+  subcategoryId?: number | null;
+  listingType?: string | null;
+  minPrice?: string;
+  maxPrice?: string;
+  verified?: boolean | null;
+  city?: string | null;
+  state?: string | null;
+  lat?: number;
+  lng?: number;
+  distance?: number;
+  featured?: boolean;
+  promoted?: boolean;
+  df?: Record<string, unknown>;
+  dfMin?: Record<string, unknown>;
+  dfMax?: Record<string, unknown>;
+};
 
 // --- Interfaces ---
 
@@ -329,6 +362,70 @@ class ApiService {
     const queryString = searchParams.toString();
     return queryString ? `?${queryString}` : '';
   }
+
+  private normalizeQueryParams(params?: QueryParams): string {
+    if (!params) return '';
+    const parts: string[] = [];
+
+    const appendValue = (key: string, value: QueryParamValue) => {
+      if (value === null || value === undefined) return;
+      if (Array.isArray(value)) {
+        value.forEach((entry) => appendValue(`${key}[]`, entry));
+        return;
+      }
+      if (typeof value === 'object') {
+        const sortedKeys = Object.keys(value).sort();
+        sortedKeys.forEach((childKey) => {
+          appendValue(`${key}[${childKey}]`, (value as Record<string, QueryParamValue>)[childKey]);
+        });
+        return;
+      }
+      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+    };
+
+    Object.keys(params)
+      .sort()
+      .forEach((key) => appendValue(key, params[key]));
+
+    return parts.join('&');
+  }
+
+  private hashToken(token: string): string {
+    let hash = 0;
+    for (let i = 0; i < token.length; i += 1) {
+      hash = (hash * 31 + token.charCodeAt(i)) >>> 0;
+    }
+    return hash.toString(36).slice(0, 8);
+  }
+
+  private getAuthCacheSuffix(includeAuth: boolean): string {
+    if (!includeAuth) return '';
+    const token = localStorage.getItem('auth_token');
+    if (!token) return '::anon';
+    const userRaw = localStorage.getItem('user');
+    if (userRaw) {
+      try {
+        const parsed = JSON.parse(userRaw);
+        if (parsed?.id !== undefined && parsed?.id !== null) {
+          return `::user:${parsed.id}`;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return `::token:${this.hashToken(token)}`;
+  }
+
+  private buildCacheKey(
+    path: string,
+    params?: QueryParams,
+    options?: { includeAuth?: boolean }
+  ): string {
+    const query = this.normalizeQueryParams(params);
+    const base = query ? `${path}?${query}` : path;
+    return `${base}${this.getAuthCacheSuffix(options?.includeAuth ?? false)}`;
+  }
+
 
   private buildLocationParams(
     location?: {
@@ -645,115 +742,84 @@ class ApiService {
 
   async getCategories(params?: Record<string, string | number | boolean>): Promise<Category[]> {
     const requestParams = this.withLangParams(params);
-    const onlyLangParam =
-      !requestParams ||
-      Object.keys(requestParams).length === 0 ||
-      Object.keys(requestParams).every((key) => key === 'lang');
-    const cacheKey = this.getLangCacheKey(requestParams?.lang);
+    const cacheKey = this.buildCacheKey('categories', requestParams);
+    return swrFetch(cacheKey, () => this.fetchCategories(requestParams), {
+      ttlMs: CACHE_TTL_MS.categories,
+    });
+  }
 
-    if (onlyLangParam) {
-      if (this.categoriesCacheByLang[cacheKey]) {
-        return this.categoriesCacheByLang[cacheKey];
-      }
-      if (!requestParams && this.categoriesCache) {
-        return this.categoriesCache;
-      }
-    }
-
+  async fetchCategories(params?: Record<string, string | number | boolean>): Promise<Category[]> {
+    const requestParams = this.withLangParams(params);
     const response = await fetch(`${API_BASE_URL}/categories${this.buildQuery(requestParams)}`, {
       headers: this.getHeaders(),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data: CategoriesResponse = await response.json();
-    const categories = this.normalizeListResponse<Category>(data);
-    if (onlyLangParam) {
-      this.categoriesCacheByLang[cacheKey] = categories;
-      if (!requestParams) {
-        this.categoriesCache = categories;
-      }
-    }
-    return categories;
+    return this.normalizeListResponse<Category>(data);
   }
 
   async getListingTypes(): Promise<ListingType[]> {
-    if (this.listingTypesCache) {
-      return this.listingTypesCache;
-    }
+    const cacheKey = this.buildCacheKey('listing-types', this.withLangParams());
+    return swrFetch(cacheKey, () => this.fetchListingTypes(), {
+      ttlMs: CACHE_TTL_MS.listingTypes,
+    });
+  }
 
+  async fetchListingTypes(): Promise<ListingType[]> {
     const response = await fetch(`${API_BASE_URL}/listing-types`, {
       headers: this.getHeaders(),
     });
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    const listingTypes = this.normalizeListResponse<ListingType>(data);
-    this.listingTypesCache = listingTypes;
-    return listingTypes;
+    return this.normalizeListResponse<ListingType>(data);
   }
 
   async getSubcategories(categoryId?: string | number): Promise<Subcategory[]> {
     const requestParams = this.withLangParams(
       categoryId ? { category_id: String(categoryId) } : undefined
     );
-    const langKey = this.getLangCacheKey(requestParams?.lang);
-    const subcategoriesByCategoryCache =
-      this.subcategoriesByCategoryCacheByLang[langKey] ?? {};
+    const cacheKey = this.buildCacheKey('subcategories', requestParams);
+    return swrFetch(cacheKey, () => this.fetchSubcategories(categoryId), {
+      ttlMs: CACHE_TTL_MS.subcategories,
+    });
+  }
 
-    if (categoryId) {
-      const categoryKey = String(categoryId);
-      if (subcategoriesByCategoryCache[categoryKey]) {
-        return subcategoriesByCategoryCache[categoryKey];
-      }
-      if (this.subcategoriesCacheByLang[langKey]) {
-        const filtered = this.subcategoriesCacheByLang[langKey].filter(
-          (subcategory) => String(subcategory.category_id) === categoryKey
-        );
-        subcategoriesByCategoryCache[categoryKey] = filtered;
-        this.subcategoriesByCategoryCacheByLang[langKey] = subcategoriesByCategoryCache;
-        return filtered;
-      }
-      if (this.subcategoriesCache) {
-        const filtered = this.subcategoriesCache.filter(
-          (subcategory) => String(subcategory.category_id) === categoryKey
-        );
-        this.subcategoriesByCategoryCache[categoryKey] = filtered;
-        return filtered;
-      }
-    } else if (this.subcategoriesCacheByLang[langKey]) {
-      return this.subcategoriesCacheByLang[langKey];
-    } else if (this.subcategoriesCache) {
-      return this.subcategoriesCache;
-    }
-
+  async fetchSubcategories(categoryId?: string | number): Promise<Subcategory[]> {
+    const requestParams = this.withLangParams(
+      categoryId ? { category_id: String(categoryId) } : undefined
+    );
     const url = `${API_BASE_URL}/subcategories${this.buildQuery(requestParams)}`;
 
     const response = await fetch(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
 
     const data: any = await response.json();
-    // keep compatible with your existing response style
-    const subcategories = data?.data ?? [];
-    if (categoryId) {
-      subcategoriesByCategoryCache[String(categoryId)] = subcategories;
-      this.subcategoriesByCategoryCacheByLang[langKey] = subcategoriesByCategoryCache;
-    } else {
-      this.subcategoriesCacheByLang[langKey] = subcategories;
-      this.subcategoriesCache = subcategories;
-    }
-    return subcategories;
+    return data?.data ?? [];
   }
 
 
   async getSubcategoryFields(subcategoryId: string | number): Promise<any> {
+    const requestParams = this.withLangParams();
+    const cacheKey = this.buildCacheKey(
+      `subcategories/${subcategoryId}/fields`,
+      requestParams
+    );
+    return swrFetch(cacheKey, () => this.fetchSubcategoryFields(subcategoryId), {
+      ttlMs: CACHE_TTL_MS.dynamicFields,
+    });
+  }
+
+  async fetchSubcategoryFields(subcategoryId: string | number): Promise<any> {
     const id = encodeURIComponent(String(subcategoryId));
     const requestParams = this.withLangParams();
 
     const response = await fetch(
       `${API_BASE_URL}/subcategories/${id}/fields${this.buildQuery(requestParams)}`,
       {
-      method: "GET",
-      headers: this.getHeaders(true),
+        method: 'GET',
+        headers: this.getHeaders(true),
       }
     );
 
@@ -789,17 +855,31 @@ class ApiService {
   }
 
   async getItem(id: number): Promise<Item> {
+    return this.getItemById(id);
+  }
+
+  async getItemById(itemId: string | number): Promise<Item> {
+    const requestParams = this.withLangParams();
+    const cacheKey = this.buildCacheKey(`items/${itemId}`, requestParams, { includeAuth: true });
+    return swrFetch(cacheKey, () => this.fetchItemById(itemId), {
+      ttlMs: CACHE_TTL_MS.itemDetails,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+    });
+  }
+
+  async fetchItemById(itemId: string | number): Promise<Item> {
     const requestParams = this.withLangParams();
     const response = await fetch(
-      `${API_BASE_URL}/items/${id}${this.buildQuery(requestParams)}`,
+      `${API_BASE_URL}/items/${itemId}${this.buildQuery(requestParams)}`,
       {
-      headers: this.getHeaders(true),
+        headers: this.getHeaders(true),
       }
     );
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    return data.data;
+    return data.data ?? data;
   }
 
   async searchItems(
@@ -842,39 +922,64 @@ class ApiService {
     return this.normalizeListResponse<Item>(data);
   }
 
-  async filterItems(filters: {
-    categoryId?: number | null;
-    subcategoryId?: number | null;
-    listingType?: string | null;
-    minPrice?: string;
-    maxPrice?: string;
-    verified?: boolean | null;
-    city?: string | null;
-    state?: string | null;
-    lat?: number;
-    lng?: number;
-    distance?: number;
-    perPage?: number;
-  }): Promise<Item[]> {
-    const params = new URLSearchParams();
+  async filterItems(filters: FilterItemsParams): Promise<Item[]> {
+    const { cacheKey, endpoint, requestParams } = this.buildFilterItemsRequest(filters);
+    return swrFetch(cacheKey, () => this.fetchFilterItems(endpoint, requestParams), {
+      ttlMs: CACHE_TTL_MS.itemsList,
+    });
+  }
+
+  async fetchItemsFiltered(filters: FilterItemsParams): Promise<Item[]> {
+    const { endpoint, requestParams } = this.buildFilterItemsRequest(filters, {
+      includeCacheKey: false,
+    });
+    return this.fetchFilterItems(endpoint, requestParams);
+  }
+
+  private async fetchFilterItems(
+    endpoint: string,
+    requestParams: QueryParams
+  ): Promise<Item[]> {
+    const response = await fetch(`${endpoint}${this.buildQuery(requestParams)}`, {
+      headers: this.getHeaders(true),
+    });
+
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data: ItemsResponse = await response.json();
+    return data.data;
+  }
+
+  private buildFilterItemsRequest(
+    filters: FilterItemsParams,
+    options?: { includeCacheKey?: boolean }
+  ): { cacheKey: string; endpoint: string; requestParams: QueryParams } {
+    const requestParams: QueryParams = {};
     const categoryId = filters.categoryId ?? undefined;
     const subcategoryId = filters.subcategoryId ?? undefined;
-    if (filters.perPage !== undefined) {
-      params.append('per_page', String(filters.perPage));
-    }
-    if (filters.listingType) params.append('listing_type', filters.listingType);
+
+    if (filters.q) requestParams.q = filters.q;
+    if (filters.sort) requestParams.sort = filters.sort;
+    if (filters.page !== undefined) requestParams.page = filters.page;
+    if (filters.perPage !== undefined) requestParams.per_page = filters.perPage;
+    if (filters.listingType) requestParams.listing_type = filters.listingType;
     if (filters.minPrice !== undefined && filters.minPrice !== '')
-      params.append('min_price', filters.minPrice);
+      requestParams.min_price = filters.minPrice;
     if (filters.maxPrice !== undefined && filters.maxPrice !== '')
-      params.append('max_price', filters.maxPrice);
+      requestParams.max_price = filters.maxPrice;
     if (filters.verified !== null && filters.verified !== undefined)
-      params.append('verified', String(filters.verified));
-    if (filters.city) params.append('city', filters.city);
-    if (filters.state) params.append('state', filters.state);
-    if (filters.lat !== undefined) params.append('lat', String(filters.lat));
-    if (filters.lng !== undefined) params.append('lng', String(filters.lng));
-    if (filters.distance !== undefined) params.append('distance', String(filters.distance));
-    this.appendLangParam(params);
+      requestParams.verified = filters.verified;
+    if (filters.city) requestParams.city = filters.city;
+    if (filters.state) requestParams.state = filters.state;
+    if (filters.lat !== undefined) requestParams.lat = filters.lat;
+    if (filters.lng !== undefined) requestParams.lng = filters.lng;
+    if (filters.distance !== undefined) requestParams.distance = filters.distance;
+    if (filters.featured) requestParams.featured = 1;
+    if (filters.promoted) requestParams.promoted = 1;
+    if (filters.df && Object.keys(filters.df).length > 0) requestParams.df = filters.df;
+    if (filters.dfMin && Object.keys(filters.dfMin).length > 0) requestParams.df_min = filters.dfMin;
+    if (filters.dfMax && Object.keys(filters.dfMax).length > 0) requestParams.df_max = filters.dfMax;
+
+    const paramsWithLang = this.withLangParams(requestParams) ?? {};
 
     let endpoint = `${API_BASE_URL}/items`;
     const locationEndpoint =
@@ -892,28 +997,22 @@ class ApiService {
       endpoint = `${API_BASE_URL}/items/by-category/${categoryId}`;
     } else if (locationEndpoint) {
       endpoint = locationEndpoint.endpoint;
-      params.delete('city');
-      params.delete('state');
-      params.delete('distance');
+      paramsWithLang.city && delete paramsWithLang.city;
+      paramsWithLang.state && delete paramsWithLang.state;
+      paramsWithLang.distance && delete paramsWithLang.distance;
       locationEndpoint.params.forEach((value, key) => {
-        params.delete(key);
-        params.append(key, value);
+        (paramsWithLang as QueryParams)[key] = value;
       });
     } else {
-      if (categoryId) params.append('category_id', String(categoryId));
-      if (subcategoryId) params.append('subcategory_id', String(subcategoryId));
+      if (categoryId) (paramsWithLang as QueryParams).category_id = categoryId;
+      if (subcategoryId) (paramsWithLang as QueryParams).subcategory_id = subcategoryId;
     }
 
-    const queryString = params.toString();
-    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
-
-    const response = await fetch(url, {
-      headers: this.getHeaders(true),
-    });
-
-    if (!response.ok) throw new Error(await this.readError(response));
-    const data: ItemsResponse = await response.json();
-    return data.data;
+    const includeCacheKey = options?.includeCacheKey ?? true;
+    const cacheKey = includeCacheKey
+      ? this.buildCacheKey('items', paramsWithLang, { includeAuth: true })
+      : '';
+    return { cacheKey, endpoint, requestParams: paramsWithLang };
   }
 
   async getFeaturedItems(): Promise<Item[]> {
@@ -988,13 +1087,31 @@ class ApiService {
   }
 
   async getShop(id: number): Promise<Shop> {
-    const response = await fetch(`${API_BASE_URL}/shops/${id}`, {
-      headers: this.getHeaders(),
+    return this.getShopById(id);
+  }
+
+  async getShopById(shopId: string | number): Promise<Shop> {
+    const requestParams = this.withLangParams();
+    const cacheKey = this.buildCacheKey(`shops/${shopId}`, requestParams, { includeAuth: true });
+    return swrFetch(cacheKey, () => this.fetchShopById(shopId), {
+      ttlMs: CACHE_TTL_MS.shopDetails,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
     });
+  }
+
+  async fetchShopById(shopId: string | number): Promise<Shop> {
+    const requestParams = this.withLangParams();
+    const response = await fetch(
+      `${API_BASE_URL}/shops/${shopId}${this.buildQuery(requestParams)}`,
+      {
+        headers: this.getHeaders(),
+      }
+    );
 
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    return data.data;
+    return data.data ?? data;
   }
 
   
@@ -1012,10 +1129,30 @@ class ApiService {
     return data.data;
   }
 
-  async getShopItems(shopId: number): Promise<Item[]> {
-    const response = await fetch(`${API_BASE_URL}/shops/${shopId}/items`, {
-      headers: this.getPublicHeaders(),
+  async getShopItems(
+    shopId: number,
+    params?: Record<string, string | number | boolean>
+  ): Promise<Item[]> {
+    const requestParams = this.withLangParams(params);
+    const cacheKey = this.buildCacheKey(`shops/${shopId}/items`, requestParams, {
+      includeAuth: true,
     });
+    return swrFetch(cacheKey, () => this.fetchShopItems(shopId, requestParams), {
+      ttlMs: CACHE_TTL_MS.shopItems,
+    });
+  }
+
+  async fetchShopItems(
+    shopId: number,
+    params?: Record<string, string | number | boolean>
+  ): Promise<Item[]> {
+    const requestParams = this.withLangParams(params);
+    const response = await fetch(
+      `${API_BASE_URL}/shops/${shopId}/items${this.buildQuery(requestParams)}`,
+      {
+        headers: this.getPublicHeaders(),
+      }
+    );
 
     if (!response.ok) throw new Error(await this.readError(response));
 
@@ -1074,10 +1211,21 @@ class ApiService {
   }
 
   async getFrontWebSections(): Promise<HomeSection[]> {
+    const requestParams = this.withLangParams();
+    const cacheKey = this.buildCacheKey('front-web/sections', requestParams);
+    return swrFetch(cacheKey, () => this.fetchFrontWebSections(requestParams), {
+      ttlMs: CACHE_TTL_MS.frontWebSections,
+    });
+  }
+
+  async fetchFrontWebSections(
+    params?: Record<string, string | number | boolean>
+  ): Promise<HomeSection[]> {
+    const requestParams = this.withLangParams(params);
     const response = await fetch(
-      `${API_BASE_URL}/front-web/sections${this.buildQuery(this.withLangParams())}`,
+      `${API_BASE_URL}/front-web/sections${this.buildQuery(requestParams)}`,
       {
-      headers: this.getHeaders(),
+        headers: this.getHeaders(),
       }
     );
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1086,7 +1234,110 @@ class ApiService {
   }
 
   async getHomeSections(): Promise<HomeSection[]> {
-    return this.getFrontWebSections();
+    const requestParams = this.withLangParams();
+    const cacheKey = this.buildCacheKey('home/sections', requestParams);
+    return swrFetch(cacheKey, () => this.fetchFrontWebSections(requestParams), {
+      ttlMs: CACHE_TTL_MS.homeSections,
+    });
+  }
+
+  async getFrontWebConfig(): Promise<any> {
+    const requestParams = this.withLangParams();
+    const cacheKey = this.buildCacheKey('front-web', requestParams);
+    return swrFetch(cacheKey, () => this.fetchFrontWebConfig(requestParams), {
+      ttlMs: CACHE_TTL_MS.frontWebSections,
+    });
+  }
+
+  async fetchFrontWebConfig(
+    params?: Record<string, string | number | boolean>
+  ): Promise<any> {
+    const requestParams = this.withLangParams(params);
+    const response = await fetch(
+      `${API_BASE_URL}/front-web${this.buildQuery(requestParams)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async getHomeSectionData(
+    sectionId: string | number,
+    params?: Record<string, string | number | boolean>
+  ): Promise<any> {
+    const requestParams = this.withLangParams(params);
+    const cacheKey = this.buildCacheKey(`home/sections/${sectionId}/data`, requestParams);
+    return swrFetch(cacheKey, () => this.fetchHomeSectionData(sectionId, requestParams), {
+      ttlMs: CACHE_TTL_MS.homeSections,
+    });
+  }
+
+  async fetchHomeSectionData(
+    sectionId: string | number,
+    params?: Record<string, string | number | boolean>
+  ): Promise<any> {
+    const requestParams = this.withLangParams(params);
+    const response = await fetch(
+      `${API_BASE_URL}/home/sections/${sectionId}/data${this.buildQuery(requestParams)}`,
+      { headers: this.getHeaders() }
+    );
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  getCategoriesCacheKey(params?: Record<string, string | number | boolean>) {
+    const requestParams = this.withLangParams(params);
+    return this.buildCacheKey('categories', requestParams);
+  }
+
+  getSubcategoriesCacheKey(categoryId?: string | number) {
+    const requestParams = this.withLangParams(
+      categoryId ? { category_id: String(categoryId) } : undefined
+    );
+    return this.buildCacheKey('subcategories', requestParams);
+  }
+
+  getFilterItemsCacheKey(filters: FilterItemsParams) {
+    const { cacheKey } = this.buildFilterItemsRequest(filters);
+    return cacheKey;
+  }
+
+  getItemByIdCacheKey(itemId: string | number) {
+    const requestParams = this.withLangParams();
+    return this.buildCacheKey(`items/${itemId}`, requestParams, { includeAuth: true });
+  }
+
+  getShopByIdCacheKey(shopId: string | number) {
+    const requestParams = this.withLangParams();
+    return this.buildCacheKey(`shops/${shopId}`, requestParams, { includeAuth: true });
+  }
+
+  getShopItemsCacheKey(shopId: number, params?: Record<string, string | number | boolean>) {
+    const requestParams = this.withLangParams(params);
+    return this.buildCacheKey(`shops/${shopId}/items`, requestParams, { includeAuth: true });
+  }
+
+  getHomeSectionsCacheKey() {
+    const requestParams = this.withLangParams();
+    return this.buildCacheKey('home/sections', requestParams);
+  }
+
+  getHomeSectionDataCacheKey(
+    sectionId: string | number,
+    params?: Record<string, string | number | boolean>
+  ) {
+    const requestParams = this.withLangParams(params);
+    return this.buildCacheKey(`home/sections/${sectionId}/data`, requestParams);
+  }
+
+  getFrontWebConfigCacheKey() {
+    const requestParams = this.withLangParams();
+    return this.buildCacheKey('front-web', requestParams);
+  }
+
+  getFrontWebSectionsCacheKey() {
+    const requestParams = this.withLangParams();
+    return this.buildCacheKey('front-web/sections', requestParams);
   }
 
   async getSliders(params?: Record<string, string | number | boolean>): Promise<Slider[]> {
@@ -1541,14 +1792,106 @@ class ApiService {
     return data.data;
   }
 
+  private resolveCachedFavoriteState(itemId: number): boolean | null {
+    const detailPrefix = `items/${itemId}`;
+    const keys = getCacheKeys();
+    for (const key of keys) {
+      if (!key.startsWith(detailPrefix)) continue;
+      const entry = getCacheEntry<any>(key);
+      const isFavorite = entry?.data?.is_favorite;
+      if (typeof isFavorite === 'boolean') return isFavorite;
+    }
+    return null;
+  }
+
+  private updateFavoriteInCache(itemId: number, nextIsFavorite: boolean) {
+    const updateItem = (item: any) => {
+      if (!item || typeof item !== 'object') return item;
+      if (Number(item.id) !== Number(itemId)) return item;
+      const currentCount =
+        typeof item.favorites_count === 'number' ? item.favorites_count : undefined;
+      const delta = nextIsFavorite ? 1 : -1;
+      const nextCount =
+        currentCount !== undefined ? Math.max(0, currentCount + delta) : currentCount;
+      return {
+        ...item,
+        is_favorite: nextIsFavorite,
+        ...(nextCount !== undefined ? { favorites_count: nextCount } : {}),
+      };
+    };
+
+    const updateData = (data: any): any => {
+      if (Array.isArray(data)) {
+        return data.map((entry) => updateData(entry));
+      }
+      if (!data || typeof data !== 'object') return data;
+      if (Array.isArray(data.items)) {
+        return { ...data, items: data.items.map((entry: any) => updateData(entry)) };
+      }
+      if (Array.isArray(data.data)) {
+        return { ...data, data: data.data.map((entry: any) => updateData(entry)) };
+      }
+      if (data.resolvedData?.items && Array.isArray(data.resolvedData.items)) {
+        return {
+          ...data,
+          resolvedData: {
+            ...data.resolvedData,
+            items: data.resolvedData.items.map((entry: any) => updateData(entry)),
+          },
+        };
+      }
+      return updateItem(data);
+    };
+
+    getCacheKeys().forEach((key) => {
+      if (
+        key.startsWith('items') ||
+        key.startsWith('home/sections') ||
+        key.startsWith('front-web/sections')
+      ) {
+        updateCacheEntry<any>(key, (data) => updateData(data));
+        const updated = getCacheEntry<any>(key);
+        if (updated) {
+          notify(key, updated.data);
+        }
+      }
+    });
+  }
+
+  private resolveFavoriteFromResponse(response: any, fallback: boolean): boolean {
+    const resolved =
+      response?.is_favorite ??
+      response?.data?.is_favorite ??
+      response?.data?.is_saved ??
+      response?.data?.favorite ??
+      response?.favorite;
+    if (typeof resolved === 'boolean') return resolved;
+    if (typeof resolved === 'number') return resolved === 1;
+    if (typeof resolved === 'string') return resolved.toLowerCase() === 'true';
+    return fallback;
+  }
+
   async toggleSaveItem(itemId: number): Promise<any> {
+    const cachedFavorite = this.resolveCachedFavoriteState(itemId);
+    const optimisticNext = cachedFavorite === null ? true : !cachedFavorite;
+    this.updateFavoriteInCache(itemId, optimisticNext);
+
     const response = await fetch(`${API_BASE_URL}/items/${itemId}/save`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({}),
     });
-    if (!response.ok) throw new Error(await this.readError(response));
+    if (!response.ok) {
+      this.updateFavoriteInCache(itemId, cachedFavorite ?? false);
+      throw new Error(await this.readError(response));
+    }
     const data = await response.json();
+    const resolvedFavorite = this.resolveFavoriteFromResponse(data, optimisticNext);
+    this.updateFavoriteInCache(itemId, resolvedFavorite);
+    invalidate(`items/${itemId}`);
+    invalidate('items?');
+    invalidateExact('items');
+    invalidate('home/sections/');
     return data?.data ?? data;
   }
 

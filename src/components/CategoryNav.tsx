@@ -1,9 +1,11 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
 import { useI18n } from '../contexts/I18nContext';
 import { goToItemsCentral } from '../utils/navigation';
+import { useCachedResource } from '../hooks/useCachedResource';
+import { CACHE_TTL_MS } from '../lib/cache';
 
 interface CategoryNavProps {
   primaryColor: string;
@@ -12,7 +14,6 @@ interface CategoryNavProps {
 export default function CategoryNav({ primaryColor }: CategoryNavProps) {
   const { lang } = useI18n();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [subcategoriesByCategory, setSubcategoriesByCategory] = useState<
     Record<number, Subcategory[]>
@@ -27,18 +28,12 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
   // CONSTANT: We increased this to 900 to use more horizontal space
   const DROPDOWN_WIDTH = 900; 
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const data = await apiService.getCategories();
-        setCategories(data);
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      }
-    };
-
-    loadCategories();
-  }, [lang]);
+  const categoriesKey = useMemo(() => apiService.getCategoriesCacheKey(), [lang]);
+  const { data: categories = [] } = useCachedResource<Category[]>(
+    categoriesKey,
+    () => apiService.fetchCategories(),
+    { ttlMs: CACHE_TTL_MS.categories }
+  );
 
   useEffect(() => {
     setActiveCategoryId(null);

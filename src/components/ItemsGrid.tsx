@@ -228,6 +228,28 @@ export default function ItemsGrid(props: ItemsGridProps) {
   const toggleFavorite = async (itemId: number) => {
     const currentItem = items.find((item) => item.id === itemId);
     const currentIsFavorite = currentItem?.is_favorite === true;
+    const currentCount =
+      typeof (currentItem as any)?.favorites_count === 'number'
+        ? (currentItem as any).favorites_count
+        : undefined;
+    const optimisticNext = !currentIsFavorite;
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        const currentCount =
+          typeof (item as any).favorites_count === 'number' ? (item as any).favorites_count : undefined;
+        const nextCount =
+          currentCount !== undefined
+            ? Math.max(0, currentCount + (optimisticNext ? 1 : -1))
+            : currentCount;
+        return {
+          ...item,
+          is_favorite: optimisticNext,
+          ...(nextCount !== undefined ? { favorites_count: nextCount } : {}),
+        };
+      })
+    );
+    setFavoriteMessage(itemId, optimisticNext ? 'Added to favorites' : 'Removed from favorites');
     try {
       const res = await apiService.toggleItemFavorite(itemId);
       const resolved =
@@ -253,6 +275,17 @@ export default function ItemsGrid(props: ItemsGridProps) {
       setFavoriteMessage(itemId, nextIsFavorite ? 'Added to favorites' : 'Removed from favorites');
     } catch (error) {
       console.error('Failed to update favorite:', error);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                is_favorite: currentIsFavorite,
+                ...(currentCount !== undefined ? { favorites_count: currentCount } : {}),
+              }
+            : item
+        )
+      );
       setFavoriteMessage(itemId, 'Unable to update favorite');
     }
   };

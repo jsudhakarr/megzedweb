@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import { LayoutGrid, List, Loader2, SlidersHorizontal } from 'lucide-react';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import SiteHeader from '../components/SiteHeader';
 import Footer from '../components/Footer';
@@ -10,8 +10,9 @@ import FilterDrawer from '../components/FilterDrawer';
 import FilterChips from '../components/FilterChips';
 import type { ItemsFiltersState } from '../types/filters';
 import { parseItemsFilters, writeFiltersToUrl } from '../utils/filters';
-import { buildItemsParams, fetchItemsCentral } from '../services/centralListings';
-import { apiService, type Category, type Item, type Subcategory } from '../services/api';
+import { apiService, type Category, type FilterItemsParams, type Item, type Subcategory } from '../services/api';
+import { useCachedResource } from '../hooks/useCachedResource';
+import { CACHE_TTL_MS } from '../lib/cache';
 
 const defaultFilters: ItemsFiltersState = {
   q: '',
@@ -35,6 +36,12 @@ const defaultFilters: ItemsFiltersState = {
   df_max: {},
 };
 
+const toNumber = (value: string): number | undefined => {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 export default function ItemsCentralScreen() {
   const { settings } = useAppSettings();
   const primaryColor = settings?.primary_color || '#0ea5e9';
@@ -48,14 +55,8 @@ export default function ItemsCentralScreen() {
     };
   });
   const [searchInput, setSearchInput] = useState(filters.q);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [itemsCardStyle, setItemsCardStyle] = useState<string | undefined>(undefined);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   const updateFilters = useCallback((next: Partial<ItemsFiltersState>) => {
     setFilters((prev) => {
@@ -103,52 +104,28 @@ export default function ItemsCentralScreen() {
     return () => window.clearTimeout(timeout);
   }, [filters.q, searchInput, updateFilters]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadCategories = async () => {
-      try {
-        const data = await apiService.getCategories();
-        if (isMounted) {
-          setCategories(data);
-        }
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      }
-    };
+  const categoriesKey = useMemo(() => apiService.getCategoriesCacheKey(), []);
+  const { data: categoriesData = [], refreshing: categoriesRefreshing } = useCachedResource<
+    Category[]
+  >(categoriesKey, () => apiService.fetchCategories(), {
+    ttlMs: CACHE_TTL_MS.categories,
+  });
+  const categories = categoriesData ?? [];
 
-    loadCategories();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadSubcategories = async () => {
-      if (!filters.subcategory_id) {
-        setSubcategories([]);
-        return;
-      }
-      try {
-        const data = filters.category_id
-          ? await apiService.getSubcategories(filters.category_id)
-          : await apiService.getSubcategories();
-        if (isMounted) {
-          setSubcategories(data);
-        }
-      } catch (error) {
-        console.error('Failed to load subcategories:', error);
-        if (isMounted) {
-          setSubcategories([]);
-        }
-      }
-    };
-
-    loadSubcategories();
-    return () => {
-      isMounted = false;
-    };
+  const subcategoriesKey = useMemo(() => {
+    if (!filters.subcategory_id) return null;
+    return apiService.getSubcategoriesCacheKey(filters.category_id ?? undefined);
   }, [filters.category_id, filters.subcategory_id]);
+
+  const { data: subcategoriesData = [] } = useCachedResource<Subcategory[]>(
+    subcategoriesKey,
+    () => apiService.fetchSubcategories(filters.category_id ?? undefined),
+    {
+      ttlMs: CACHE_TTL_MS.subcategories,
+      enabled: Boolean(filters.subcategory_id),
+    }
+  );
+  const subcategories = filters.subcategory_id ? subcategoriesData : [];
 
   const selectedCategoryName = useMemo(() => {
     if (!filters.category_id) return '';
@@ -163,61 +140,54 @@ export default function ItemsCentralScreen() {
     )?.name;
   }, [subcategories, filters.subcategory_id]);
 
-  const requestParams = useMemo(() => buildItemsParams(filters), [filters]);
-  const queryKey = useMemo(() => JSON.stringify(requestParams), [requestParams]);
+  const filterParams = useMemo<FilterItemsParams>(
+    () => ({
+      q: filters.q,
+      sort: filters.sort,
+      page: filters.page,
+      perPage: filters.per_page,
+      categoryId: filters.category_id ?? undefined,
+      subcategoryId: filters.subcategory_id ?? undefined,
+      listingType: filters.listing_type || undefined,
+      minPrice: filters.price_min || undefined,
+      maxPrice: filters.price_max || undefined,
+      city: filters.city || undefined,
+      state: filters.state || undefined,
+      lat: toNumber(filters.lat),
+      lng: toNumber(filters.lng),
+      distance: toNumber(filters.km),
+      featured: filters.featured,
+      promoted: filters.promoted,
+      df: filters.df,
+      dfMin: filters.df_min,
+      dfMax: filters.df_max,
+    }),
+    [filters]
+  );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    let isActive = true;
+  const itemsKey = useMemo(() => apiService.getFilterItemsCacheKey(filterParams), [filterParams]);
+  const {
+    data: itemsData = [],
+    loading,
+    error,
+    refreshing,
+  } = useCachedResource<Item[]>(itemsKey, () => apiService.fetchItemsFiltered(filterParams), {
+    ttlMs: CACHE_TTL_MS.itemsList,
+  });
+  const items = Array.isArray(itemsData) ? itemsData : [];
+  const errorMessage = error ? error.message : null;
 
-    const loadItems = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await fetchItemsCentral(filters, { signal: controller.signal });
-        if (isActive) {
-          setItems(Array.isArray(data) ? data : []);
-        }
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') return;
-        console.error('Failed to load items:', err);
-        if (isActive) {
-          setItems([]);
-          setError('Something went wrong. Please try again.');
-        }
-      } finally {
-        if (isActive) setLoading(false);
-      }
-    };
-
-    loadItems();
-    return () => {
-      isActive = false;
-      controller.abort();
-    };
-  }, [queryKey]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadCardStyle = async () => {
-      try {
-        const sections = await apiService.getHomeSections();
-        const itemsSection = sections.find(
-          (section) => section.type === 'items' && section.style?.card_style
-        );
-        if (isMounted) {
-          setItemsCardStyle(itemsSection?.style?.card_style ?? undefined);
-        }
-      } catch (err) {
-        console.warn('Failed to load items card style:', err);
-      }
-    };
-
-    loadCardStyle();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const homeSectionsKey = useMemo(() => apiService.getHomeSectionsCacheKey(), []);
+  const { data: homeSections } = useCachedResource(homeSectionsKey, () => apiService.fetchFrontWebSections(), {
+    ttlMs: CACHE_TTL_MS.homeSections,
+  });
+  const itemsCardStyle = useMemo(() => {
+    const sections = homeSections ?? [];
+    const itemsSection = sections.find(
+      (section) => section.type === 'items' && section.style?.card_style
+    );
+    return itemsSection?.style?.card_style ?? undefined;
+  }, [homeSections]);
 
   const resetFilters = () => {
     setFilters(defaultFilters);
@@ -336,6 +306,12 @@ export default function ItemsCentralScreen() {
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold text-slate-900">Browse items</h1>
                   <span className="text-sm text-slate-500">({items.length})</span>
+                  {(refreshing || categoriesRefreshing) && (
+                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Refreshing
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -400,7 +376,7 @@ export default function ItemsCentralScreen() {
             <ItemsResults
               items={items}
               loading={loading}
-              error={error}
+              error={errorMessage}
               primaryColor={primaryColor}
               layout={layout}
               listVariant="stacked"
