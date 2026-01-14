@@ -65,8 +65,12 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     // ✅ 1. Instant load from cache
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
-      setTranslations(JSON.parse(cached));
-      return;
+      try {
+        setTranslations(JSON.parse(cached));
+        return;
+      } catch {
+        localStorage.removeItem(cacheKey);
+      }
     }
 
     // ✅ 2. Fetch from API only once
