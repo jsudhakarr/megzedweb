@@ -37,6 +37,7 @@ export default function GridCardStyle2({
       }
     : undefined;
   const isFavourite = item?.is_favorite === true;
+  const listingIcon = listingTag.icon ?? undefined;
   const cardClass = `group block bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all overflow-hidden ${
     isCarousel ? 'min-w-[280px] max-w-[340px] w-[320px] flex-shrink-0' : ''
   }`;
@@ -133,8 +134,8 @@ export default function GridCardStyle2({
             className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
             style={tagStyles}
           >
-            {listingTag.icon ? (
-              <img src={listingTag.icon} alt="" className="w-4 h-4 object-contain" />
+            {listingIcon ? (
+              <img src={listingIcon} alt="" className="w-4 h-4 object-contain" />
             ) : (
               <KeyRound className="w-4 h-4" />
             )}
