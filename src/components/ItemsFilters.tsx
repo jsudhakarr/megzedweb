@@ -7,6 +7,7 @@ import {
 } from '../services/api';
 import type { ItemsFiltersState } from '../types/filters';
 import LocationPicker from './LocationPicker';
+import { useI18n } from '../contexts/I18nContext';
 
 interface ItemsFiltersProps {
   primaryColor: string;
@@ -28,6 +29,7 @@ export default function ItemsFilters({
   onChange,
   onReset,
 }: ItemsFiltersProps) {
+  const { lang } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
@@ -46,7 +48,7 @@ export default function ItemsFilters({
     };
 
     loadCategories();
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     const loadListingTypes = async () => {
@@ -77,7 +79,7 @@ export default function ItemsFilters({
     };
 
     loadSubcategories();
-  }, [filters.category_id]);
+  }, [filters.category_id, lang]);
 
   useEffect(() => {
     const loadDynamicFields = async () => {
@@ -125,7 +127,12 @@ export default function ItemsFilters({
     };
 
     loadDynamicFields();
-  }, [filters.subcategory_id]);
+  }, [filters.subcategory_id, lang]);
+
+  useEffect(() => {
+    setSubcategories([]);
+    setDynamicFieldConfigs([]);
+  }, [lang]);
 
   const updateDynamicValue = (fieldId: number, value: string | string[]) => {
     const key = String(fieldId);

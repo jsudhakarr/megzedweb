@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, Grid3X3 } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 interface CategoryGridProps {
   primaryColor: string;
@@ -15,6 +16,7 @@ export default function CategoryGrid({
   onSubcategorySelect,
   selectedSubcategoryId,
 }: CategoryGridProps) {
+  const { lang } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Record<number, Subcategory[]>>({});
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
@@ -35,7 +37,12 @@ export default function CategoryGrid({
     }
     loadCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoriesOverride]);
+  }, [categoriesOverride, lang]);
+
+  useEffect(() => {
+    setSubcategories({});
+    setExpandedCategory(null);
+  }, [lang]);
 
   const loadCategories = async () => {
     try {

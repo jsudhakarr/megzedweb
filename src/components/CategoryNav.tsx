@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { apiService, type Category, type Subcategory } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 import { goToItemsCentral } from '../utils/navigation';
 
 interface CategoryNavProps {
@@ -9,6 +10,7 @@ interface CategoryNavProps {
 }
 
 export default function CategoryNav({ primaryColor }: CategoryNavProps) {
+  const { lang } = useI18n();
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
@@ -36,7 +38,12 @@ export default function CategoryNav({ primaryColor }: CategoryNavProps) {
     };
 
     loadCategories();
-  }, []);
+  }, [lang]);
+
+  useEffect(() => {
+    setActiveCategoryId(null);
+    setSubcategoriesByCategory({});
+  }, [lang]);
 
   const loadSubcategories = async (categoryId: number) => {
     if (subcategoriesByCategory[categoryId]) {
