@@ -15,12 +15,14 @@ interface ListCardStyle2Props {
   item: Item;
   onToggleFavorite?: () => void;
   isCarousel?: boolean;
+  favoriteMessage?: string;
 }
 
 export default function ListCardStyle2({
   item,
   onToggleFavorite,
   isCarousel = false,
+  favoriteMessage,
 }: ListCardStyle2Props) {
   const listingTag = getListingTag(item);
   const durationLabel = formatDuration(item);
@@ -78,6 +80,12 @@ export default function ListCardStyle2({
             className={`w-3.5 h-3.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`}
           />
         </button>
+
+        {favoriteMessage && (
+          <span className="absolute top-11 right-2 rounded-full bg-slate-900/85 px-2.5 py-1 text-[10px] font-medium text-white shadow">
+            {favoriteMessage}
+          </span>
+        )}
 
         {isVerified(item) && (
           <div

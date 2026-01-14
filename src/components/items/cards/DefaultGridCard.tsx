@@ -15,12 +15,14 @@ interface DefaultGridCardProps {
   item: Item;
   onToggleFavorite?: () => void;
   isCarousel?: boolean;
+  favoriteMessage?: string;
 }
 
 export default function DefaultGridCard({
   item,
   onToggleFavorite,
   isCarousel = false,
+  favoriteMessage,
 }: DefaultGridCardProps) {
   const listingTag = getListingTag(item);
   const durationLabel = formatDuration(item);
@@ -78,6 +80,12 @@ export default function DefaultGridCard({
           >
             <Heart className={`w-4.5 h-4.5 ${isFavourite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`} />
           </button>
+
+          {favoriteMessage && (
+            <span className="absolute top-12 right-2 rounded-full bg-slate-900/85 px-3 py-1 text-[11px] font-medium text-white shadow">
+              {favoriteMessage}
+            </span>
+          )}
 
           {isVerified(item) && (
             <div
