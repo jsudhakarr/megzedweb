@@ -5,6 +5,7 @@ import { apiService, Item } from '../../services/api';
 
 // ✅ IMPORT THE MODAL
 import PromoteModal from '../../components/PromoteModal';
+import PromotedBadge from '../../components/PromotedBadge';
 
 import {
   ShoppingBag,
@@ -239,10 +240,11 @@ export default function MyItems() {
                       {getStatusLabel(item)}
                     </span>
                     {item.is_promoted && (
-                      <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md bg-amber-400 text-black shadow-sm border border-amber-500">
-                        <Zap className="w-3 h-3 fill-current" />
-                        Boosted
-                      </span>
+                      <PromotedBadge
+                        variant="label"
+                        label="Promoted"
+                        className="text-[10px] font-bold uppercase tracking-wide rounded-md bg-amber-400 text-black shadow-sm border border-amber-500"
+                      />
                     )}
                   </div>
 

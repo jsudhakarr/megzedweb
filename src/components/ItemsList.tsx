@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Heart, TrendingUp } from 'lucide-react';
+import { MapPin, Heart } from 'lucide-react';
 import verifiedIcon from '../assets/icons/verified.png';
+import PromotedBadge from './PromotedBadge';
 import type { Item } from '../services/api';
 
 interface ItemsListProps {
@@ -83,10 +84,10 @@ export default function ItemsList({
 
                 {/* PROMOTED */}
                 {isPromoted(item) && (
-                  <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500 text-white text-[11px] font-semibold shadow">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    Promoted
-                  </span>
+                  <PromotedBadge
+                    variant="icon"
+                    className="absolute top-2 left-2"
+                  />
                 )}
 
                 {/* VERIFIED */}
