@@ -10,6 +10,7 @@ import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
 import PromoteModal from "../components/PromoteModal";
 import AppLoader from "../components/AppLoader";
+import PromotedBadge from "../components/PromotedBadge";
 
 import {
   ArrowLeft,
@@ -606,12 +607,12 @@ export default function ItemDetail() {
 
                     <div className="absolute top-4 left-4 flex gap-2">
                       {(item as any).is_promoted && (
-                        <span
-                          className="px-3 py-1 text-xs font-bold text-white rounded-full shadow-sm uppercase tracking-wider"
+                        <PromotedBadge
+                          variant="label"
+                          label="Featured"
+                          className="px-3 text-xs font-bold uppercase tracking-wider"
                           style={{ backgroundColor: primaryColor }}
-                        >
-                          Featured
-                        </span>
+                        />
                       )}
                       <span
                         className={`px-3 py-1 text-xs font-bold text-white rounded-full shadow-sm uppercase tracking-wider ${
