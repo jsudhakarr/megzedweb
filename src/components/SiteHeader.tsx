@@ -4,6 +4,7 @@ import { PlusCircle, Store, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import CategoryNav from './CategoryNav';
 import LanguageButton from './LanguageButton';
 import LoginModal from './LoginModal';
@@ -18,6 +19,7 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
+  const isOnline = useOnlineStatus();
 
   const primaryColor = settings?.primary_color || '#0ea5e9';
   const appName = settings?.appname
@@ -133,6 +135,11 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
             </div>
           </div>
         </div>
+        {!isOnline && (
+          <div className="bg-amber-100 text-amber-900 text-sm font-medium text-center py-2">
+            You&apos;re offline
+          </div>
+        )}
         <CategoryNav primaryColor={primaryColor} />
       </header>
 
