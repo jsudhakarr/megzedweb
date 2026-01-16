@@ -1,7 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Grid3X3 } from 'lucide-react';
-import { apiService, type Category, type Subcategory } from '../services/api';
+import { type Category, type Subcategory } from '../services/api';
 import { useI18n } from '../contexts/I18nContext';
+import { apiClient } from '../services/apiClient';
+import { ApiError, getUserMessage } from '../services/apiError';
+import { useApi } from '../hooks/useApi';
+import ErrorState from './ui/ErrorState';
 
 interface CategoryGridProps {
   primaryColor: string;
@@ -17,11 +21,13 @@ export default function CategoryGrid({
   selectedSubcategoryId,
 }: CategoryGridProps) {
   const { lang } = useI18n();
-  const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Record<number, Subcategory[]>>({});
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
-  const [loading, setLoading] = useState(!categoriesOverride);
   const [loadingSubcategories, setLoadingSubcategories] = useState<number | null>(null);
+  const [subcategoriesError, setSubcategoriesError] = useState<{
+    categoryId: number;
+    error: ApiError;
+  } | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
   const dragScrollLeft = useRef(0);
@@ -29,31 +35,32 @@ export default function CategoryGrid({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  useEffect(() => {
-    if (categoriesOverride) {
-      setCategories(categoriesOverride);
-      setLoading(false);
-      return;
-    }
-    loadCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoriesOverride, lang]);
+  const normalizeListResponse = useCallback(<T,>(data: any): T[] => {
+    if (Array.isArray(data?.data)) return data.data as T[];
+    if (Array.isArray(data?.data?.data)) return data.data.data as T[];
+    if (Array.isArray(data)) return data as T[];
+    return [];
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    if (categoriesOverride) return categoriesOverride;
+    const data = await apiClient.request<any>('/categories', { params: { lang } });
+    return normalizeListResponse<Category>(data);
+  }, [categoriesOverride, lang, normalizeListResponse]);
+
+  const {
+    data: categoriesData,
+    loading,
+    error,
+    retry,
+  } = useApi(fetchCategories, [fetchCategories]);
 
   useEffect(() => {
     setSubcategories({});
     setExpandedCategory(null);
+    setSubcategoriesError(null);
   }, [lang]);
-
-  const loadCategories = async () => {
-    try {
-      const data = await apiService.getCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const categories = categoriesOverride ?? categoriesData ?? [];
 
   const loadSubcategories = async (categoryId: number) => {
     if (subcategories[categoryId]) {
@@ -62,12 +69,16 @@ export default function CategoryGrid({
     }
 
     setLoadingSubcategories(categoryId);
+    setSubcategoriesError(null);
     try {
-      const data = await apiService.getSubcategories(categoryId);
-      setSubcategories((prev) => ({ ...prev, [categoryId]: data }));
+      const data = await apiClient.request<any>('/subcategories', {
+        params: { category_id: categoryId, lang },
+      });
+      const normalized = normalizeListResponse<Subcategory>(data);
+      setSubcategories((prev) => ({ ...prev, [categoryId]: normalized }));
       setExpandedCategory(categoryId);
     } catch (error) {
-      console.error('Failed to load subcategories:', error);
+      setSubcategoriesError({ categoryId, error: error as ApiError });
     } finally {
       setLoadingSubcategories(null);
     }
@@ -131,6 +142,17 @@ export default function CategoryGrid({
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
       </div>
+    );
+  }
+
+  if (error && !categoriesOverride) {
+    return (
+      <ErrorState
+        title="Unable to load categories"
+        message={getUserMessage(error)}
+        isOffline={error.code === 'OFFLINE'}
+        onRetry={retry}
+      />
     );
   }
 
@@ -213,54 +235,71 @@ export default function CategoryGrid({
         </div>
       </div>
 
-      {expandedCategory && subcategories[expandedCategory] && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {subcategories[expandedCategory]?.map((sub) => {
-              const category = categories.find((c) => c.id === expandedCategory);
-              const isSelected = selectedSubcategoryId === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => category && onSubcategorySelect?.(sub, category)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 group ${
-                    isSelected
-                      ? 'border-transparent shadow-lg'
-                      : 'border-slate-100 hover:border-slate-200 hover:shadow-md bg-slate-50 hover:bg-white'
-                  }`}
-                  style={{
-                    backgroundColor: isSelected ? primaryColor : undefined,
-                  }}
-                >
-                  {sub.icon?.thumbnail ? (
-                    <div className={`w-12 h-12 rounded-xl overflow-hidden ring-2 transition-all ${
-                      isSelected ? 'ring-white/30' : 'ring-slate-100 group-hover:ring-slate-200'
-                    }`}>
-                      <img
-                        src={sub.icon.thumbnail}
-                        alt={sub.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : `${primaryColor}10` }}
+      {expandedCategory &&
+        (subcategoriesError?.categoryId === expandedCategory ? (
+          <ErrorState
+            title="Unable to load subcategories"
+            message={getUserMessage(subcategoriesError.error)}
+            isOffline={subcategoriesError.error.code === 'OFFLINE'}
+            onRetry={() => loadSubcategories(expandedCategory)}
+          />
+        ) : subcategories[expandedCategory] ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {subcategories[expandedCategory]?.map((sub) => {
+                const category = categories.find((c) => c.id === expandedCategory);
+                const isSelected = selectedSubcategoryId === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => category && onSubcategorySelect?.(sub, category)}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 group ${
+                      isSelected
+                        ? 'border-transparent shadow-lg'
+                        : 'border-slate-100 hover:border-slate-200 hover:shadow-md bg-slate-50 hover:bg-white'
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? primaryColor : undefined,
+                    }}
+                  >
+                    {sub.icon?.thumbnail ? (
+                      <div
+                        className={`w-12 h-12 rounded-xl overflow-hidden ring-2 transition-all ${
+                          isSelected ? 'ring-white/30' : 'ring-slate-100 group-hover:ring-slate-200'
+                        }`}
+                      >
+                        <img
+                          src={sub.icon.thumbnail}
+                          alt={sub.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : `${primaryColor}10`,
+                        }}
+                      >
+                        <Grid3X3
+                          className="w-5 h-5"
+                          style={{ color: isSelected ? 'white' : primaryColor }}
+                        />
+                      </div>
+                    )}
+                    <span
+                      className={`text-sm font-medium text-center line-clamp-2 ${
+                        isSelected ? 'text-white' : 'text-slate-700 group-hover:text-slate-900'
+                      }`}
                     >
-                      <Grid3X3 className="w-5 h-5" style={{ color: isSelected ? 'white' : primaryColor }} />
-                    </div>
-                  )}
-                  <span className={`text-sm font-medium text-center line-clamp-2 ${
-                    isSelected ? 'text-white' : 'text-slate-700 group-hover:text-slate-900'
-                  }`}>
-                    {sub.name}
-                  </span>
-                </button>
-              );
-            })}
+                      {sub.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        ) : null)}
     </div>
   );
 }

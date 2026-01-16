@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiService, type Item } from '../services/api';
+import { type Item } from '../services/api';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
 import FilterSidebar from '../components/FilterSidebar';
 import ItemsGrid from '../components/ItemsGrid';
 import Footer from '../components/Footer';
 import SiteHeader from '../components/SiteHeader';
+import ErrorState from '../components/ui/ErrorState';
+import { apiClient } from '../services/apiClient';
+import { getUserMessage } from '../services/apiError';
+import { useApi } from '../hooks/useApi';
 
 interface FilterState {
   category: number | null;
@@ -28,7 +32,7 @@ const parseNumberParam = (value: string | null) => {
 
 export default function Items() {
   const { settings } = useAppSettings();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -53,9 +57,6 @@ export default function Items() {
   const filterSidebarKey = `${initialFilters.category ?? 'all'}-${initialFilters.subcategory ?? 'all'}`;
 
   const [filters, setFilters] = useState<FilterState>(initialFilters);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [itemsCardStyle, setItemsCardStyle] = useState<string | undefined>(undefined);
 
   const translate = (key: string, fallback: string) => {
@@ -71,9 +72,19 @@ export default function Items() {
     let isMounted = true;
     const loadCardStyle = async () => {
       try {
-        const sections = await apiService.getHomeSections();
+        const response = await apiClient.request<any>('/front-web/sections', {
+          params: { lang },
+        });
+        const sections = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response?.data?.data)
+            ? response.data.data
+            : Array.isArray(response)
+              ? response
+              : [];
         const itemsSection = sections.find(
-          (section) => section.type === 'items' && section.style?.card_style
+          (section: { type?: string; style?: { card_style?: string } }) =>
+            section.type === 'items' && section.style?.card_style
         );
         if (isMounted) {
           setItemsCardStyle(itemsSection?.style?.card_style ?? undefined);
@@ -87,54 +98,71 @@ export default function Items() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [lang]);
 
   const hasActiveFilters = useMemo(() => {
     return Object.values(filters).some((value) => value !== null && value !== '');
   }, [filters]);
 
-  useEffect(() => {
-    const loadItems = async () => {
-      setLoading(true);
-      setError(null);
+  const normalizeItems = useCallback((payload: any): Item[] => {
+    if (Array.isArray(payload?.data)) return payload.data as Item[];
+    if (Array.isArray(payload?.data?.data)) return payload.data.data as Item[];
+    if (Array.isArray(payload)) return payload as Item[];
+    return [];
+  }, []);
 
-      try {
-        let data: Item[] = [];
+  const fetchItems = useCallback(async () => {
+    if (isFeatured) {
+      const response = await apiClient.request<any>('/items/featured', {
+        params: { lang },
+      });
+      return normalizeItems(response);
+    }
 
-        if (isFeatured) {
-          data = await apiService.getFeaturedItems();
-        } else if (hasActiveFilters) {
-          data = await apiService.filterItems({
-            categoryId: filters.category,
-            subcategoryId: filters.subcategory,
-            listingType: filters.listingType,
-            minPrice: filters.minPrice,
-            maxPrice: filters.maxPrice,
-            verified: filters.verified,
-            city: filters.city,
-            state: filters.state,
-            perPage: 60,
-          });
-        } else {
-          data = await apiService.getItems(undefined, undefined, undefined, undefined, 60);
-        }
+    if (hasActiveFilters) {
+      const params: Record<string, string | number | boolean> = {
+        per_page: 60,
+        lang,
+      };
 
-        setItems(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Failed to load items:', err);
-        setItems([]);
-        setError(translate('something_went_wrong', 'Something went wrong. Please try again.'));
-      } finally {
-        setLoading(false);
+      if (filters.listingType) params.listing_type = filters.listingType;
+      if (filters.minPrice !== '') params.min_price = filters.minPrice;
+      if (filters.maxPrice !== '') params.max_price = filters.maxPrice;
+      if (filters.verified !== null) params.verified = filters.verified;
+      if (filters.city) params.city = filters.city;
+      if (filters.state) params.state = filters.state;
+
+      let endpoint = '/items';
+      if (filters.subcategory) {
+        endpoint = `/items/by-subcategory/${filters.subcategory}`;
+      } else if (filters.category) {
+        endpoint = `/items/by-category/${filters.category}`;
       }
-    };
 
-    loadItems();
-  }, [filters, hasActiveFilters, isFeatured, t]);
+      const response = await apiClient.request<any>(endpoint, { params });
+      return normalizeItems(response);
+    }
+
+    const response = await apiClient.request<any>('/items', {
+      params: {
+        per_page: 60,
+        lang,
+      },
+    });
+    return normalizeItems(response);
+  }, [filters, hasActiveFilters, isFeatured, lang, normalizeItems]);
+
+  const {
+    data: itemsData,
+    loading,
+    error,
+    retry,
+  } = useApi(fetchItems, [fetchItems]);
 
   const title = isFeatured ? translate('featured_items', 'Featured Items') : t('items');
   const browseLabel = translate('browse', 'Browse');
   const emptyLabel = translate('no_items_found', 'No items found.');
+  const items = itemsData ?? [];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -173,9 +201,12 @@ export default function Items() {
                 <Loader2 className="w-7 h-7 animate-spin text-blue-500" />
               </div>
             ) : error ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-slate-500">{error}</p>
-              </div>
+              <ErrorState
+                title={translate('something_went_wrong', 'Something went wrong')}
+                message={getUserMessage(error)}
+                isOffline={error.code === 'OFFLINE'}
+                onRetry={retry}
+              />
             ) : items.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-slate-500">{emptyLabel}</p>
