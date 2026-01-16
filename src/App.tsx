@@ -27,6 +27,7 @@ import Profile from './pages/Profile';
 import Notifications from './pages/dashboard/Notifications';
 import Wallet from './pages/dashboard/Wallet';
 import CoinPackages from './pages/dashboard/CoinPackages';
+import FallbackSettings from './pages/dashboard/FallbackSettings';
 
 const ItemsCentralScreen = lazy(() => import('./pages/ItemsCentralScreen'));
 const ShopsCentralScreen = lazy(() => import('./pages/ShopsCentralScreen'));
@@ -201,6 +202,7 @@ function App() {
               <Route path="requests/sent" element={<ActionSubmissions variant="sent" />} />
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
+              <Route path="fallback-settings" element={<FallbackSettings />} />
               <Route
                 path="chat"
                 element={
