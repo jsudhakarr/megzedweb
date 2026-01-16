@@ -18,6 +18,7 @@ import {
   Bell,
   MessageCircle,
   Coins, // Keep generic icon for "Buy Coins"
+  SlidersHorizontal,
 } from "lucide-react";
 import Footer from "../components/Footer";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
@@ -89,6 +90,11 @@ export default function Dashboard() {
       label: "Messages",
       icon: <MessageCircle className="w-5 h-5" />,
       badge: unreadMessages,
+    },
+    {
+      path: "/dashboard/fallback-settings",
+      label: "Fallback Settings",
+      icon: <SlidersHorizontal className="w-5 h-5" />,
     },
 
     { path: "/dashboard/profile", label: "Profile Settings", icon: <Settings className="w-5 h-5" /> },

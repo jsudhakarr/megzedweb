@@ -1,58 +1,59 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { fetchAppSettings, AppSettings } from '../services/appSettings';
+import {
+  defaultFallbackConfig,
+  loadFallbackConfig,
+  saveFallbackConfig,
+  FallbackConfig,
+} from '../config/fallbackSettings';
 
 interface AppSettingsContextType {
   settings: AppSettings | null;
   loading: boolean;
   error: string | null;
+  fallbackConfig: FallbackConfig;
+  updateFallbackConfig: (config: FallbackConfig) => void;
 }
 
-const defaultSettings: AppSettings = {
-  id: 1,
-  appname: 'Megabook',
-  sitename: 'Megabook',
-  description: 'megabook classifaids',
+const buildFallbackAppSettings = (fallback: FallbackConfig): AppSettings => ({
+  id: 0,
+  appname: fallback.appName,
+  sitename: fallback.siteName,
+  description: fallback.description,
   maintenance_mode: 'no',
   force_update: 'no',
-  primary_color: '#fd9f11',
-  secondary_color: '#ffffff',
-  currency: 'INR',
+  primary_color: fallback.primaryColor,
+  secondary_color: fallback.secondaryColor,
+  currency: 'USD',
   language: 'en',
   default_language: 'en',
-  footer_text: '@megabook all rights recived',
-  youtube_url: 'https://www.youtube.com/megabook',
+  footer_text: fallback.footerText,
+  youtube_url: null,
   facebook_url: null,
   x_url: null,
   instagram_url: null,
   whatsapp_url: null,
   play_store_link: null,
   app_store_link: null,
-  contact_email: 'admin@gmail.com',
-  contact_number: '8000000000',
-  contact_phone: '8000000000',
-  contact_address:
-    'MJ Clock Tower, Nizam Shahi Rd, Chandra Vihar, Old Kattal Mandi, Nampally, Hyderabad, Telangana 500001, India',
-  map_lat: '55.0020000',
-  map_lng: '55.0023000',
+  contact_email: fallback.contactEmail,
+  contact_number: fallback.contactPhone,
+  contact_phone: fallback.contactPhone,
+  contact_address: 'Offline fallback address',
+  map_lat: '0.0000000',
+  map_lng: '0.0000000',
   logo: {
-    url: 'https://api.megzed.com/storage/1400/695ec60c9f2eb_android-chrome-192x192.png',
-    thumbnail:
-      'https://api.megzed.com/storage/1400/conversions/695ec60c9f2eb_android-chrome-192x192-thumb.jpg',
-    preview:
-      'https://api.megzed.com/storage/1400/conversions/695ec60c9f2eb_android-chrome-192x192-preview.jpg',
+    url: fallback.logoUrl,
+    thumbnail: fallback.logoUrl,
+    preview: fallback.logoUrl,
   },
   placeholder_image: {
-    url: 'https://api.megzed.com/storage/1401/695ec5fca9375_android-chrome-512x512.png',
-    thumbnail:
-      'https://api.megzed.com/storage/1401/conversions/695ec5fca9375_android-chrome-512x512-thumb.jpg',
-    preview:
-      'https://api.megzed.com/storage/1401/conversions/695ec5fca9375_android-chrome-512x512-preview.jpg',
+    url: fallback.logoUrl,
+    thumbnail: fallback.logoUrl,
+    preview: fallback.logoUrl,
   },
-  footer_logo:
-    'https://api.megzed.com/storage/1402/695ec5f97b13c_android-chrome-192x192.png',
-  favicon:
-    'https://api.megzed.com/storage/1403/695ec5f38bc0b_favicon.ico',
-};
+  footer_logo: fallback.logoUrl,
+  favicon: fallback.faviconUrl,
+});
 
 const AppSettingsContext = createContext<AppSettingsContextType | undefined>(undefined);
 
@@ -69,44 +70,99 @@ interface AppSettingsProviderProps {
 }
 
 export const AppSettingsProvider = ({ children }: AppSettingsProviderProps) => {
-  const [settings, setSettings] = useState<AppSettings | null>(defaultSettings);
+  const [fallbackConfig, setFallbackConfig] = useState<FallbackConfig>(() => loadFallbackConfig());
+  const [settings, setSettings] = useState<AppSettings | null>(() =>
+    buildFallbackAppSettings(fallbackConfig)
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const applyFallbackAssets = useCallback(
+    (data: AppSettings): AppSettings => ({
+      ...data,
+      logo: data.logo?.url
+        ? data.logo
+        : {
+            url: fallbackConfig.logoUrl,
+            thumbnail: fallbackConfig.logoUrl,
+            preview: fallbackConfig.logoUrl,
+          },
+      favicon: data.favicon || fallbackConfig.faviconUrl,
+    }),
+    [fallbackConfig]
+  );
+
+  const loadSettings = useCallback(async () => {
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error('Offline mode - using fallback settings.');
+      }
+
+      const data = await fetchAppSettings();
+      setSettings(applyFallbackAssets(data));
+      setError(null);
+    } catch (err: any) {
+      console.error('Failed to load app settings:', err);
+      setError(err.message);
+      setSettings(buildFallbackAppSettings(fallbackConfig));
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFallbackAssets, fallbackConfig]);
 
   useEffect(() => {
     if (!settings) return;
     const appName = settings.appname || settings.sitename || 'Megzed';
     document.title = appName;
 
-    if (settings.favicon) {
+    const faviconSource = settings.favicon || fallbackConfig.faviconUrl;
+    if (faviconSource) {
       let faviconLink = document.querySelector<HTMLLinkElement>("link[rel='icon']");
       if (!faviconLink) {
         faviconLink = document.createElement('link');
         faviconLink.rel = 'icon';
         document.head.appendChild(faviconLink);
       }
-      faviconLink.href = settings.favicon;
+      faviconLink.href = faviconSource;
     }
-  }, [settings]);
+  }, [settings, fallbackConfig.faviconUrl]);
 
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const data = await fetchAppSettings();
-        setSettings(data);
-      } catch (err: any) {
-        console.error('Failed to load app settings:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+    loadSettings();
+  }, [loadSettings]);
+
+  useEffect(() => {
+    const handleOffline = () => {
+      setSettings(buildFallbackAppSettings(loadFallbackConfig()));
+    };
+    const handleOnline = () => {
+      loadSettings();
     };
 
-    loadSettings();
-  }, []);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [loadSettings]);
+
+  const updateFallbackConfig = (config: FallbackConfig) => {
+    const savedConfig = saveFallbackConfig(config);
+    setFallbackConfig(savedConfig);
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSettings(buildFallbackAppSettings(savedConfig));
+    }
+    if (settings?.id === 0) {
+      setSettings(buildFallbackAppSettings(savedConfig));
+    }
+  };
 
   return (
-    <AppSettingsContext.Provider value={{ settings, loading, error }}>
+    <AppSettingsContext.Provider
+      value={{ settings, loading, error, fallbackConfig, updateFallbackConfig }}
+    >
       {children}
     </AppSettingsContext.Provider>
   );
