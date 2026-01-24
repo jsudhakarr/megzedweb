@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X, Loader2, MapPin, ArrowRight, Mic } from "lucide-react";
 import { apiService, type Item } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
 
 interface SearchBoxProps {
   primaryColor: string;
@@ -11,7 +10,6 @@ interface SearchBoxProps {
 
 export default function SearchBox({ primaryColor, containerClassName }: SearchBoxProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,15 +77,6 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
       maximumFractionDigits: 0,
     }).format(Number(price));
 
-  const greetingName = user?.name?.trim() ? user.name : "Guest";
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("");
-
   const handleItemClick = (id: number) => {
     setQuery("");
     setShowResults(false);
@@ -153,27 +142,6 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
             boxShadow: isFocused ? `0 0 0 1px ${primaryColor}33` : undefined,
           }}
         >
-          <div className="flex items-center gap-2 pr-3">
-            {user?.profile_photo_url ? (
-              <img
-                src={user.profile_photo_url}
-                alt={user.name}
-                className="w-10 h-10 rounded-full object-cover border border-slate-200"
-              />
-            ) : (
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold"
-                style={{ backgroundColor: `${primaryColor}1a`, color: primaryColor }}
-              >
-                {getInitials(greetingName) || "G"}
-              </div>
-            )}
-            <div className="leading-tight">
-              <p className="text-xs text-slate-500">Hello,</p>
-              <p className="text-sm font-semibold text-slate-800">{greetingName}</p>
-            </div>
-          </div>
-          <span className="h-8 w-px bg-slate-200" />
           <Search className="w-5 h-5" style={{ color: primaryColor }} />
           <span className="font-semibold" style={{ color: primaryColor }}>
             Search

@@ -119,9 +119,6 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                         {t('logout')}
                       </button>
                     )}
-                    <div className="hidden md:block">
-                      <LanguageButton />
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -132,11 +129,11 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                   >
                     {t('login')}
                   </button>
-                  <div className="hidden md:block">
-                    <LanguageButton />
-                  </div>
                 </div>
               )}
+              <div className="hidden md:block">
+                <LanguageButton />
+              </div>
             </div>
           </div>
         </div>
