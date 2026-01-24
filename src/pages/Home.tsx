@@ -110,6 +110,7 @@ export default function Home() {
     cachedHomeSectionsByLocation[homeCacheKey] === undefined &&
       cachedHomeSectionsByLang[lang] === undefined
   );
+  const [isSearchActive, setIsSearchActive] = useState(false);
 
   const handleSubcategorySelect = (subcategory: Subcategory, category: Category) => {
     setSelectedSubcategory(subcategory);
@@ -388,8 +389,14 @@ export default function Home() {
         {sectionsLoading ? (
           renderHeroSkeleton()
         ) : (
-          <div className={`grid gap-6 mb-8 ${hasSlider ? 'lg:grid-cols-2' : ''}`}>
-            {hasSlider && <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />}
+          <div
+            className={`grid gap-6 mb-8 ${
+              hasSlider && !isSearchActive ? 'lg:grid-cols-2' : ''
+            }`}
+          >
+            {hasSlider && !isSearchActive && (
+              <HomeSlider primaryColor={primaryColor} slides={sliderSlides} />
+            )}
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8 flex flex-col justify-center">
               <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">
                 Welcome back{user?.name ? `, ${user.name}` : ''}!
@@ -437,7 +444,11 @@ export default function Home() {
                   )}
                 </button>
               </div>
-              <SearchBox primaryColor={primaryColor} containerClassName="max-w-none mx-0" />
+              <SearchBox
+                primaryColor={primaryColor}
+                containerClassName="max-w-none mx-0"
+                onSearchActiveChange={setIsSearchActive}
+              />
             </div>
           </div>
         )}
