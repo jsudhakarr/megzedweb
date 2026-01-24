@@ -4,17 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
 
-import {
-  User as UserIcon,
-  Users,
-  ShoppingBag,
-  Store,
-  QrCode,
-  Heart,
-  Bell,
-  PlusCircle,
-  MessageCircle,
-} from 'lucide-react';
+import { QrCode, Heart, Bell, MessageCircle } from 'lucide-react';
 
 import SearchBox from '../components/SearchBox';
 import CategoryGrid from '../components/CategoryGrid';
@@ -28,14 +18,12 @@ import Footer from '../components/Footer';
 import LoginModal from '../components/LoginModal';
 import AppLoader from '../components/AppLoader';
 
-// ✅ NEW
-import LanguageButton from '../components/LanguageButton';
-import CategoryNav from '../components/CategoryNav';
 import UsersSlider from '../components/UsersSlider';
 import HomeSlider from '../components/HomeSlider';
 import HomeAdSection from '../components/HomeAdSection';
 import ShopsGrid from '../components/ShopsGrid';
 import ShopCard from '../components/ShopCard';
+import SiteHeader from '../components/SiteHeader';
 import { apiService, type HomeSectionResolved, type Category } from '../services/api';
 
 import type { Subcategory } from '../types/category';
@@ -152,19 +140,7 @@ export default function Home() {
     else navigate(path);
   };
 
-  const handleAddProperty = () => {
-    if (!user) setLoginOpen(true);
-    else navigate('/dashboard/items/create');
-  };
-
   const primaryColor = settings?.primary_color || '#0073f0';
-  const appName = settings?.appname ? settings.appname.split(' - ')[0] : 'Megzed';
-  const appLogoUrl = settings?.logo?.url || null;
-  const headerNavItems = [
-    { label: t('items'), path: '/items', icon: <ShoppingBag className="w-4 h-4" /> },
-    { label: t('businesses'), path: '/shops', icon: <Store className="w-4 h-4" /> },
-    { label: 'Users', path: '/users', icon: <Users className="w-4 h-4" /> },
-  ];
 
   const replaceShopWithBusiness = (text: string, fallback: string) => {
     if (!text) return fallback;
@@ -393,108 +369,24 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      {/* HEADER */}
-      <header
-        className="sticky top-0 z-50 border-b shadow-sm"
-        style={{ backgroundColor: settings?.secondary_color || '#ffffff' }}
-      >
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* LEFT */}
-            <div className="flex items-center gap-4 min-w-0">
-              <button
-                onClick={() => navigate('/')}
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-              >
-                {appLogoUrl ? (
-                  <img src={appLogoUrl} alt={appName} className="h-10 w-auto object-contain" />
-                ) : (
-                  <Store className="w-8 h-8" style={{ color: primaryColor }} />
-                )}
-                <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">{appName}</h1>
-              </button>
-
-              <div className="h-8 w-px bg-slate-300 hidden lg:block"></div>
-
-              <LocationPicker
-                primaryColor={primaryColor}
-                city={filters.city}
-                state={filters.state}
-                onLocationChange={(city, state, lat, lng, distance) => {
-                  setFilters((prev) => ({ ...prev, city, state, lat, lng, distance }));
-                }}
-              />
-            </div>
-
-            {/* RIGHT */}
-            <div className="flex items-center gap-3">
-              <nav className="flex items-center gap-2">
-                {headerNavItems.map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                  >
-                    <span className="text-slate-500">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </nav>
-              <div className="hidden md:block">
-                <LanguageButton />
-              </div>
-
-              <button
-                onClick={handleAddProperty}
-                className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white shadow-sm hover:shadow-md transition-all transform active:scale-95"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>Post now</span>
-              </button>
-
-              {user ? (
-                <div className="flex items-center gap-2 pl-2">
-                  <button
-                    onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-3 hover:bg-slate-50 rounded-lg p-2 transition-colors"
-                    title={t('my_dashboard')}
-                  >
-                    {user.profile_photo_url ? (
-                      <img
-                        src={user.profile_photo_url}
-                        alt={user.name}
-                        className="w-10 h-10 rounded-full border-2 border-slate-200 object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: `${primaryColor}20` }}
-                      >
-                        <UserIcon className="w-6 h-6" style={{ color: primaryColor }} />
-                      </div>
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 pl-2">
-                  <button
-                    onClick={() => setLoginOpen(true)}
-                    className="px-4 py-2 text-slate-700 font-bold hover:text-slate-900 transition-colors"
-                  >
-                    {t('login')}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-        </div>
-        <CategoryNav primaryColor={primaryColor} />
-      </header>
+      <SiteHeader />
 
       {/* MAIN CONTENT */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Choose your location</h2>
+            <p className="text-sm text-slate-500">See listings near you.</p>
+          </div>
+          <LocationPicker
+            primaryColor={primaryColor}
+            city={filters.city}
+            state={filters.state}
+            onLocationChange={(city, state, lat, lng, distance) => {
+              setFilters((prev) => ({ ...prev, city, state, lat, lng, distance }));
+            }}
+          />
+        </div>
         {/* HERO SLIDER + SEARCH */}
         {sectionsLoading ? (
           renderHeroSkeleton()
