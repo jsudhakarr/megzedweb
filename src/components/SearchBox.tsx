@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, Loader2, MapPin, Tag, ArrowRight } from "lucide-react";
+import { Search, X, Loader2, MapPin, ArrowRight, Mic } from "lucide-react";
 import { apiService, type Item } from "../services/api";
 
 interface SearchBoxProps {
@@ -72,36 +72,46 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
     >
       {/* Search input */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setShowResults(true)}
-          placeholder="Search properties, furniture, appliances…"
+        <div
           className="
-            w-full pl-12 pr-12 py-3.5
+            flex items-center gap-3
+            w-full
             bg-white border border-slate-300
-            rounded-xl
-            text-slate-900 placeholder-slate-400
-            focus:outline-none focus:border-slate-400
+            rounded-2xl px-4 py-3
+            shadow-sm
+            focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-100
           "
-        />
-
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          {loading && <Loader2 className="w-5 h-5 animate-spin text-slate-400" />}
-          {!loading && query && (
-            <button
-              onClick={() => {
-                setQuery("");
-                setResults([]);
-                setShowResults(false);
-              }}
-              className="p-1 rounded-full hover:bg-slate-100"
-            >
-              <X className="w-5 h-5 text-slate-400" />
-            </button>
-          )}
+        >
+          <Search className="w-5 h-5 text-blue-600" />
+          <span className="font-semibold text-blue-700">Search</span>
+          <span className="h-5 w-px bg-slate-300" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => results.length > 0 && setShowResults(true)}
+            placeholder="Enter UID to view item"
+            className="
+              flex-1 bg-transparent text-slate-800 placeholder-slate-400
+              focus:outline-none
+            "
+          />
+          <div className="flex items-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+            {!loading && query && (
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setResults([]);
+                  setShowResults(false);
+                }}
+                className="p-1 rounded-full hover:bg-slate-100"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            )}
+            <Mic className="w-5 h-5 text-blue-600" />
+          </div>
         </div>
       </div>
 
