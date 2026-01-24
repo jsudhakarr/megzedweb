@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSettings } from '../../contexts/AppSettingsContext';
 import { apiService } from '../../services/api';
-import { Search, Filter, Clock, MapPin, User, Inbox, Send } from 'lucide-react';
+import { Search, Filter, Clock, MapPin, User, Inbox, Send, Home, Calendar, BadgeCheck } from 'lucide-react';
 
 const getItemTitle = (submission: any) =>
   submission?.item_name ||
@@ -24,6 +24,21 @@ const getItemAddress = (submission: any) =>
 
 const getStatus = (submission: any) => submission?.status || 'Pending';
 
+const getCategoryName = (submission: any) =>
+  submission?.category_name ||
+  submission?.categoryName ||
+  submission?.item?.category?.name ||
+  submission?.item?.subcategory?.name ||
+  submission?.category ||
+  'Category';
+
+const getRequestId = (submission: any) =>
+  submission?.request_code ||
+  submission?.requestCode ||
+  submission?.code ||
+  submission?.id ||
+  'REQ';
+
 const getCounterpartyName = (submission: any, variant: 'received' | 'sent') => {
   if (variant === 'received') {
     return submission?.buyer_name || submission?.buyerName || submission?.buyer?.name || 'Buyer';
@@ -39,11 +54,31 @@ const getCounterpartyName = (submission: any, variant: 'received' | 'sent') => {
   );
 };
 
+const getCounterpartyAvatar = (submission: any, variant: 'received' | 'sent') => {
+  if (variant === 'received') {
+    return submission?.buyer_avatar || submission?.buyerAvatar || submission?.buyer?.avatar || submission?.buyer?.photo;
+  }
+
+  return (
+    submission?.seller_avatar ||
+    submission?.sellerAvatar ||
+    submission?.seller?.avatar ||
+    submission?.shop?.logo_url ||
+    submission?.shop?.logo
+  );
+};
+
 const formatDate = (value: any) => {
   if (!value) return 'Date & Time';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Date & Time';
   return date.toLocaleString();
+};
+
+const formatStatusLabel = (value: any) => {
+  if (!value) return 'pending';
+  if (typeof value === 'string') return value.toLowerCase();
+  return String(value).toLowerCase();
 };
 
 export default function ActionSubmissions({ variant }: { variant: 'received' | 'sent' }) {
@@ -141,63 +176,112 @@ export default function ActionSubmissions({ variant }: { variant: 'received' | '
 
       {!loading && filteredRequests.length > 0 && (
         <div className="space-y-4">
-          {filteredRequests.map((request: any, index: number) => (
-            <div
-              key={request.id || index}
-              role="button"
-              tabIndex={0}
-              onClick={() => request?.id && navigate(`/submission-details/${request.id}`, { state: { variant } })}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && request?.id) {
-                  navigate(`/submission-details/${request.id}`, { state: { variant } });
-                }
-              }}
-              className="bg-white rounded-xl shadow-md border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2"
-              style={{ '--tw-ring-color': `${primaryColor}55` } as React.CSSProperties}
-            >
-              <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
-                <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-200 rounded-lg flex-shrink-0">
-                    {getItemImage(request) && (
-                      <img
-                        src={getItemImage(request)}
-                        alt={getItemTitle(request)}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
+          {filteredRequests.map((request: any, index: number) => {
+            const requestId = getRequestId(request);
+            const status = formatStatusLabel(getStatus(request));
+            const avatar = getCounterpartyAvatar(request, variant);
+
+            return (
+              <div
+                key={request.id || index}
+                role="button"
+                tabIndex={0}
+                onClick={() => request?.id && navigate(`/submission-details/${request.id}`, { state: { variant } })}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && request?.id) {
+                    navigate(`/submission-details/${request.id}`, { state: { variant } });
+                  }
+                }}
+                className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ '--tw-ring-color': `${primaryColor}55` } as React.CSSProperties}
+              >
+                <div className="flex flex-col gap-4 p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-200 overflow-hidden flex-shrink-0">
+                      {getItemImage(request) && (
+                        <img
+                          src={getItemImage(request)}
+                          alt={getItemTitle(request)}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-slate-900 text-base sm:text-lg truncate">
+                        {getItemTitle(request)}
+                      </h3>
+                      <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
+                        <Home className="w-4 h-4 text-slate-500" />
+                        <span className="truncate">{getCategoryName(request)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-700 mt-1">
+                        <Calendar className="w-4 h-4 text-slate-500" />
+                        <span className="font-semibold">
+                          {request?.action_code ? request.action_code : 'Appointment'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-3 flex flex-col gap-3 text-sm text-slate-600">
+                    {variant === 'received' ? (
+                      <div className="flex items-center gap-3">
+                        {avatar ? (
+                          <img
+                            src={avatar}
+                            alt={getCounterpartyName(request, variant)}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                            <User className="w-5 h-5 text-slate-500" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-slate-400">Submitted By</p>
+                          <div className="flex items-center gap-2 text-slate-900 font-semibold truncate">
+                            <span>{getCounterpartyName(request, variant)}</span>
+                            <BadgeCheck className="w-4 h-4 text-blue-500" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-slate-500" />
+                        <span>Submitted on {formatDate(request?.created_at || request?.createdAt)}</span>
+                      </div>
+                    )}
+
+                    {variant === 'received' && (
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <Clock className="w-4 h-4 text-slate-500" />
+                        <span>
+                          Date {formatDate(request?.created_at || request?.createdAt)}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        <span className="truncate">ID : {requestId}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <span>Status :</span>
+                        <span className="font-semibold text-blue-600">{status}</span>
+                      </div>
+                    </div>
+                    {variant === 'sent' && (
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        <span className="truncate">{getItemAddress(request)}</span>
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-slate-900 mb-1 truncate">{getItemTitle(request)}</h3>
-                    <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 mb-1">
-                      <User className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span className="truncate">{getCounterpartyName(request, variant)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 mb-1">
-                      <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span className="truncate">{formatDate(request?.created_at || request?.createdAt)}</span>
-                    </div>
-                    {request?.action_code ? (
-                      <div className="text-xs sm:text-sm text-slate-500">
-                        Action: <span className="font-medium text-slate-700">{request.action_code}</span>
-                      </div>
-                    ) : null}
-                    <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
-                      <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span className="truncate">{getItemAddress(request)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right sm:text-left w-full sm:w-auto">
-                  <span
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium"
-                    style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
-                  >
-                    {getStatus(request)}
-                  </span>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
