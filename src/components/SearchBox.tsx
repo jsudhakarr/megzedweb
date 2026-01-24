@@ -6,9 +6,14 @@ import { apiService, type Item } from "../services/api";
 interface SearchBoxProps {
   primaryColor: string;
   containerClassName?: string;
+  onSearchActiveChange?: (active: boolean) => void;
 }
 
-export default function SearchBox({ primaryColor, containerClassName }: SearchBoxProps) {
+export default function SearchBox({
+  primaryColor,
+  containerClassName,
+  onSearchActiveChange,
+}: SearchBoxProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Item[]>([]);
@@ -58,6 +63,10 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
 
     return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query]);
+
+  useEffect(() => {
+    onSearchActiveChange?.(query.trim().length > 0);
+  }, [onSearchActiveChange, query]);
 
   useEffect(() => {
     return () => {
