@@ -32,6 +32,33 @@ const getCategoryName = (submission: any) =>
   submission?.category ||
   'Category';
 
+const getCategoryIcon = (submission: any) =>
+  submission?.category_icon ||
+  submission?.categoryIcon ||
+  submission?.item?.category?.icon?.url ||
+  submission?.item?.category?.icon ||
+  submission?.item?.subcategory?.icon?.url ||
+  submission?.item?.subcategory?.icon ||
+  null;
+
+const getActionLabel = (submission: any) =>
+  submission?.action_button_label ||
+  submission?.actionButtonLabel ||
+  submission?.action_label ||
+  submission?.actionLabel ||
+  submission?.action?.label ||
+  submission?.action_code ||
+  'Appointment';
+
+const getActionIcon = (submission: any) =>
+  submission?.action_button_icon_url ||
+  submission?.actionButtonIconUrl ||
+  submission?.action_button_icon ||
+  submission?.actionButtonIcon ||
+  submission?.action?.icon_url ||
+  submission?.action?.icon ||
+  null;
+
 const getRequestId = (submission: any) =>
   submission?.request_code ||
   submission?.requestCode ||
@@ -56,15 +83,44 @@ const getCounterpartyName = (submission: any, variant: 'received' | 'sent') => {
 
 const getCounterpartyAvatar = (submission: any, variant: 'received' | 'sent') => {
   if (variant === 'received') {
-    return submission?.buyer_avatar || submission?.buyerAvatar || submission?.buyer?.avatar || submission?.buyer?.photo;
+    return (
+      submission?.buyer_profile_url ||
+      submission?.buyerProfileUrl ||
+      submission?.buyer_avatar ||
+      submission?.buyerAvatar ||
+      submission?.buyer_image ||
+      submission?.buyerImage ||
+      submission?.buyer?.profile_photo_url ||
+      submission?.buyer?.profile_url ||
+      submission?.buyer?.avatar ||
+      submission?.buyer?.photo ||
+      null
+    );
   }
 
   return (
+    submission?.seller_profile_url ||
+    submission?.sellerProfileUrl ||
     submission?.seller_avatar ||
     submission?.sellerAvatar ||
+    submission?.seller_image ||
+    submission?.sellerImage ||
+    submission?.owner_profile_url ||
+    submission?.ownerProfileUrl ||
+    submission?.owner_image ||
+    submission?.ownerImage ||
+    submission?.seller?.profile_photo_url ||
+    submission?.seller?.profile_url ||
     submission?.seller?.avatar ||
+    submission?.seller?.image ||
+    submission?.seller?.logo ||
+    submission?.owner?.profile_photo_url ||
+    submission?.owner?.profile_url ||
+    submission?.owner?.avatar ||
+    submission?.owner?.image ||
     submission?.shop?.logo_url ||
-    submission?.shop?.logo
+    submission?.shop?.logo ||
+    null
   );
 };
 
@@ -180,16 +236,21 @@ export default function ActionSubmissions({ variant }: { variant: 'received' | '
             const requestId = getRequestId(request);
             const status = formatStatusLabel(getStatus(request));
             const avatar = getCounterpartyAvatar(request, variant);
+            const categoryIcon = getCategoryIcon(request);
+            const actionIcon = getActionIcon(request);
+            const actionLabel = getActionLabel(request);
 
             return (
               <div
                 key={request.id || index}
                 role="button"
                 tabIndex={0}
-                onClick={() => request?.id && navigate(`/submission-details/${request.id}`, { state: { variant } })}
+                onClick={() =>
+                  request?.id && navigate(`/dashboard/submission-details/${request.id}`, { state: { variant } })
+                }
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && request?.id) {
-                    navigate(`/submission-details/${request.id}`, { state: { variant } });
+                    navigate(`/dashboard/submission-details/${request.id}`, { state: { variant } });
                   }
                 }}
                 className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2"
@@ -211,13 +272,21 @@ export default function ActionSubmissions({ variant }: { variant: 'received' | '
                         {getItemTitle(request)}
                       </h3>
                       <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
-                        <Home className="w-4 h-4 text-slate-500" />
+                        {categoryIcon ? (
+                          <img src={categoryIcon} alt="" className="w-4 h-4 rounded object-contain" />
+                        ) : (
+                          <Home className="w-4 h-4 text-slate-500" />
+                        )}
                         <span className="truncate">{getCategoryName(request)}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-slate-700 mt-1">
-                        <Calendar className="w-4 h-4 text-slate-500" />
+                        {actionIcon ? (
+                          <img src={actionIcon} alt="" className="w-4 h-4 rounded object-contain" />
+                        ) : (
+                          <Calendar className="w-4 h-4 text-slate-500" />
+                        )}
                         <span className="font-semibold">
-                          {request?.action_code ? request.action_code : 'Appointment'}
+                          {actionLabel}
                         </span>
                       </div>
                     </div>

@@ -1,5 +1,5 @@
 import { Suspense, lazy, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppSettingsProvider, useAppSettings } from './contexts/AppSettingsContext';
 import AppLoader from './components/AppLoader';
@@ -83,6 +83,14 @@ function PageDetailWrapper() {
   return <PageDetail primaryColor={primaryColor} />;
 }
 
+function SubmissionDetailsRedirect() {
+  const { id } = useParams<{ id?: string }>();
+  if (!id) {
+    return <Navigate to="/dashboard/requests/sent" replace />;
+  }
+  return <Navigate to={`/dashboard/submission-details/${id}`} replace />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -160,7 +168,7 @@ function App() {
               path="/submission-details"
               element={
                 <PrivateRoute>
-                  <SubmissionDetails />
+                  <Navigate to="/dashboard/requests/sent" replace />
                 </PrivateRoute>
               }
             />
@@ -168,7 +176,7 @@ function App() {
               path="/submission-details/:id"
               element={
                 <PrivateRoute>
-                  <SubmissionDetails />
+                  <SubmissionDetailsRedirect />
                 </PrivateRoute>
               }
             />
@@ -200,6 +208,7 @@ function App() {
               <Route path="likes" element={<Favorites />} />
               <Route path="requests/received" element={<ActionSubmissions variant="received" />} />
               <Route path="requests/sent" element={<ActionSubmissions variant="sent" />} />
+              <Route path="submission-details/:id" element={<SubmissionDetails />} />
               <Route path="profile" element={<Profile />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="fallback-settings" element={<FallbackSettings />} />
