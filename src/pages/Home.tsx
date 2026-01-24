@@ -6,6 +6,8 @@ import { useI18n } from '../contexts/I18nContext';
 
 import {
   User as UserIcon,
+  Users,
+  ShoppingBag,
   Store,
   QrCode,
   Heart,
@@ -158,6 +160,11 @@ export default function Home() {
   const primaryColor = settings?.primary_color || '#0073f0';
   const appName = settings?.appname ? settings.appname.split(' - ')[0] : 'Megzed';
   const appLogoUrl = settings?.logo?.url || null;
+  const headerNavItems = [
+    { label: t('items'), path: '/items', icon: <ShoppingBag className="w-4 h-4" /> },
+    { label: t('businesses'), path: '/shops', icon: <Store className="w-4 h-4" /> },
+    { label: 'Users', path: '/users', icon: <Users className="w-4 h-4" /> },
+  ];
 
   const replaceShopWithBusiness = (text: string, fallback: string) => {
     if (!text) return fallback;
@@ -421,6 +428,18 @@ export default function Home() {
 
             {/* RIGHT */}
             <div className="flex items-center gap-3">
+              <nav className="flex items-center gap-2">
+                {headerNavItems.map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  >
+                    <span className="text-slate-500">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </nav>
               <div className="hidden md:block">
                 <LanguageButton />
               </div>
