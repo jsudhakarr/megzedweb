@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Store, User as UserIcon, ShoppingBag, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,14 +10,14 @@ import LanguageButton from './LanguageButton';
 import LoginModal from './LoginModal';
 
 interface SiteHeaderProps {
-  showLogout?: boolean;
+  locationPicker?: ReactNode;
 }
 
-export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
+export default function SiteHeader({ locationPicker }: SiteHeaderProps) {
   const navigate = useNavigate();
   const { settings } = useAppSettings();
   const { t } = useI18n();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   const isOnline = useOnlineStatus();
 
@@ -37,11 +37,6 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
     else navigate('/dashboard/items/create');
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
   return (
     <>
       <header
@@ -50,7 +45,7 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
       >
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <button
                 onClick={() => navigate('/')}
                 className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -62,7 +57,12 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                 )}
                 <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">{appName}</h1>
               </button>
-
+              {locationPicker && (
+                <>
+                  <span className="hidden sm:block h-6 w-px bg-slate-200" aria-hidden="true" />
+                  <div className="hidden sm:flex items-center">{locationPicker}</div>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -110,16 +110,6 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                     )}
                   </button>
 
-                  <div className="flex items-center gap-2">
-                    {showLogout && (
-                      <button
-                        onClick={handleLogout}
-                        className="text-slate-500 hover:text-red-600 font-medium px-2"
-                      >
-                        {t('logout')}
-                      </button>
-                    )}
-                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 pl-2">

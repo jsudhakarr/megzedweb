@@ -369,15 +369,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      <SiteHeader />
-
-      {/* MAIN CONTENT */}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Choose your location</h2>
-            <p className="text-sm text-slate-500">See listings near you.</p>
-          </div>
+      <SiteHeader
+        locationPicker={
           <LocationPicker
             primaryColor={primaryColor}
             city={filters.city}
@@ -386,7 +379,11 @@ export default function Home() {
               setFilters((prev) => ({ ...prev, city, state, lat, lng, distance }));
             }}
           />
-        </div>
+        }
+      />
+
+      {/* MAIN CONTENT */}
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* HERO SLIDER + SEARCH */}
         {sectionsLoading ? (
           renderHeroSkeleton()
