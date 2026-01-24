@@ -14,8 +14,15 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
+  const recognitionRef = useRef<any>(null);
+
+  const speechSupported =
+    typeof window !== "undefined" &&
+    ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -52,6 +59,17 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
     return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query]);
 
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop?.();
+      }
+    };
+  }, []);
+
   const formatPrice = (price: string) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -63,6 +81,44 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
     setQuery("");
     setShowResults(false);
     navigate(`/item/${id}`);
+  };
+
+  const handleMicClick = () => {
+    if (!speechSupported) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop?.();
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = recognitionRef.current ?? new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript;
+      if (transcript) {
+        setQuery(transcript);
+        setShowResults(true);
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    setIsListening(true);
+    recognition.start();
   };
 
   return (
@@ -79,16 +135,26 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
             bg-white border border-slate-300
             rounded-2xl px-4 py-3
             shadow-sm
-            focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-100
+            transition-colors
           "
+          style={{
+            borderColor: isFocused ? primaryColor : "#cbd5e1",
+            boxShadow: isFocused ? `0 0 0 1px ${primaryColor}33` : undefined,
+          }}
         >
-          <Search className="w-5 h-5 text-blue-600" />
-          <span className="font-semibold text-blue-700">Search</span>
+          <Search className="w-5 h-5" style={{ color: primaryColor }} />
+          <span className="font-semibold" style={{ color: primaryColor }}>
+            Search
+          </span>
           <span className="h-5 w-px bg-slate-300" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => results.length > 0 && setShowResults(true)}
+            onFocus={() => {
+              setIsFocused(true);
+              if (results.length > 0) setShowResults(true);
+            }}
+            onBlur={() => setIsFocused(false)}
             placeholder="Enter UID to view item"
             className="
               flex-1 bg-transparent text-slate-800 placeholder-slate-400
@@ -110,7 +176,18 @@ export default function SearchBox({ primaryColor, containerClassName }: SearchBo
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             )}
-            <Mic className="w-5 h-5 text-blue-600" />
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={!speechSupported}
+              className={`p-1 rounded-full transition-colors ${
+                speechSupported ? "hover:bg-slate-100" : "opacity-40 cursor-not-allowed"
+              } ${isListening ? "animate-pulse" : ""}`}
+              aria-label="Voice search"
+              title={speechSupported ? "Voice search" : "Voice search unsupported"}
+            >
+              <Mic className="w-5 h-5" style={{ color: primaryColor }} />
+            </button>
           </div>
         </div>
       </div>

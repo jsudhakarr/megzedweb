@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, Store, User as UserIcon } from 'lucide-react';
+import { PlusCircle, Store, User as UserIcon, ShoppingBag, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
@@ -27,9 +27,9 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
     : settings?.name || 'Megzed';
   const appLogoUrl = settings?.logo?.url || null;
   const navItems = [
-    { label: t('listings'), path: '/items' },
-    { label: t('businesses'), path: '/shops' },
-    { label: 'Users', path: '/users' },
+    { label: t('listings'), path: '/items', icon: <ShoppingBag className="w-4 h-4" /> },
+    { label: t('businesses'), path: '/shops', icon: <Store className="w-4 h-4" /> },
+    { label: 'Users', path: '/users', icon: <Users className="w-4 h-4" /> },
   ];
 
   const handleAddProperty = () => {
@@ -63,20 +63,21 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                 <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">{appName}</h1>
               </button>
 
-              <nav className="hidden lg:flex items-center gap-4 border-l border-slate-200 pl-4">
+            </div>
+
+            <div className="flex items-center gap-3">
+              <nav className="hidden lg:flex items-center gap-2">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                   >
-                    {item.label}
+                    <span className="text-slate-500">{item.icon}</span>
+                    <span>{item.label}</span>
                   </Link>
                 ))}
               </nav>
-            </div>
-
-            <div className="flex items-center gap-3">
               <div className="hidden md:block">
                 <LanguageButton />
               </div>

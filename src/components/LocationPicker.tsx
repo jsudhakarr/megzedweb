@@ -18,7 +18,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
-  const [kmRange, setKmRange] = useState(50);
+  const [kmRange, setKmRange] = useState(20);
   const [selectedLocation, setSelectedLocation] = useState<{
     city: string | null;
     state: string | null;
@@ -31,6 +31,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const circleRef = useRef<any>(null);
   const autocompleteRef = useRef<any>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,8 +43,59 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const map = mapInstanceRef.current;
+    if (!map || !window.google) return;
+    const markerPosition = markerRef.current?.getPosition?.();
+    const center = selectedLocation
+      ? { lat: selectedLocation.lat, lng: selectedLocation.lng }
+      : markerPosition
+      ? { lat: markerPosition.lat(), lng: markerPosition.lng() }
+      : null;
+    if (!center) return;
+    updateRadiusCircle(center, kmRange, true);
+  }, [isOpen, kmRange, selectedLocation]);
+
+  const updateRadiusCircle = (
+    center: { lat: number; lng: number },
+    radiusKm: number,
+    shouldFit: boolean
+  ) => {
+    if (!mapInstanceRef.current || !window.google) return;
+    const radiusMeters = Math.max(radiusKm, 5) * 1000;
+    if (!circleRef.current) {
+      circleRef.current = new window.google.maps.Circle({
+        map: mapInstanceRef.current,
+        center,
+        radius: radiusMeters,
+        fillColor: primaryColor,
+        fillOpacity: 0.15,
+        strokeColor: primaryColor,
+        strokeOpacity: 0.6,
+        strokeWeight: 2,
+      });
+    } else {
+      circleRef.current.setCenter(center);
+      circleRef.current.setRadius(radiusMeters);
+      circleRef.current.setOptions({
+        fillColor: primaryColor,
+        strokeColor: primaryColor,
+      });
+    }
+
+    if (shouldFit) {
+      const bounds = circleRef.current.getBounds?.();
+      if (bounds) {
+        mapInstanceRef.current.fitBounds(bounds, 40);
+      }
+    }
+  };
+
   const initializeMap = () => {
     if (!mapRef.current || !window.google) return;
+
+    circleRef.current = null;
 
     const defaultCenter = { lat: 17.385, lng: 78.4867 }; // Hyderabad
 
@@ -64,9 +116,12 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
       draggable: true,
     });
 
+    updateRadiusCircle(defaultCenter, kmRange, false);
+
     markerRef.current.addListener('dragend', (e: any) => {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
+      updateRadiusCircle({ lat, lng }, kmRange, false);
       reverseGeocode(lat, lng);
     });
 
@@ -74,6 +129,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
       markerRef.current.setPosition({ lat, lng });
+      updateRadiusCircle({ lat, lng }, kmRange, false);
       reverseGeocode(lat, lng);
     });
 
@@ -86,6 +142,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
           const lng = place.geometry.location.lng();
           mapInstanceRef.current.setCenter({ lat, lng });
           markerRef.current.setPosition({ lat, lng });
+          updateRadiusCircle({ lat, lng }, kmRange, true);
           extractLocationDetails(place, lat, lng);
         }
       });
@@ -152,7 +209,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
 
   const handleSaveLocation = () => {
     if (selectedLocation) {
-      const effectiveDistance = kmRange > 0 ? kmRange : 50;
+      const effectiveDistance = Math.max(kmRange, 5);
       onLocationChange(
         selectedLocation.city,
         selectedLocation.state,
@@ -167,7 +224,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
   const handleClear = () => {
     setSelectedLocation(null);
     setSearchQuery('');
-    setKmRange(50);
+    setKmRange(20);
     onLocationChange(null, null, undefined, undefined, undefined);
     setIsOpen(false);
   };
@@ -200,10 +257,10 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="p-6 border-b border-slate-200 flex-shrink-0">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="p-4 border-b border-slate-200 flex-shrink-0">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-slate-900">Select Location</h2>
+                <h2 className="text-xl font-bold text-slate-900">Select Location</h2>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -211,7 +268,7 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
                   <X className="w-6 h-6 text-slate-600" />
                 </button>
               </div>
-              <p className="text-sm text-slate-600 mb-4">
+              <p className="text-sm text-slate-600 mb-3">
                 Click on the map or search to select a location, then click "Save Location" button below.
               </p>
 
@@ -222,12 +279,12 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
                   placeholder="Search for a location..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+                  className="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ focusRingColor: primaryColor }}
                 />
                 <button
                   onClick={handleFindMyLocation}
-                  className="px-4 py-3 text-white font-medium rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+                  className="px-4 py-2.5 text-white font-medium rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
                   style={{ backgroundColor: primaryColor }}
                 >
                   <Navigation className="w-5 h-5" />
@@ -267,18 +324,18 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
                   </p>
                 </div>
               )}
-              <div ref={mapRef} className="w-full h-80" />
+              <div ref={mapRef} className="w-full h-64" />
             </div>
 
-            <div className="p-6 border-t border-slate-200 flex-shrink-0">
-              <div className="mb-4">
+            <div className="p-4 border-t border-slate-200 flex-shrink-0">
+              <div className="mb-3">
                 <label className="block text-sm font-semibold text-slate-900 mb-3">
                   Search Radius: {kmRange} km
                 </label>
                 <input
                   type="range"
-                  min="0"
-                  max="50"
+                  min="5"
+                  max="100"
                   value={kmRange}
                   onChange={(e) => setKmRange(parseInt(e.target.value))}
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
@@ -287,8 +344,8 @@ export default function LocationPicker({ primaryColor, city, state, onLocationCh
                   }}
                 />
                 <div className="flex justify-between mt-2">
-                  <span className="text-xs text-slate-500">0 km</span>
-                  <span className="text-xs text-slate-500">50 km</span>
+                  <span className="text-xs text-slate-500">5 km</span>
+                  <span className="text-xs text-slate-500">100 km</span>
                 </div>
               </div>
 
