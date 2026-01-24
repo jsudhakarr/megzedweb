@@ -12,6 +12,8 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import type { AppSettings } from '../services/appSettings';
+import googlePlayLogo from '../assets/appstore/google.png';
+import appleStoreLogo from '../assets/appstore/apple.png';
 
 interface FooterProps {
   settings?: AppSettings | null;
@@ -34,10 +36,12 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
     {
       href: settings?.play_store_link || settings?.android_store_url,
       title: 'Google Play',
+      logo: googlePlayLogo,
     },
     {
       href: settings?.app_store_link || settings?.ios_store_url,
       title: 'App Store',
+      logo: appleStoreLogo,
     },
   ].filter((link) => Boolean(link.href));
   const socialLinks = [
@@ -193,13 +197,13 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-                  Experience the magic
+                  Mobile first access
                 </p>
                 <h3 className="text-2xl font-semibold text-white">
-                  Download the {appName.split(' - ')[0]} app
+                  Shop smarter with the {appName.split(' - ')[0]} app
                 </h3>
                 <p className="text-sm text-slate-300">
-                  Get the full experience with faster browsing, instant alerts, and secure payments.
+                  Track deals, chat faster, and get instant updates anywhere you go.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-4">
@@ -207,10 +211,13 @@ export default function Footer({ settings, primaryColor }: FooterProps) {
                   <a
                     key={link.title}
                     href={link.href}
-                    className="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 text-slate-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+                    className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/95 px-5 py-4 text-slate-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
                     target="_blank"
                     rel="noreferrer"
                   >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+                      <img src={link.logo} alt={`${link.title} logo`} className="h-8 w-8" />
+                    </div>
                     <div className="text-left">
                       <p className="text-xs uppercase tracking-wide text-slate-500">
                         Download on the
