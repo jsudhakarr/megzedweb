@@ -70,6 +70,80 @@ const formatActionLabel = (value?: string | null) => {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
+const getCategoryIcon = (submission: ActionSubmission | null) => {
+  if (!submission) return null;
+  const anySubmission = submission as any;
+  return (
+    anySubmission?.category_icon ||
+    anySubmission?.categoryIcon ||
+    submission.item?.category?.icon?.url ||
+    submission.item?.category?.icon ||
+    submission.item?.subcategory?.icon?.url ||
+    submission.item?.subcategory?.icon ||
+    null
+  );
+};
+
+const getActionIcon = (submission: ActionSubmission | null) => {
+  if (!submission) return null;
+  const anySubmission = submission as any;
+  return (
+    anySubmission?.action_button_icon_url ||
+    anySubmission?.actionButtonIconUrl ||
+    anySubmission?.action_button_icon ||
+    anySubmission?.actionButtonIcon ||
+    submission.action?.icon_url ||
+    submission.action?.icon ||
+    null
+  );
+};
+
+const getCounterpartyAvatar = (submission: ActionSubmission | null, isSellerView: boolean) => {
+  if (!submission) return null;
+  const anySubmission = submission as any;
+
+  if (isSellerView) {
+    return (
+      anySubmission?.buyer_profile_url ||
+      anySubmission?.buyerProfileUrl ||
+      anySubmission?.buyer_avatar ||
+      anySubmission?.buyerAvatar ||
+      anySubmission?.buyer_image ||
+      anySubmission?.buyerImage ||
+      anySubmission?.buyer?.profile_photo_url ||
+      anySubmission?.buyer?.profile_url ||
+      anySubmission?.buyer?.avatar ||
+      anySubmission?.buyer?.photo ||
+      null
+    );
+  }
+
+  return (
+    anySubmission?.seller_profile_url ||
+    anySubmission?.sellerProfileUrl ||
+    anySubmission?.seller_avatar ||
+    anySubmission?.sellerAvatar ||
+    anySubmission?.seller_image ||
+    anySubmission?.sellerImage ||
+    anySubmission?.owner_profile_url ||
+    anySubmission?.ownerProfileUrl ||
+    anySubmission?.owner_image ||
+    anySubmission?.ownerImage ||
+    anySubmission?.seller?.profile_photo_url ||
+    anySubmission?.seller?.profile_url ||
+    anySubmission?.seller?.avatar ||
+    anySubmission?.seller?.image ||
+    anySubmission?.seller?.logo ||
+    anySubmission?.owner?.profile_photo_url ||
+    anySubmission?.owner?.profile_url ||
+    anySubmission?.owner?.avatar ||
+    anySubmission?.owner?.image ||
+    anySubmission?.shop?.logo_url ||
+    anySubmission?.shop?.logo ||
+    null
+  );
+};
+
 export default function SubmissionDetails() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -136,6 +210,7 @@ export default function SubmissionDetails() {
     submission?.actionLabel ||
     submission?.action?.label ||
     formatActionLabel((submission as any)?.action_code);
+  const actionIcon = getActionIcon(submission);
 
   const isSellerView = variant === "received";
   const contactPhone = isSellerView
@@ -153,6 +228,8 @@ export default function SubmissionDetails() {
   const counterpartyName = isSellerView
     ? (submission as any)?.buyer_name
     : (submission as any)?.lister_name;
+  const counterpartyAvatar = getCounterpartyAvatar(submission, isSellerView);
+  const categoryIcon = getCategoryIcon(submission);
 
   const handleCancel = async () => {
     if (!submission?.id) return;
@@ -241,7 +318,12 @@ export default function SubmissionDetails() {
             <div className="flex-1">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">{actionLabel}</p>
+                  <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+                    {actionIcon ? (
+                      <img src={actionIcon} alt="" className="w-4 h-4 rounded object-contain" />
+                    ) : null}
+                    <span>{actionLabel}</span>
+                  </div>
                   <h1 className="text-2xl font-bold text-slate-900">{itemName}</h1>
                   <p className="text-sm text-slate-500 mt-2">{itemPrice}</p>
                 </div>
@@ -266,6 +348,12 @@ export default function SubmissionDetails() {
                     {counterpartyName}
                   </div>
                 ) : null}
+                {categoryIcon ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-700">Category:</span>
+                    <img src={categoryIcon} alt="" className="w-5 h-5 rounded object-contain" />
+                  </div>
+                ) : null}
                 <div>
                   <span className="font-medium text-slate-700">Location:</span> {itemAddress}
                 </div>
@@ -273,6 +361,31 @@ export default function SubmissionDetails() {
             </div>
           </div>
         </div>
+
+        {(counterpartyName || counterpartyAvatar) && (
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm">
+            <div className="flex items-center gap-4">
+              {counterpartyAvatar ? (
+                <img
+                  src={counterpartyAvatar}
+                  alt={counterpartyName || counterpartyLabel}
+                  className="w-14 h-14 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                  <span className="text-lg font-semibold">{counterpartyLabel?.[0]}</span>
+                </div>
+              )}
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-400">{counterpartyLabel}</p>
+                <p className="text-base font-semibold text-slate-900">{counterpartyName || "-"}</p>
+                {contactPhone ? (
+                  <p className="text-sm text-slate-500 mt-1">{contactPhone}</p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
           <h2 className="text-lg font-bold text-slate-900">Submitted Details</h2>

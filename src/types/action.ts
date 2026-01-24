@@ -34,10 +34,15 @@ export interface ActionSubmission {
   uid?: string | null;
   status?: string | null;
   action_code?: string | null;
+  action_button_label?: string | null;
+  action_button_icon?: string | null;
+  action_button_icon_url?: string | null;
   action?: {
     id?: number;
     label?: string;
     code?: string;
+    icon?: string | null;
+    icon_url?: string | null;
   } | null;
   action_label?: string | null;
   actionLabel?: string | null;
@@ -50,6 +55,15 @@ export interface ActionSubmission {
   buyer_name?: string | null;
   buyer_mobile?: string | null;
   lister_name?: string | null;
+  buyer_profile_url?: string | null;
+  seller_profile_url?: string | null;
+  buyer_avatar?: string | null;
+  seller_avatar?: string | null;
+  buyer_image?: string | null;
+  seller_image?: string | null;
+  owner_profile_url?: string | null;
+  owner_image?: string | null;
+  category_icon?: string | null;
   submitted_values?: Array<{
     field_id?: number | string;
     label?: string;

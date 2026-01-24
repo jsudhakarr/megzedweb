@@ -258,7 +258,7 @@ export default function ItemDetail() {
     const code = normalizeCode(action.code);
 
     if (action.pending && action.submission_id) {
-      navigate(`/submission-details/${action.submission_id}`);
+      navigate(`/dashboard/submission-details/${action.submission_id}`);
       return;
     }
 
