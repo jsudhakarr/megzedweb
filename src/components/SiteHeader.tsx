@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, Store, User as UserIcon, ShoppingBag, Users } from 'lucide-react';
+import { Plus, Store, User as UserIcon, ShoppingBag, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useI18n } from '../contexts/I18nContext';
@@ -29,7 +29,7 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
   const navItems = [
     { label: t('listings'), path: '/items', icon: <ShoppingBag className="w-4 h-4" /> },
     { label: t('businesses'), path: '/shops', icon: <Store className="w-4 h-4" /> },
-    { label: 'Users', path: '/users', icon: <Users className="w-4 h-4" /> },
+    { label: 'Sellers', path: '/users', icon: <Users className="w-4 h-4" /> },
   ];
 
   const handleAddProperty = () => {
@@ -78,17 +78,13 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                   </Link>
                 ))}
               </nav>
-              <div className="hidden md:block">
-                <LanguageButton />
-              </div>
-
               <button
                 onClick={handleAddProperty}
                 className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white shadow-sm hover:shadow-md transition-all transform active:scale-95"
                 style={{ backgroundColor: primaryColor }}
               >
-                <PlusCircle className="w-5 h-5" />
-                <span>Post now</span>
+                <Plus className="w-5 h-5" />
+                <span>Post AD</span>
               </button>
 
               {user ? (
@@ -114,14 +110,19 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                     )}
                   </button>
 
-                  {showLogout && (
-                    <button
-                      onClick={handleLogout}
-                      className="text-slate-500 hover:text-red-600 font-medium px-2"
-                    >
-                      {t('logout')}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {showLogout && (
+                      <button
+                        onClick={handleLogout}
+                        className="text-slate-500 hover:text-red-600 font-medium px-2"
+                      >
+                        {t('logout')}
+                      </button>
+                    )}
+                    <div className="hidden md:block">
+                      <LanguageButton />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 pl-2">
@@ -131,6 +132,9 @@ export default function SiteHeader({ showLogout = true }: SiteHeaderProps) {
                   >
                     {t('login')}
                   </button>
+                  <div className="hidden md:block">
+                    <LanguageButton />
+                  </div>
                 </div>
               )}
             </div>
