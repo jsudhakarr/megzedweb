@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react"; // Kept Loader for UI state
 import { useAppSettings } from "../../contexts/AppSettingsContext";
+import { apiService } from "../../services/api";
 import { getCoinPackages } from "../../services/coins";
 import type { CoinPackage } from "../../types/wallet";
+import type { PaymentGateway } from "../../types/payments";
 
 // --- Asset Imports ---
 // Adjust the path "../.." based on where this file is located inside src/
@@ -24,6 +26,36 @@ const toNum = (v: any, d = 0) => {
   return d;
 };
 
+declare global {
+  interface Window {
+    Razorpay?: any;
+  }
+}
+
+type CheckoutStatus = "idle" | "creating" | "awaiting" | "confirming" | "success" | "error";
+
+const allowedGatewayCodes = new Set([
+  "razorpay",
+  "cashfree",
+  "payu",
+  "phonepe",
+  "phonepe_pg",
+  "upi_manual",
+  "bank_transfer",
+  "manual",
+]);
+
+const gatewayLabelOverrides: Record<string, string> = {
+  razorpay: "Razorpay",
+  cashfree: "Cashfree",
+  payu: "PayU",
+  phonepe: "PhonePe",
+  phonepe_pg: "PhonePe",
+  upi_manual: "Manual (UPI)",
+  bank_transfer: "Manual (Bank Transfer)",
+  manual: "Manual (UPI / Bank)",
+};
+
 export default function CoinPackages() {
   const { settings } = useAppSettings();
   const primaryColor = settings?.primary_color || "#0073f0";
@@ -31,6 +63,15 @@ export default function CoinPackages() {
   const [loading, setLoading] = useState(true);
   const [packs, setPacks] = useState<CoinPackage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [gateways, setGateways] = useState<PaymentGateway[]>([]);
+  const [gatewaysLoading, setGatewaysLoading] = useState(false);
+  const [gatewaysError, setGatewaysError] = useState<string | null>(null);
+  const [selectedPack, setSelectedPack] = useState<CoinPackage | null>(null);
+  const [selectedGateway, setSelectedGateway] = useState<PaymentGateway | null>(null);
+  const [checkoutStatus, setCheckoutStatus] = useState<CheckoutStatus>("idle");
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [intentData, setIntentData] = useState<Record<string, unknown> | null>(null);
+  const [showGatewayModal, setShowGatewayModal] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -45,10 +86,164 @@ export default function CoinPackages() {
     }
   };
 
+  const loadGateways = async () => {
+    setGatewaysLoading(true);
+    setGatewaysError(null);
+    try {
+      const list = await apiService.getPaymentGateways("web");
+      setGateways(list);
+    } catch (e: any) {
+      setGatewaysError(e?.message || "Failed to load payment gateways");
+    } finally {
+      setGatewaysLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadGateways();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const availableGateways = useMemo(() => {
+    return gateways
+      .filter((gateway) => gateway.code !== "google_play")
+      .filter((gateway) => allowedGatewayCodes.has(gateway.code))
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [gateways]);
+
+  const resetCheckoutState = () => {
+    setSelectedGateway(null);
+    setCheckoutStatus("idle");
+    setCheckoutMessage(null);
+    setIntentData(null);
+  };
+
+  const handleOpenModal = (pack: CoinPackage) => {
+    setSelectedPack(pack);
+    resetCheckoutState();
+    setShowGatewayModal(true);
+    if (!gatewaysLoading && gateways.length === 0 && !gatewaysError) {
+      loadGateways();
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowGatewayModal(false);
+    setSelectedPack(null);
+    resetCheckoutState();
+  };
+
+  const formatGatewayLabel = (gateway: PaymentGateway) =>
+    gatewayLabelOverrides[gateway.code] || gateway.name || gateway.code;
+
+  const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
+    setSelectedGateway(gateway);
+    setCheckoutStatus("creating");
+    setCheckoutMessage(null);
+    try {
+      const amount = toNum(pack.price);
+      const currency = (pack.currency || gateway.currency || "INR").toString();
+      const intent = await apiService.createPaymentIntent({
+        gateway_code: gateway.code,
+        amount,
+        currency,
+        purpose: "coins",
+        reference_id: pack.id,
+        meta: {
+          package_id: pack.id,
+          package_name: pack.name,
+          coins: pack.coins,
+        },
+      });
+      setIntentData(intent as Record<string, unknown>);
+
+      if (gateway.code === "razorpay") {
+        const razorpayConstructor = window.Razorpay;
+        if (!razorpayConstructor) {
+          throw new Error("Razorpay SDK not loaded. Please refresh the page.");
+        }
+
+        const options = {
+          key:
+            (intent as any).key_id ||
+            (intent as any).key ||
+            (intent as any).public_key ||
+            (gateway.public_config?.key_id as string | undefined) ||
+            (gateway.public_config?.key as string | undefined),
+          amount: (intent as any).amount ?? Math.round(amount * 100),
+          currency,
+          name: "Megzed",
+          description: pack.name,
+          order_id: (intent as any).order_id || (intent as any).orderId,
+          handler: async (response: any) => {
+            setCheckoutStatus("confirming");
+            try {
+              await apiService.confirmPayment({
+                gateway_code: gateway.code,
+                transaction_id: (intent as any).transaction_id,
+                payload: response,
+              });
+              setCheckoutStatus("success");
+              setCheckoutMessage("Payment confirmed. Coins will be credited shortly.");
+            } catch (confirmError: any) {
+              setCheckoutStatus("error");
+              setCheckoutMessage(
+                confirmError?.message || "Payment confirmation failed. Please try again."
+              );
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              setCheckoutStatus("awaiting");
+              setCheckoutMessage("Checkout closed. You can try again or check status.");
+            },
+          },
+          prefill: (intent as any).prefill,
+        };
+
+        const checkout = new razorpayConstructor(options);
+        checkout.open();
+        setCheckoutStatus("awaiting");
+        setCheckoutMessage("Complete payment in the Razorpay checkout window.");
+      } else {
+        const checkoutUrl =
+          (intent as any).checkout_url ||
+          (intent as any).payment_url ||
+          (intent as any).redirect_url;
+        if (checkoutUrl) {
+          window.open(checkoutUrl as string, "_blank", "noopener,noreferrer");
+        }
+        setCheckoutStatus("awaiting");
+        setCheckoutMessage(
+          "Complete the payment in the opened tab. We will confirm it when the gateway sends the webhook."
+        );
+      }
+    } catch (checkoutError: any) {
+      setCheckoutStatus("error");
+      setCheckoutMessage(checkoutError?.message || "Unable to start checkout.");
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    if (!selectedGateway || !intentData) return;
+    setCheckoutStatus("confirming");
+    setCheckoutMessage(null);
+    try {
+      await apiService.confirmPayment({
+        gateway_code: selectedGateway.code,
+        transaction_id: intentData.transaction_id as string | number,
+        payload: {},
+      });
+      setCheckoutStatus("success");
+      setCheckoutMessage("Payment confirmed. Coins will be credited shortly.");
+    } catch (confirmError: any) {
+      setCheckoutStatus("awaiting");
+      setCheckoutMessage(
+        confirmError?.message || "Payment not confirmed yet. Please try again later."
+      );
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-8">
@@ -174,7 +369,7 @@ export default function CoinPackages() {
                   <button
                     type="button"
                     onClick={() => {
-                        alert("Integrate purchase flow here");
+                        handleOpenModal(p);
                     }}
                     className="w-full relative overflow-hidden rounded-xl py-3.5 px-4 flex items-center justify-between group-active:scale-[0.98] transition-all duration-200"
                     style={{ 
@@ -196,6 +391,107 @@ export default function CoinPackages() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {showGatewayModal && selectedPack && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-6">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Choose a payment method</h2>
+                <p className="text-sm text-slate-500">
+                  {selectedPack.name} · {selectedPack.currency || "INR"} {toNum(selectedPack.price)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              {gatewaysLoading ? (
+                <div className="flex items-center gap-3 text-slate-400">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loading payment gateways...
+                </div>
+              ) : gatewaysError ? (
+                <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {gatewaysError}
+                </div>
+              ) : availableGateways.length === 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                  No payment methods are currently available.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {availableGateways.map((gateway) => (
+                    <button
+                      key={gateway.code}
+                      type="button"
+                      onClick={() => startCheckout(gateway, selectedPack)}
+                      className="rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <div className="text-sm font-semibold text-slate-800">
+                        {formatGatewayLabel(gateway)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {gateway.mode ? `Mode: ${gateway.mode}` : "Online checkout"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {selectedGateway && (
+                <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {formatGatewayLabel(selectedGateway)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Status: {checkoutStatus === "idle" ? "Ready" : checkoutStatus}
+                      </p>
+                    </div>
+                    {checkoutStatus === "awaiting" && (
+                      <button
+                        type="button"
+                        onClick={handleCheckStatus}
+                        className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-100"
+                      >
+                        Check status
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedGateway.instructions && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      {selectedGateway.instructions}
+                    </p>
+                  )}
+
+                  {checkoutMessage && (
+                    <p className="mt-3 text-sm text-slate-600">{checkoutMessage}</p>
+                  )}
+
+                  {checkoutStatus === "error" && (
+                    <button
+                      type="button"
+                      onClick={() => startCheckout(selectedGateway, selectedPack)}
+                      className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      Try again
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
