@@ -26,10 +26,27 @@ export type PaymentIntentResponse = {
   [key: string]: unknown;
 };
 
+export type PaymentInitPayload = {
+  gateway_code: string;
+  package_id?: string | number | null;
+  coins_amount?: number | null;
+  platform?: 'android' | 'ios' | 'web' | string | null;
+};
+
+export type PaymentInitResponse = {
+  transaction_id: string | number;
+  status?: string;
+  gateway_code?: string;
+  currency?: string | null;
+  instructions?: string | null;
+  [key: string]: unknown;
+};
+
 export type PaymentConfirmPayload = {
   gateway_code: string;
   transaction_id: string | number;
-  payload: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+  [key: string]: unknown;
 };
 
 export type GooglePlayVerifyPayload = {

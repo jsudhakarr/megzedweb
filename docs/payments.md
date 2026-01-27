@@ -37,15 +37,18 @@ The gateway becomes available to the app after caching expires (10 minutes) or i
 ## Required Config Keys
 ### `google_play`
 Secrets (encrypted):
-- `package_name` (e.g. `com.example.app`)
 - `service_account_json` (service account JSON contents)
 
 Optional:
 - `allowed_product_ids` (comma-separated list)
 
+Public config:
+- `package_name` (e.g. `com.example.app`)
+
 ### `razorpay`
-- `key_id`
-- `key_secret`
+Secrets (encrypted):
+- `key_id` / `key_secret` (single pair), or
+- `test_key_id` + `test_key_secret` and `live_key_id` + `live_key_secret`
 
 ### `cashfree`
 - `app_id`
@@ -84,7 +87,7 @@ Only enabled gateways for the requesting platform are returned.
 ---
 
 ## Payment Flow
-### Create Payment Intent
+### Create Payment Intent (legacy / flexible)
 `POST /api/v1/payments/create-intent`
 
 Body:
@@ -96,13 +99,31 @@ Body:
 
 Creates a `payment_transactions` row (status `created` or `pending` for manual).
 
+### Init Payment (coin packages)
+`POST /api/v1/payments/init`
+
+Body:
+- `gateway_code` (one of `google_play`, `razorpay`, `upi_manual`, `bank_transfer`)
+- `package_id` (coin package id) or `coins_amount`
+- `platform` (optional; otherwise uses `X-Platform`)
+
+Creates a transaction and returns gateway-specific data:
+- Razorpay: `razorpay_key_id`, `razorpay_order_id`, `amount_paise`, `currency`
+- Google Play: `product_id`, `package_name`
+- Manual: `instructions`
+
 ### Confirm Payment
 `POST /api/v1/payments/confirm`
 
 Body:
 - `gateway_code`
 - `transaction_id`
-- `payload` (verification payload)
+- `payload` (optional verification payload)
+- Razorpay: `razorpay_payment_id`, `razorpay_order_id`, `razorpay_signature`
+- Google Play: `product_id`, `purchase_token`, `package_name`
+
+Razorpay and Google Play accept top-level fields that are merged into `payload`.
+Manual gateways must use `/api/v1/payments/manual/submit`.
 
 Server verifies the payment and marks it paid **idempotently**.
 
@@ -126,6 +147,17 @@ Server calls the Android Publisher API and credits coins on success. This endpoi
 ---
 
 ## Manual Payments (UPI / Bank Transfer)
+### Submit Proof
+`POST /api/v1/payments/manual/submit`
+
+Body:
+- `gateway_code` (`upi_manual` or `bank_transfer`)
+- `transaction_id`
+- `utr` (reference number)
+- `paid_at` (date)
+- `amount`
+- `screenshot` (optional)
+
 Admin can mark manual transactions as paid from **Payment Transactions**. This is blocked for online gateways and Google Play.
 
 ---

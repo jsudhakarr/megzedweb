@@ -16,6 +16,8 @@ import type { PublicUser, PublicUserDetails } from '../types/user';
 import type { ActionSubmission, ActionSubmissionPayload } from '../types/action';
 import type {
   PaymentGateway,
+  PaymentInitPayload,
+  PaymentInitResponse,
   PaymentIntentPayload,
   PaymentIntentResponse,
   PaymentConfirmPayload,
@@ -2105,6 +2107,16 @@ class ApiService {
 
   async createPaymentIntent(payload: PaymentIntentPayload): Promise<PaymentIntentResponse> {
     const response = await fetch(`${API_BASE_URL}/payments/create-intent`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async initPayment(payload: PaymentInitPayload): Promise<PaymentInitResponse> {
+    const response = await fetch(`${API_BASE_URL}/payments/init`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
