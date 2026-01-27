@@ -143,19 +143,17 @@ export default function CoinPackages() {
     setCheckoutMessage(null);
     try {
       const amount = toNum(pack.price);
-      const currency = (pack.currency || gateway.currency || "INR").toString();
-      const intent = await apiService.createPaymentIntent({
+      const intent = await apiService.initPayment({
         gateway_code: gateway.code,
-        amount,
-        currency,
-        purpose: "coins",
-        reference_id: pack.id,
-        meta: {
-          package_id: pack.id,
-          package_name: pack.name,
-          coins: pack.coins,
-        },
+        package_id: pack.id,
+        platform: "web",
       });
+      const currency = (
+        (intent as any).currency ||
+        pack.currency ||
+        gateway.currency ||
+        "INR"
+      ).toString();
       setIntentData(intent as Record<string, unknown>);
 
       if (gateway.code === "razorpay") {
@@ -166,16 +164,23 @@ export default function CoinPackages() {
 
         const options = {
           key:
+            (intent as any).razorpay_key_id ||
             (intent as any).key_id ||
             (intent as any).key ||
             (intent as any).public_key ||
             (gateway.public_config?.key_id as string | undefined) ||
             (gateway.public_config?.key as string | undefined),
-          amount: (intent as any).amount ?? Math.round(amount * 100),
+          amount:
+            (intent as any).amount_paise ??
+            (intent as any).amount ??
+            Math.round(amount * 100),
           currency,
           name: "Megzed",
           description: pack.name,
-          order_id: (intent as any).order_id || (intent as any).orderId,
+          order_id:
+            (intent as any).razorpay_order_id ||
+            (intent as any).order_id ||
+            (intent as any).orderId,
           handler: async (response: any) => {
             setCheckoutStatus("confirming");
             try {
@@ -206,6 +211,17 @@ export default function CoinPackages() {
         checkout.open();
         setCheckoutStatus("awaiting");
         setCheckoutMessage("Complete payment in the Razorpay checkout window.");
+      } else if (
+        gateway.code === "upi_manual" ||
+        gateway.code === "bank_transfer" ||
+        gateway.code === "manual"
+      ) {
+        setCheckoutStatus("awaiting");
+        setCheckoutMessage(
+          ((intent as any).instructions as string | undefined) ||
+            gateway.instructions ||
+            "Please follow the instructions to complete the manual payment."
+        );
       } else {
         const checkoutUrl =
           (intent as any).checkout_url ||
@@ -216,7 +232,9 @@ export default function CoinPackages() {
         }
         setCheckoutStatus("awaiting");
         setCheckoutMessage(
-          "Complete the payment in the opened tab. We will confirm it when the gateway sends the webhook."
+          checkoutUrl
+            ? "Complete the payment in the opened tab. We will confirm it when the gateway sends the webhook."
+            : "Payment initiated. We will confirm it when the gateway sends the webhook."
         );
       }
     } catch (checkoutError: any) {
