@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { MessageCircle, Phone, Navigation, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  CalendarDays,
+  ChevronRight,
+  MessageCircle,
+  Navigation,
+  Phone,
+  Star,
+} from "lucide-react";
 import { apiService } from "../services/api";
 import { useAppSettings } from "../contexts/AppSettingsContext";
-import SubmissionStatusBadge from "../components/SubmissionStatusBadge";
 import SubmissionFields from "../components/SubmissionFields";
 import type { ActionSubmission } from "../types/action";
 
@@ -61,6 +69,19 @@ const formatDate = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+};
+
+const formatDisplayDate = (value?: string | null) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 const formatActionLabel = (value?: string | null) => {
@@ -211,6 +232,12 @@ export default function SubmissionDetails() {
     submission?.action?.label ||
     formatActionLabel((submission as any)?.action_code);
   const actionIcon = getActionIcon(submission);
+  const categoryLabel =
+    item?.category?.name ||
+    item?.subcategory?.name ||
+    (submission as any)?.category_name ||
+    "House & Apartments";
+  const requestId = (submission as any)?.uid || submission.id;
 
   const isSellerView = variant === "received";
   const contactPhone = isSellerView
@@ -230,6 +257,19 @@ export default function SubmissionDetails() {
     : (submission as any)?.lister_name;
   const counterpartyAvatar = getCounterpartyAvatar(submission, isSellerView);
   const categoryIcon = getCategoryIcon(submission);
+  const rejectReasonValue =
+    (submission as any)?.reject_reason ||
+    (submission as any)?.rejection_reason ||
+    (submission as any)?.status_reason ||
+    "";
+  const statusColor =
+    normalizedStatus === "completed"
+      ? "text-blue-600"
+      : normalizedStatus === "accepted"
+        ? "text-emerald-600"
+        : normalizedStatus === "rejected"
+          ? "text-rose-600"
+          : "text-amber-600";
 
   const handleCancel = async () => {
     if (!submission?.id) return;
@@ -306,99 +346,143 @@ export default function SubmissionDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="w-full sm:w-48 h-40 rounded-2xl bg-slate-100 overflow-hidden">
-              {itemImage ? (
-                <img src={itemImage} alt={itemName} className="w-full h-full object-cover" />
-              ) : null}
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-sm"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">Manage Request</h1>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 space-y-4">
+            <div className="flex items-center justify-between text-sm text-slate-500 font-semibold">
+              <span>iD : {requestId}</span>
+              <span>
+                Status : <span className={`capitalize ${statusColor}`}>{normalizedStatus}</span>
+              </span>
             </div>
-            <div className="flex-1">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-                    {actionIcon ? (
-                      <img src={actionIcon} alt="" className="w-4 h-4 rounded object-contain" />
-                    ) : null}
-                    <span>{actionLabel}</span>
-                  </div>
-                  <h1 className="text-2xl font-bold text-slate-900">{itemName}</h1>
-                  <p className="text-sm text-slate-500 mt-2">{itemPrice}</p>
-                </div>
-                <SubmissionStatusBadge status={status} />
+
+            <div className="flex gap-4 items-start">
+              <div className="w-20 h-20 rounded-2xl bg-slate-100 overflow-hidden shrink-0">
+                {itemImage ? (
+                  <img src={itemImage} alt={itemName} className="w-full h-full object-cover" />
+                ) : null}
               </div>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-500">
-                <div>
-                  <span className="font-medium text-slate-700">Submitted:</span>{" "}
-                  {formatDate(submission.submission_created_at || submission.created_at)}
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">Last Update:</span>{" "}
-                  {formatDate(submission.submission_updated_at || submission.updated_at)}
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">Request ID:</span>{" "}
-                  {(submission as any)?.uid || submission.id}
-                </div>
-                {counterpartyName ? (
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-3">
                   <div>
-                    <span className="font-medium text-slate-700">{counterpartyLabel}:</span>{" "}
-                    {counterpartyName}
+                    <h2 className="text-lg font-semibold text-slate-900 line-clamp-1">{itemName}</h2>
+                    <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+                      {categoryIcon ? (
+                        <img src={categoryIcon} alt="" className="w-4 h-4 object-contain" />
+                      ) : null}
+                      <span>{categoryLabel}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      {actionIcon ? (
+                        <img src={actionIcon} alt="" className="w-4 h-4 object-contain" />
+                      ) : (
+                        <CalendarDays className="w-4 h-4" />
+                      )}
+                      <span>{actionLabel}</span>
+                    </div>
                   </div>
-                ) : null}
-                {categoryIcon ? (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-700">Category:</span>
-                    <img src={categoryIcon} alt="" className="w-5 h-5 rounded object-contain" />
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {(counterpartyName || counterpartyAvatar) && (
+            <div className="border-t border-slate-100 px-6 py-5 space-y-4">
+              <p className="text-sm font-medium text-slate-500">Submitted By</p>
+              <div className="flex items-center gap-4">
+                {counterpartyAvatar ? (
+                  <img
+                    src={counterpartyAvatar}
+                    alt={counterpartyName || counterpartyLabel}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <span className="text-lg font-semibold">{counterpartyLabel?.[0]}</span>
                   </div>
-                ) : null}
+                )}
                 <div>
-                  <span className="font-medium text-slate-700">Location:</span> {itemAddress}
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-semibold text-slate-900">{counterpartyName || "-"}</p>
+                    <BadgeCheck className="w-4 h-4 text-sky-500" />
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                    <CalendarDays className="w-4 h-4" />
+                    <span>Date {formatDisplayDate(submission.submission_created_at || submission.created_at)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {(counterpartyName || counterpartyAvatar) && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm">
-            <div className="flex items-center gap-4">
-              {counterpartyAvatar ? (
-                <img
-                  src={counterpartyAvatar}
-                  alt={counterpartyName || counterpartyLabel}
-                  className="w-14 h-14 rounded-full object-cover"
-                />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => navigate("/dashboard/chat")}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-blue-700 text-white py-3 font-semibold"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Chat
+                </button>
+                <a
+                  href={contactPhone ? `tel:${contactPhone}` : undefined}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3 font-semibold ${
+                    contactPhone
+                      ? "bg-slate-200 text-slate-600"
+                      : "bg-slate-100 text-slate-400 pointer-events-none"
+                  }`}
+                >
+                  <Phone className="w-5 h-5" />
+                  Call
+                </a>
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-slate-100 px-6 py-5 space-y-4">
+            <div className="flex items-center gap-2 text-slate-900">
+              <span className="text-lg font-semibold">Submission Details</span>
+            </div>
+            <div className="space-y-3">
+              {fields.length ? (
+                fields.map((field, index) => (
+                  <div key={`${field.label}-${index}`} className="flex items-center justify-between gap-4 text-sm">
+                    <span className="text-slate-500">{field.label}</span>
+                    <span className="font-semibold text-slate-900 text-right">
+                      {field.value || "-"}
+                    </span>
+                  </div>
+                ))
               ) : (
-                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                  <span className="text-lg font-semibold">{counterpartyLabel?.[0]}</span>
-                </div>
+                <SubmissionFields fields={fields} />
               )}
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">{counterpartyLabel}</p>
-                <p className="text-base font-semibold text-slate-900">{counterpartyName || "-"}</p>
-                {contactPhone ? (
-                  <p className="text-sm text-slate-500 mt-1">{contactPhone}</p>
-                ) : null}
-              </div>
             </div>
           </div>
-        )}
-
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-900">Submitted Details</h2>
-          <SubmissionFields fields={fields} />
         </div>
+
+        {normalizedStatus === "rejected" && rejectReasonValue ? (
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-3xl px-6 py-5">
+            <p className="font-semibold">Reject Reason</p>
+            <p className="text-sm mt-2">{rejectReasonValue}</p>
+          </div>
+        ) : null}
 
         {normalizedStatus === "pending" && !isSellerView && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-3">Request Actions</h2>
             <button
               onClick={handleCancel}
               disabled={cancelLoading}
-              className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 font-semibold"
+              className="px-6 py-3 rounded-full border border-rose-200 text-rose-600 font-semibold"
             >
               {cancelLoading ? "Cancelling..." : "Cancel Request"}
             </button>
@@ -406,85 +490,94 @@ export default function SubmissionDetails() {
         )}
 
         {normalizedStatus === "pending" && isSellerView && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Request Actions</h2>
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-5">
             <div className="space-y-3">
               <label className="text-sm font-medium text-slate-600">Reject reason (optional)</label>
               <input
                 value={rejectReason}
                 onChange={(event) => setRejectReason(event.target.value)}
                 placeholder="Add a reason for rejection"
-                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleStatusUpdate("accepted")}
-                disabled={statusUpdating}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold"
-              >
-                {statusUpdating ? "Updating..." : "Accept"}
-              </button>
+            <div className="flex gap-3">
               <button
                 onClick={() => handleStatusUpdate("rejected")}
                 disabled={statusUpdating}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-rose-200 text-rose-600 font-semibold"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-rose-300 text-rose-500 font-semibold"
               >
                 {statusUpdating ? "Updating..." : "Reject"}
+              </button>
+              <button
+                onClick={() => handleStatusUpdate("accepted")}
+                disabled={statusUpdating}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-500 text-white font-semibold"
+              >
+                {statusUpdating ? "Updating..." : "Accept"}
               </button>
             </div>
           </div>
         )}
 
         {normalizedStatus === "accepted" && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Next Steps</h2>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => navigate("/dashboard/chat")}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat
-              </button>
-              {contactPhone ? (
-                <a
-                  href={`tel:${contactPhone}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold"
+          <div className="space-y-4">
+            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">Next Steps</h2>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigate("/dashboard/chat")}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-700 text-white font-semibold"
                 >
-                  <Phone className="w-4 h-4" />
-                  Call
-                </a>
-              ) : null}
-              {contactWhatsapp ? (
-                <a
-                  href={`https://wa.me/${contactWhatsapp.replace(/[^\d]/g, "")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold"
-                >
-                  <Phone className="w-4 h-4" />
-                  WhatsApp
-                </a>
-              ) : null}
-              {itemLat && itemLng ? (
-                <a
-                  href={`https://www.google.com/maps?q=${itemLat ?? item?.latitude},${itemLng ?? item?.longitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold"
-                >
-                  <Navigation className="w-4 h-4" />
-                  Navigate
-                </a>
-              ) : null}
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
+                </button>
+                {contactPhone ? (
+                  <a
+                    href={`tel:${contactPhone}`}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-200 text-slate-700 font-semibold"
+                  >
+                    <Phone className="w-4 h-4" />
+                    Call
+                  </a>
+                ) : null}
+                {contactWhatsapp ? (
+                  <a
+                    href={`https://wa.me/${contactWhatsapp.replace(/[^\d]/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 text-slate-700 font-semibold"
+                  >
+                    <Phone className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                ) : null}
+                {itemLat && itemLng ? (
+                  <a
+                    href={`https://www.google.com/maps?q=${itemLat ?? item?.latitude},${itemLng ?? item?.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 text-slate-700 font-semibold"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Navigate
+                  </a>
+                ) : null}
+              </div>
             </div>
           </div>
         )}
 
         {normalizedStatus === "completed" && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Leave a Review</h2>
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
+                <Star className="w-6 h-6 text-amber-500" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Leave a review for the buyer</h2>
+              <p className="text-sm text-slate-500">
+                Share your experience once this request is completed.
+              </p>
+            </div>
             {submission.transaction_id && submission.transaction_type ? (
               <div className="space-y-4">
                 <label className="text-sm font-medium text-slate-600">Rating</label>
@@ -508,11 +601,10 @@ export default function SubmissionDetails() {
                 <button
                   onClick={handleReviewSubmit}
                   disabled={reviewSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-semibold"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-white font-semibold"
                   style={{ backgroundColor: primaryColor, opacity: reviewSubmitting ? 0.7 : 1 }}
                 >
-                  <Star className="w-4 h-4" />
-                  {reviewSubmitting ? "Submitting..." : "Submit Review"}
+                  {reviewSubmitting ? "Submitting..." : "Write a Review"}
                 </button>
               </div>
             ) : (
