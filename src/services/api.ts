@@ -1762,7 +1762,7 @@ class ApiService {
   }
 
   async getActionSubmission(
-    submissionId: number,
+    submissionId: number | string,
     variant?: 'sent' | 'received'
   ): Promise<ActionSubmission> {
     const getSubmission = async (path: string) => {
@@ -1774,18 +1774,20 @@ class ApiService {
       return data.data ?? data;
     };
 
+    const normalizedId = encodeURIComponent(String(submissionId));
+
     if (variant === 'received') {
-      return getSubmission(`/seller/action-submissions/${submissionId}`);
+      return getSubmission(`/seller/action-submissions/${normalizedId}`);
     }
 
     if (variant === 'sent') {
-      return getSubmission(`/my/action-submissions/${submissionId}`);
+      return getSubmission(`/my/action-submissions/${normalizedId}`);
     }
 
     try {
-      return await getSubmission(`/my/action-submissions/${submissionId}`);
+      return await getSubmission(`/my/action-submissions/${normalizedId}`);
     } catch (error) {
-      return getSubmission(`/seller/action-submissions/${submissionId}`);
+      return getSubmission(`/seller/action-submissions/${normalizedId}`);
     }
   }
 
