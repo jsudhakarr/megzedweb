@@ -94,6 +94,10 @@ src/
 └── main.tsx               # Entry point
 ```
 
+## Documentation
+
+- Payments and gateways overview: `docs/payments.md`
+
 ## Authentication Flow
 
 ### Email/Password Login
