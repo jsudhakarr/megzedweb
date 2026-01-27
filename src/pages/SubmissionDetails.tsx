@@ -189,7 +189,7 @@ export default function SubmissionDetails() {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiService.getActionSubmission(Number(id), variant);
+        const data = await apiService.getActionSubmission(id, variant);
         setSubmission(data);
       } catch (err) {
         console.error(err);
