@@ -14,6 +14,13 @@ import type {
 } from '../types/category';
 import type { PublicUser, PublicUserDetails } from '../types/user';
 import type { ActionSubmission, ActionSubmissionPayload } from '../types/action';
+import type {
+  PaymentGateway,
+  PaymentIntentPayload,
+  PaymentIntentResponse,
+  PaymentConfirmPayload,
+  GooglePlayVerifyPayload,
+} from '../types/payments';
 
 export const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
@@ -2064,7 +2071,59 @@ class ApiService {
     return response.json();
   }
 
-  async verifyGooglePlayPurchase(payload: { productId: string; purchaseToken: string }): Promise<any> {
+  async verifyGooglePlayPurchase(payload: {
+    productId: string;
+    purchaseToken: string;
+    purchaseType?: 'product' | 'subscription';
+  }): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/google-play/verify`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: JSON.stringify({
+        product_id: payload.productId,
+        purchase_token: payload.purchaseToken,
+        purchase_type: payload.purchaseType,
+      }),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  // --- PAYMENTS ---
+
+  async getPaymentGateways(platform: 'android' | 'ios' | 'web'): Promise<PaymentGateway[]> {
+    const response = await fetch(`${API_BASE_URL}/payment-gateways`, {
+      headers: {
+        ...this.getPublicHeaders(),
+        'X-Platform': platform,
+      },
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    const data = await response.json();
+    return (data?.data ?? data) as PaymentGateway[];
+  }
+
+  async createPaymentIntent(payload: PaymentIntentPayload): Promise<PaymentIntentResponse> {
+    const response = await fetch(`${API_BASE_URL}/payments/create-intent`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async confirmPayment(payload: PaymentConfirmPayload): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/payments/confirm`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await this.readError(response));
+    return response.json();
+  }
+
+  async verifyGooglePlay(payload: GooglePlayVerifyPayload): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/google-play/verify`, {
       method: 'POST',
       headers: this.getHeaders(true),
@@ -2262,6 +2321,13 @@ export const getBlockedUsers = () => apiService.getBlockedUsers();
 
 export type { Category, Subcategory, Item, Shop, ContentPage } from '../types/category';
 export type { PublicUser, PublicUserDetails } from '../types/user';
+export type {
+  PaymentGateway,
+  PaymentIntentPayload,
+  PaymentIntentResponse,
+  PaymentConfirmPayload,
+  GooglePlayVerifyPayload,
+} from '../types/payments';
 
 export type ApiError = Error & {
   status?: number;
