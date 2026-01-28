@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { apiService, LoginCredentials, RegisterData, AuthResponse } from '../services/api';
+import Toast from '../components/ui/Toast';
 
 interface User {
   id: number;
@@ -58,56 +59,99 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const isUnauthorizedError = (error: unknown) =>
+  error instanceof Error && error.message.toLowerCase().includes('unauthenticated');
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = window.setTimeout(() => setToastMessage(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toastMessage]);
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    auth.signOut();
+  };
 
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('auth_token');
       const storedUser = localStorage.getItem('user');
 
-      if (storedToken && storedUser && storedUser !== 'undefined') {
+      if (!storedToken) {
+        setUser(null);
+        setToken(null);
+        setLoading(false);
+        return;
+      }
+
+      setToken(storedToken);
+
+      if (storedUser && storedUser !== 'undefined') {
         try {
-          setToken(storedToken);
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-
-          // try refresh profile (safe)
-          try {
-            const profileData = await apiService.getProfile();
-            const updatedUser: User = {
-              id: profileData.id,
-              name: profileData.name,
-              email: profileData.email,
-              mobile: profileData.mobile,
-              about: profileData.about,
-              address: profileData.address,
-              city: profileData.city,
-              state: profileData.state,
-              country: profileData.country,
-              profile_photo: profileData.profile_photo,
-              profile_photo_url: profileData.profile_photo_url || profileData.avatar_url,
-              notification: profileData.notification,
-              is_verified: profileData.is_verified || false,
-              kyc_status: profileData.kyc_status || 'pending',
-            };
-            setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-          } catch (error) {
-            console.error('Failed to refresh profile on mount:', error);
-          }
         } catch (error) {
           console.error('Failed to parse stored user:', error);
-          localStorage.removeItem('auth_token');
           localStorage.removeItem('user');
         }
+      }
+
+      try {
+        const profileData = await apiService.getProfile();
+        const updatedUser: User = {
+          id: profileData.id,
+          name: profileData.name,
+          email: profileData.email,
+          mobile: profileData.mobile,
+          about: profileData.about,
+          address: profileData.address,
+          city: profileData.city,
+          state: profileData.state,
+          country: profileData.country,
+          profile_photo: profileData.profile_photo,
+          profile_photo_url: profileData.profile_photo_url || profileData.avatar_url,
+          notification: profileData.notification,
+          is_verified: profileData.is_verified || false,
+          kyc_status: profileData.kyc_status || 'pending',
+        };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          handleLogout();
+          setLoading(false);
+          return;
+        }
+        console.error('Failed to refresh profile on mount:', error);
       }
       setLoading(false);
     };
 
     initAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleAuthLogout = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>;
+      const message = customEvent?.detail?.message;
+      handleLogout();
+      if (message) {
+        setToastMessage(message);
+      }
+    };
+
+    window.addEventListener('auth:logout', handleAuthLogout);
+    return () => window.removeEventListener('auth:logout', handleAuthLogout);
   }, []);
 
   const handleAuthResponse = async (response: AuthResponse) => {
@@ -136,6 +180,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {
+      if (isUnauthorizedError(error)) {
+        handleLogout();
+        return;
+      }
       console.error('Failed to refresh profile after auth:', error);
     }
   };
@@ -227,6 +275,12 @@ const response = await apiService.socialLogin({
   };
 
   const refreshProfile = async () => {
+    const storedToken = localStorage.getItem('auth_token');
+    if (!storedToken) {
+      setUser(null);
+      setToken(null);
+      return;
+    }
     try {
       const profileData = await apiService.getProfile();
       const updatedUser: User = {
@@ -248,16 +302,16 @@ const response = await apiService.socialLogin({
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {
+      if (isUnauthorizedError(error)) {
+        handleLogout();
+        return;
+      }
       console.error('Failed to refresh profile:', error);
     }
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    auth.signOut();
+    handleLogout();
   };
 
   return (
@@ -276,6 +330,11 @@ const response = await apiService.socialLogin({
       }}
     >
       {children}
+      {toastMessage ? (
+        <div className="fixed right-4 top-4 z-[1000]">
+          <Toast message={toastMessage} variant="error" />
+        </div>
+      ) : null}
     </AuthContext.Provider>
   );
 };
