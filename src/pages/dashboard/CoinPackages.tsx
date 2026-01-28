@@ -74,8 +74,9 @@ const gatewayIconMap: Record<string, { src: string; alt: string }> = {
 
 export default function CoinPackages() {
   const { settings } = useAppSettings();
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
   const primaryColor = settings?.primary_color || "#0073f0";
+  const authToken = token ?? localStorage.getItem("auth_token");
 
   const [loading, setLoading] = useState(true);
   const [packs, setPacks] = useState<CoinPackage[]>([]);
@@ -158,7 +159,12 @@ export default function CoinPackages() {
 
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
-    if (!token) {
+    if (authLoading) {
+      setCheckoutStatus("error");
+      setCheckoutMessage("Please wait while we verify your session.");
+      return;
+    }
+    if (!authToken) {
       setCheckoutStatus("error");
       setCheckoutMessage("Please sign in to continue with payment.");
       return;
@@ -275,7 +281,12 @@ export default function CoinPackages() {
 
   const handleCheckStatus = async () => {
     if (!selectedGateway || !intentData) return;
-    if (!token) {
+    if (authLoading) {
+      setCheckoutStatus("error");
+      setCheckoutMessage("Please wait while we verify your session.");
+      return;
+    }
+    if (!authToken) {
       setCheckoutStatus("error");
       setCheckoutMessage("Please sign in to check payment status.");
       return;
