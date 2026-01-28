@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react"; // Kept Loader for UI state
 import { useAppSettings } from "../../contexts/AppSettingsContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { apiService } from "../../services/api";
 import { getCoinPackages } from "../../services/coins";
 import type { CoinPackage } from "../../types/wallet";
@@ -73,6 +74,7 @@ const gatewayIconMap: Record<string, { src: string; alt: string }> = {
 
 export default function CoinPackages() {
   const { settings } = useAppSettings();
+  const { token } = useAuth();
   const primaryColor = settings?.primary_color || "#0073f0";
 
   const [loading, setLoading] = useState(true);
@@ -156,6 +158,12 @@ export default function CoinPackages() {
 
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
+    if (!token) {
+      setCheckoutStatus("error");
+      setCheckoutMessage("Please sign in to continue with payment.");
+      return;
+    }
+
     setCheckoutStatus("creating");
     setCheckoutMessage(null);
     try {
@@ -256,12 +264,22 @@ export default function CoinPackages() {
       }
     } catch (checkoutError: any) {
       setCheckoutStatus("error");
-      setCheckoutMessage(checkoutError?.message || "Unable to start checkout.");
+      const rawMessage = checkoutError?.message || "Unable to start checkout.";
+      const friendlyMessage =
+        typeof rawMessage === "string" && rawMessage.toLowerCase().includes("unauthenticated")
+          ? "Please sign in to continue with payment."
+          : rawMessage;
+      setCheckoutMessage(friendlyMessage);
     }
   };
 
   const handleCheckStatus = async () => {
     if (!selectedGateway || !intentData) return;
+    if (!token) {
+      setCheckoutStatus("error");
+      setCheckoutMessage("Please sign in to check payment status.");
+      return;
+    }
     setCheckoutStatus("confirming");
     setCheckoutMessage(null);
     try {
