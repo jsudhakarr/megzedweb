@@ -12,6 +12,10 @@ import coinIcon from "../../assets/icons/coin.png";
 import moneyBagIcon from "../../assets/icons/money-bag.png";
 import verifiedIcon from "../../assets/icons/storeverified.png";
 import walletIcon from "../../assets/icons/wallet.png";
+import bankIcon from "../../assets/bankicons/bank.jpg";
+import phonepeIcon from "../../assets/bankicons/phonepe.png";
+import razorpayIcon from "../../assets/bankicons/razorpay.png";
+import upiIcon from "../../assets/bankicons/upi.png";
 
 const toInt = (v: any, d = 0) => {
   if (v == null) return d;
@@ -54,6 +58,17 @@ const gatewayLabelOverrides: Record<string, string> = {
   upi_manual: "Manual (UPI)",
   bank_transfer: "Manual (Bank Transfer)",
   manual: "Manual (UPI / Bank)",
+};
+
+const gatewayIconMap: Record<string, { src: string; alt: string }> = {
+  razorpay: { src: razorpayIcon, alt: "Razorpay" },
+  phonepe: { src: phonepeIcon, alt: "PhonePe" },
+  phonepe_pg: { src: phonepeIcon, alt: "PhonePe" },
+  upi_manual: { src: upiIcon, alt: "UPI" },
+  manual: { src: upiIcon, alt: "UPI" },
+  bank_transfer: { src: bankIcon, alt: "Bank transfer" },
+  cashfree: { src: bankIcon, alt: "Cashfree" },
+  payu: { src: bankIcon, alt: "PayU" },
 };
 
 export default function CoinPackages() {
@@ -136,6 +151,8 @@ export default function CoinPackages() {
 
   const formatGatewayLabel = (gateway: PaymentGateway) =>
     gatewayLabelOverrides[gateway.code] || gateway.name || gateway.code;
+
+  const getGatewayIcon = (gateway: PaymentGateway) => gatewayIconMap[gateway.code];
 
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
@@ -454,8 +471,15 @@ export default function CoinPackages() {
                       onClick={() => startCheckout(gateway, selectedPack)}
                       className="rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
                     >
-                      <div className="text-sm font-semibold text-slate-800">
-                        {formatGatewayLabel(gateway)}
+                      <div className="flex items-center gap-3 text-sm font-semibold text-slate-800">
+                        {getGatewayIcon(gateway) && (
+                          <img
+                            src={getGatewayIcon(gateway)?.src}
+                            alt={getGatewayIcon(gateway)?.alt}
+                            className="h-7 w-7 rounded-full border border-slate-200 bg-white object-contain p-1"
+                          />
+                        )}
+                        <span>{formatGatewayLabel(gateway)}</span>
                       </div>
                       <div className="text-xs text-slate-500">
                         {gateway.mode ? `Mode: ${gateway.mode}` : "Online checkout"}
@@ -468,13 +492,22 @@ export default function CoinPackages() {
               {selectedGateway && (
                 <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        {formatGatewayLabel(selectedGateway)}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      {getGatewayIcon(selectedGateway) && (
+                        <img
+                          src={getGatewayIcon(selectedGateway)?.src}
+                          alt={getGatewayIcon(selectedGateway)?.alt}
+                          className="h-8 w-8 rounded-full border border-slate-200 bg-white object-contain p-1"
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {formatGatewayLabel(selectedGateway)}
+                        </p>
                       <p className="text-xs text-slate-500">
                         Status: {checkoutStatus === "idle" ? "Ready" : checkoutStatus}
                       </p>
+                      </div>
                     </div>
                     {checkoutStatus === "awaiting" && (
                       <button
