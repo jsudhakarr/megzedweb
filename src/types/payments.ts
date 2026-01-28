@@ -38,6 +38,9 @@ export type PaymentInitResponse = {
   status?: string;
   gateway_code?: string;
   currency?: string | null;
+  razorpay_key_id?: string | null;
+  razorpay_order_id?: string | null;
+  amount_paise?: number | null;
   instructions?: string | null;
   [key: string]: unknown;
 };
