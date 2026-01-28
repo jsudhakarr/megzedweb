@@ -216,11 +216,22 @@ export default function CoinPackages() {
     setCheckoutStatus("creating");
     setCheckoutMessage(null);
     try {
-      const intent = await apiService.initPayment({
-        gateway_code: gateway.code,
-        package_id: pack.id,
-        platform: "web",
-      });
+      let intent: Record<string, unknown>;
+      try {
+        intent = (await apiService.initPayment({
+          gateway_code: gateway.code,
+          package_id: pack.id,
+          platform: "web",
+        })) as Record<string, unknown>;
+      } catch (initError: any) {
+        const status = initError?.status as number | undefined;
+        if (gateway.code === "razorpay" && (status === 422 || status === 500)) {
+          setCheckoutStatus("error");
+          setCheckoutMessage("Razorpay is not configured. Please contact support.");
+          return;
+        }
+        throw initError;
+      }
       setIntentData(intent as Record<string, unknown>);
 
       if (gateway.code === "razorpay") {
@@ -231,16 +242,10 @@ export default function CoinPackages() {
         }
 
         const razorpayKey = (intent as any).razorpay_key_id as string | undefined;
-        if (!razorpayKey) {
+        const razorpayOrderId = (intent as any).razorpay_order_id as string | undefined;
+        if (!razorpayKey || !razorpayOrderId) {
           setCheckoutStatus("error");
           setCheckoutMessage("Razorpay is not configured. Please contact support.");
-          return;
-        }
-
-        const razorpayOrderId = (intent as any).razorpay_order_id as string | undefined;
-        if (!razorpayOrderId) {
-          setCheckoutStatus("error");
-          setCheckoutMessage("Unable to start Razorpay checkout. Please try again.");
           return;
         }
 

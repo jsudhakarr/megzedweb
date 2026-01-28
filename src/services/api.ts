@@ -2185,12 +2185,20 @@ class ApiService {
   }
 
   async initPayment(payload: PaymentInitPayload): Promise<PaymentInitResponse> {
+    const { platform, ...body } = payload ?? {};
     const response = await this.request(`${API_BASE_URL}/payments/init`, {
       method: 'POST',
-      headers: this.getHeaders(true),
-      body: JSON.stringify(payload),
+      headers: {
+        ...this.getHeaders(true),
+        'X-Platform': platform ?? 'web',
+      },
+      body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(await this.readError(response));
+    if (!response.ok) {
+      const error = new Error(await this.readError(response));
+      (error as { status?: number }).status = response.status;
+      throw error;
+    }
     return response.json();
   }
 
