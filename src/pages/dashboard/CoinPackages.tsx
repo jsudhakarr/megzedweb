@@ -74,7 +74,7 @@ const gatewayIconMap: Record<string, { src: string; alt: string }> = {
 
 export default function CoinPackages() {
   const { settings } = useAppSettings();
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
   const primaryColor = settings?.primary_color || "#0073f0";
 
   const [loading, setLoading] = useState(true);
@@ -159,8 +159,13 @@ export default function CoinPackages() {
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
     if (!token) {
-      setCheckoutStatus("error");
-      setCheckoutMessage("Please sign in to continue with payment.");
+      if (authLoading) {
+        setCheckoutStatus("idle");
+        setCheckoutMessage("Finishing sign-in. Please try again in a moment.");
+      } else {
+        setCheckoutStatus("error");
+        setCheckoutMessage("Please sign in to continue with payment.");
+      }
       return;
     }
 
@@ -467,6 +472,13 @@ export default function CoinPackages() {
             </div>
 
             <div className="px-6 py-5">
+              {authLoading && (
+                <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  Preparing your secure checkout...
+                </div>
+              )}
+
               {gatewaysLoading ? (
                 <div className="flex items-center gap-3 text-slate-400">
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -487,7 +499,12 @@ export default function CoinPackages() {
                       key={gateway.code}
                       type="button"
                       onClick={() => startCheckout(gateway, selectedPack)}
-                      className="rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                      disabled={authLoading}
+                      className={`rounded-xl border border-slate-200 px-4 py-3 text-left transition ${
+                        authLoading
+                          ? "cursor-not-allowed opacity-60"
+                          : "hover:border-slate-300 hover:bg-slate-50"
+                      }`}
                     >
                       <div className="flex items-center gap-3 text-sm font-semibold text-slate-800">
                         {getGatewayIcon(gateway) && (
