@@ -74,6 +74,33 @@ const gatewayIconMap: Record<string, { src: string; alt: string }> = {
   payu: { src: bankIcon, alt: "PayU" },
 };
 
+const loadRazorpayCheckoutScript = () =>
+  new Promise<void>((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve();
+      return;
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-razorpay-checkout="true"]'
+    );
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener("error", () => reject(new Error("Razorpay SDK failed to load.")), {
+        once: true,
+      });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.setAttribute("data-razorpay-checkout", "true");
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Razorpay SDK failed to load."));
+    document.body.appendChild(script);
+  });
+
 export default function CoinPackages() {
   const { settings } = useAppSettings();
   const { token, loading: authLoading } = useAuth();
@@ -161,21 +188,6 @@ export default function CoinPackages() {
     gatewayLabelOverrides[gateway.code] || gateway.name || gateway.code;
 
   const getGatewayIcon = (gateway: PaymentGateway) => gatewayIconMap[gateway.code];
-  const getRazorpayKey = (
-    gateway: PaymentGateway,
-    intent: Record<string, unknown>
-  ): string | undefined => {
-    const publicConfig = gateway.public_config as Record<string, string | undefined> | null;
-    return (
-      (intent.key as string | undefined) ||
-      (intent.razorpay_key_id as string | undefined) ||
-      (intent.key_id as string | undefined) ||
-      (intent.public_key as string | undefined) ||
-      publicConfig?.key_id ||
-      publicConfig?.key ||
-      publicConfig?.public_key
-    );
-  };
 
   const getFriendlyApiError = (error: any, fallback: string) => {
     const rawMessage = error?.message;
@@ -187,11 +199,6 @@ export default function CoinPackages() {
     }
     return fallback;
   };
-
-  const getRazorpayOrderId = (intent: Record<string, unknown>): string | undefined =>
-    (intent.razorpay_order_id as string | undefined) ||
-    (intent.order_id as string | undefined) ||
-    (intent.orderId as string | undefined);
 
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
@@ -209,35 +216,37 @@ export default function CoinPackages() {
     setCheckoutStatus("creating");
     setCheckoutMessage(null);
     try {
-      const amount = toNum(pack.price);
       const intent = await apiService.initPayment({
         gateway_code: gateway.code,
         package_id: pack.id,
         platform: "web",
       });
-      const currency = (
-        (intent as any).currency ||
-        pack.currency ||
-        gateway.currency ||
-        "INR"
-      ).toString();
       setIntentData(intent as Record<string, unknown>);
 
       if (gateway.code === "razorpay") {
+        await loadRazorpayCheckoutScript();
         const razorpayConstructor = window.Razorpay;
         if (!razorpayConstructor) {
-          throw new Error("Razorpay SDK not loaded. Please refresh the page.");
+          throw new Error("Razorpay SDK not available.");
         }
 
-        const razorpayKey = getRazorpayKey(gateway, intent as Record<string, unknown>);
+        const razorpayKey = (intent as any).razorpay_key_id as string | undefined;
         if (!razorpayKey) {
           setCheckoutStatus("error");
-          setCheckoutMessage("Razorpay is not configured. Please contact admin.");
+          setCheckoutMessage("Razorpay is not configured. Please contact support.");
           return;
         }
 
-        const razorpayOrderId = getRazorpayOrderId(intent as Record<string, unknown>);
+        const razorpayOrderId = (intent as any).razorpay_order_id as string | undefined;
         if (!razorpayOrderId) {
+          setCheckoutStatus("error");
+          setCheckoutMessage("Unable to start Razorpay checkout. Please try again.");
+          return;
+        }
+
+        const amountPaise = toNum((intent as any).amount_paise);
+        const currency = (intent as any).currency?.toString();
+        if (!amountPaise || !currency) {
           setCheckoutStatus("error");
           setCheckoutMessage("Unable to start Razorpay checkout. Please try again.");
           return;
@@ -245,11 +254,8 @@ export default function CoinPackages() {
 
         const options = {
           key: razorpayKey,
-          amount:
-            (intent as any).amount ??
-            (intent as any).amount_paise ??
-            Math.round(amount * 100),
-          currency,
+          amount: amountPaise,
+          currency: currency,
           name: "Megzed",
           description: pack.name,
           order_id: razorpayOrderId,
