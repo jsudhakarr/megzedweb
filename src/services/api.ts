@@ -26,6 +26,47 @@ import type {
 
 export const API_BASE_URL = 'https://api.megzed.com/api/v1';
 
+const getStoredToken = () => {
+  const token = localStorage.getItem('auth_token');
+  return token && token.trim().length > 0 ? token : null;
+};
+
+let handlingUnauthorized = false;
+
+const handleUnauthorized = () => {
+  if (handlingUnauthorized) return;
+  handlingUnauthorized = true;
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user');
+  window.dispatchEvent(
+    new CustomEvent('auth:logout', {
+      detail: {
+        reason: 'unauthorized',
+        message: 'Session expired. Please login again.',
+      },
+    })
+  );
+  if (window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+  window.setTimeout(() => {
+    handlingUnauthorized = false;
+  }, 1500);
+};
+
+const apiFetch = async (url: string, options: RequestInit = {}) => {
+  const headers = new Headers(options.headers ?? {});
+  const token = getStoredToken();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) {
+    handleUnauthorized();
+  }
+  return response;
+};
+
 type QueryParamValue =
   | string
   | number
@@ -265,14 +306,14 @@ class ApiService {
   private subcategoriesByCategoryCacheByLang: Record<string, Record<string, Subcategory[]>> = {};
   private listingTypesCache: ListingType[] | null = null;
 
-  private getHeaders(includeAuth = false): HeadersInit {
+  private getHeaders(includeAuth = true): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     };
 
     if (includeAuth) {
-      const token = localStorage.getItem('auth_token');
+      const token = getStoredToken();
       if (token) (headers as any)['Authorization'] = `Bearer ${token}`;
     }
 
@@ -305,10 +346,19 @@ class ApiService {
     params.append('lang', lang);
   }
 
-  private getPublicHeaders() {
-    return {
+  private getPublicHeaders(includeAuth = true) {
+    const headers: HeadersInit = {
       Accept: 'application/json',
     };
+    if (includeAuth) {
+      const token = getStoredToken();
+      if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
+  private async request(url: string, options: RequestInit = {}) {
+    return apiFetch(url, options);
   }
 
   private async readError(response: Response): Promise<string> {
@@ -450,7 +500,7 @@ class ApiService {
     }
     this.appendLangParam(locationEndpoint.params);
     const url = `${locationEndpoint.endpoint}?${locationEndpoint.params.toString()}`;
-    const response = await fetch(url, { headers: this.getHeaders(true) });
+    const response = await this.request(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
     return this.normalizeListResponse<Item>(data);
@@ -467,7 +517,7 @@ class ApiService {
 
   async get(endpoint: string): Promise<any> {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const response = await fetch(url, {
+    const response = await this.request(url, {
       method: 'GET',
       headers: this.getHeaders(true),
     });
@@ -477,7 +527,7 @@ class ApiService {
 
   async post(endpoint: string, data: any): Promise<any> {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const response = await fetch(url, {
+    const response = await this.request(url, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(data),
@@ -488,7 +538,7 @@ class ApiService {
 
   async put(endpoint: string, data: any): Promise<any> {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const response = await fetch(url, {
+    const response = await this.request(url, {
       method: 'PUT',
       headers: this.getHeaders(true),
       body: JSON.stringify(data),
@@ -499,7 +549,7 @@ class ApiService {
 
   async delete(endpoint: string): Promise<any> {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const response = await fetch(url, {
+    const response = await this.request(url, {
       method: 'DELETE',
       headers: this.getHeaders(true),
     });
@@ -510,7 +560,7 @@ class ApiService {
   // ---------------- AUTH ----------------
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await this.request(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(credentials),
@@ -551,7 +601,7 @@ class ApiService {
   }
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/register`, {
+    const response = await this.request(`${API_BASE_URL}/register`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
@@ -592,7 +642,7 @@ class ApiService {
   }
 
   async socialLogin(data: SocialLoginData): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/social-login`, {
+    const response = await this.request(`${API_BASE_URL}/social-login`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
@@ -636,7 +686,7 @@ class ApiService {
   // ---------------- PROFILE ----------------
 
   async getProfile(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/profile`, {
+    const response = await this.request(`${API_BASE_URL}/profile`, {
       headers: this.getHeaders(true),
     });
 
@@ -648,7 +698,7 @@ class ApiService {
   }
 
   async updateProfile(data: UpdateProfileData): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/profile`, {
+    const response = await this.request(`${API_BASE_URL}/profile`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
       body: JSON.stringify(data),
@@ -665,10 +715,10 @@ class ApiService {
     const formData = new FormData();
     formData.append('profile_photo', file);
 
-    const token = localStorage.getItem('auth_token');
+    const token = getStoredToken();
     if (!token) throw new Error('Not logged in');
 
-    const response = await fetch(`${API_BASE_URL}/profile`, {
+    const response = await this.request(`${API_BASE_URL}/profile`, {
       method: 'PATCH',
       headers: {
         Accept: 'application/json',
@@ -703,7 +753,7 @@ class ApiService {
       }
     }
 
-    const response = await fetch(`${API_BASE_URL}/categories${this.buildQuery(requestParams)}`, {
+    const response = await this.request(`${API_BASE_URL}/categories${this.buildQuery(requestParams)}`, {
       headers: this.getHeaders(),
     });
 
@@ -724,7 +774,7 @@ class ApiService {
       return this.listingTypesCache;
     }
 
-    const response = await fetch(`${API_BASE_URL}/listing-types`, {
+    const response = await this.request(`${API_BASE_URL}/listing-types`, {
       headers: this.getHeaders(),
     });
 
@@ -772,7 +822,7 @@ class ApiService {
 
     const url = `${API_BASE_URL}/subcategories${this.buildQuery(requestParams)}`;
 
-    const response = await fetch(url, { headers: this.getHeaders(true) });
+    const response = await this.request(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
 
     const data: any = await response.json();
@@ -795,7 +845,7 @@ class ApiService {
     const id = encodeURIComponent(String(subcategoryId));
     const requestParams = this.withLangParams();
 
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/subcategories/${id}/fields${this.buildQuery(requestParams)}`,
       {
       method: "GET",
@@ -827,7 +877,7 @@ class ApiService {
     this.appendLangParam(params);
 
     const url = `${API_BASE_URL}/items?${params.toString()}`;
-    const response = await fetch(url, { headers: this.getHeaders(true) });
+    const response = await this.request(url, { headers: this.getHeaders(true) });
     if (!response.ok) throw new Error(await this.readError(response));
 
     const data: ItemsResponse = await response.json();
@@ -836,7 +886,7 @@ class ApiService {
 
   async getItem(id: number): Promise<Item> {
     const requestParams = this.withLangParams();
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/${id}${this.buildQuery(requestParams)}`,
       {
       headers: this.getHeaders(true),
@@ -859,7 +909,7 @@ class ApiService {
     if (subcategoryId) params.append('subcategory_id', subcategoryId.toString());
     this.appendLangParam(params);
 
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/search?${params.toString()}`,
       {
         headers: this.getHeaders(true),
@@ -876,7 +926,7 @@ class ApiService {
     options?: { signal?: AbortSignal }
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/search${this.buildQuery(requestParams)}`,
       {
         headers: this.getHeaders(true),
@@ -953,7 +1003,7 @@ class ApiService {
     const queryString = params.toString();
     const url = queryString ? `${endpoint}?${queryString}` : endpoint;
 
-    const response = await fetch(url, {
+    const response = await this.request(url, {
       headers: this.getHeaders(true),
     });
 
@@ -964,7 +1014,7 @@ class ApiService {
 
   async getFeaturedItems(): Promise<Item[]> {
     const requestParams = this.withLangParams();
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/featured${this.buildQuery(requestParams)}`,
       {
       headers: this.getHeaders(true),
@@ -976,7 +1026,7 @@ class ApiService {
   }
 
   async scanItemByUid(uid: string): Promise<any> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/scan/${encodeURIComponent(uid)}`,
       { headers: this.getHeaders(true) }
     );
@@ -992,7 +1042,7 @@ class ApiService {
     if (distance !== undefined) params.append('radius', String(distance));
     this.appendLangParam(params);
 
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/by-location?${params.toString()}`,
       { headers: this.getHeaders(true) }
     );
@@ -1003,7 +1053,7 @@ class ApiService {
 
   async getItemsBySubcategory(subcategoryId: number): Promise<Item[]> {
     const requestParams = this.withLangParams();
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/by-subcategory/${subcategoryId}${this.buildQuery(requestParams)}`,
       {
         headers: this.getHeaders(true),
@@ -1015,7 +1065,7 @@ class ApiService {
   }
 
   async getItemsByUser(userId: number): Promise<Item[]> {
-    const response = await fetch(`${API_BASE_URL}/items/by-user/${userId}`, {
+    const response = await this.request(`${API_BASE_URL}/items/by-user/${userId}`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1024,7 +1074,7 @@ class ApiService {
   }
 
   async getShops(): Promise<Shop[]> {
-    const response = await fetch(`${API_BASE_URL}/shops`, {
+    const response = await this.request(`${API_BASE_URL}/shops`, {
       headers: this.getHeaders(),
     });
 
@@ -1034,7 +1084,7 @@ class ApiService {
   }
 
   async getShop(id: number): Promise<Shop> {
-    const response = await fetch(`${API_BASE_URL}/shops/${id}`, {
+    const response = await this.request(`${API_BASE_URL}/shops/${id}`, {
       headers: this.getHeaders(),
     });
 
@@ -1049,7 +1099,7 @@ class ApiService {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
 
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/shops/search?${params.toString()}`,
       { headers: this.getHeaders() }
     );
@@ -1059,7 +1109,7 @@ class ApiService {
   }
 
   async getShopItems(shopId: number): Promise<Item[]> {
-    const response = await fetch(`${API_BASE_URL}/shops/${shopId}/items`, {
+    const response = await this.request(`${API_BASE_URL}/shops/${shopId}/items`, {
       headers: this.getPublicHeaders(),
     });
 
@@ -1074,7 +1124,7 @@ class ApiService {
   }
 
   async scanShopByUid(uid: string): Promise<any> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/shop/scan/${encodeURIComponent(uid)}`,
       { headers: this.getHeaders() }
     );
@@ -1083,7 +1133,7 @@ class ApiService {
   }
 
   async getShopReviewsPublic(shopId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/shops/${shopId}/reviews`, {
+    const response = await this.request(`${API_BASE_URL}/shops/${shopId}/reviews`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1091,7 +1141,7 @@ class ApiService {
   }
 
   async getPages(): Promise<ContentPage[]> {
-    const response = await fetch(`${API_BASE_URL}/pages`, {
+    const response = await this.request(`${API_BASE_URL}/pages`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1100,7 +1150,7 @@ class ApiService {
   }
 
   async getPageBySlug(slug: string): Promise<ContentPage> {
-    const response = await fetch(`${API_BASE_URL}/pages/${slug}`, {
+    const response = await this.request(`${API_BASE_URL}/pages/${slug}`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1111,7 +1161,7 @@ class ApiService {
   async getSystemPage(
     type: 'terms' | 'privacy' | 'about' | 'faq' | 'refund' | 'safety' | 'contact'
   ): Promise<ContentPage> {
-    const response = await fetch(`${API_BASE_URL}/pages/${type}`, {
+    const response = await this.request(`${API_BASE_URL}/pages/${type}`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1120,7 +1170,7 @@ class ApiService {
   }
 
   async getFrontWebSections(): Promise<HomeSection[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/front-web/sections${this.buildQuery(this.withLangParams())}`,
       {
       headers: this.getHeaders(),
@@ -1136,7 +1186,7 @@ class ApiService {
   }
 
   async getSliders(params?: Record<string, string | number | boolean>): Promise<Slider[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/sliders${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
     );
@@ -1148,7 +1198,7 @@ class ApiService {
   async getPublicUsersHighlights(
     params?: Record<string, string | number | boolean>
   ): Promise<PublicUser[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/users/public${this.buildQuery(params)}`,
       {
         headers: this.getHeaders(),
@@ -1162,7 +1212,7 @@ class ApiService {
   async getPublicUsersVerified(
     params?: Record<string, string | number | boolean>
   ): Promise<PublicUser[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/users/public/verified${this.buildQuery(params)}`,
       {
         headers: this.getHeaders(),
@@ -1176,7 +1226,7 @@ class ApiService {
   async getPublicUsersTopRated(
     params?: Record<string, string | number | boolean>
   ): Promise<PublicUser[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/users/public/top-rated${this.buildQuery(params)}`,
       {
         headers: this.getHeaders(),
@@ -1190,7 +1240,7 @@ class ApiService {
   async getPublicUsersIndex(
     params?: Record<string, string | number | boolean>
   ): Promise<PublicUser[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/users/public${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
     );
@@ -1200,7 +1250,7 @@ class ApiService {
   }
 
   async getShopsVerified(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/shops/verified${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
     );
@@ -1210,7 +1260,7 @@ class ApiService {
   }
 
   async getShopsTopRated(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/shops/top-rated${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
     );
@@ -1220,7 +1270,7 @@ class ApiService {
   }
 
   async getShopsIndex(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
-    const response = await fetch(`${API_BASE_URL}/shops${this.buildQuery(params)}`, {
+    const response = await this.request(`${API_BASE_URL}/shops${this.buildQuery(params)}`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1233,7 +1283,7 @@ class ApiService {
     options?: { signal?: AbortSignal }
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(`${API_BASE_URL}/items${this.buildQuery(requestParams)}`, {
+    const response = await this.request(`${API_BASE_URL}/items${this.buildQuery(requestParams)}`, {
       headers: this.getHeaders(true),
       signal: options?.signal,
     });
@@ -1244,7 +1294,7 @@ class ApiService {
 
   async getItemsFeatured(params?: Record<string, string | number | boolean>): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/featured${this.buildQuery(requestParams)}`,
       { headers: this.getHeaders(true) }
     );
@@ -1255,7 +1305,7 @@ class ApiService {
 
   async getItemsMostViewed(params?: Record<string, string | number | boolean>): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/most-viewed${this.buildQuery(requestParams)}`,
       { headers: this.getHeaders(true) }
     );
@@ -1268,7 +1318,7 @@ class ApiService {
     params?: Record<string, string | number | boolean>
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/most-favorited${this.buildQuery(requestParams)}`,
       { headers: this.getHeaders(true) }
     );
@@ -1279,7 +1329,7 @@ class ApiService {
 
   async getItemsMostLiked(params?: Record<string, string | number | boolean>): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/most-liked${this.buildQuery(requestParams)}`,
       { headers: this.getHeaders(true) }
     );
@@ -1293,7 +1343,7 @@ class ApiService {
     params?: Record<string, string | number | boolean>
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/by-category/${encodeURIComponent(
         String(categoryId)
       )}${this.buildQuery(requestParams)}`,
@@ -1458,7 +1508,7 @@ class ApiService {
   }
 
   async getPublicUser(userId: number): Promise<PublicUserDetails> {
-    const response = await fetch(`${API_BASE_URL}/users/public/${userId}`, {
+    const response = await this.request(`${API_BASE_URL}/users/public/${userId}`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1467,7 +1517,7 @@ class ApiService {
   }
 
   async getPublicUserShops(userId: number): Promise<Shop[]> {
-    const response = await fetch(`${API_BASE_URL}/shops/by-user/${userId}`, {
+    const response = await this.request(`${API_BASE_URL}/shops/by-user/${userId}`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1479,7 +1529,7 @@ class ApiService {
   }
 
   async getAppSettings(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/front-web`, {
+    const response = await this.request(`${API_BASE_URL}/front-web`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1487,7 +1537,7 @@ class ApiService {
   }
 
   async getLanguages(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/languages`, {
+    const response = await this.request(`${API_BASE_URL}/languages`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1499,14 +1549,14 @@ class ApiService {
       ? `${API_BASE_URL}/front-web/translations?lang=${encodeURIComponent(lang)}`
       : `${API_BASE_URL}/front-web/translations`;
 
-    const response = await fetch(url, { headers: this.getHeaders() });
+    const response = await this.request(url, { headers: this.getHeaders() });
     if (!response.ok) throw new Error(await this.readError(response));
     return response.json();
   }
 
 
   async getPromotionPlans(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/promotion-plans`, {
+    const response = await this.request(`${API_BASE_URL}/promotion-plans`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1514,7 +1564,7 @@ class ApiService {
   }
 
   async getPromotionPlansGrouped(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/promotion-plans/grouped`, {
+    const response = await this.request(`${API_BASE_URL}/promotion-plans/grouped`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1522,7 +1572,7 @@ class ApiService {
   }
 
   async getPromotionPlan(id: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/promotion-plans/${id}`, {
+    const response = await this.request(`${API_BASE_URL}/promotion-plans/${id}`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1530,7 +1580,7 @@ class ApiService {
   }
 
   async getCoinPackages(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/coin-packages`, {
+    const response = await this.request(`${API_BASE_URL}/coin-packages`, {
       headers: this.getHeaders(),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1540,7 +1590,7 @@ class ApiService {
   // ---------------- PROTECTED ----------------
 
   async getUserItems(): Promise<Item[]> {
-    const response = await fetch(`${API_BASE_URL}/my-items`, {
+    const response = await this.request(`${API_BASE_URL}/my-items`, {
       headers: this.getHeaders(true),
     });
 
@@ -1553,7 +1603,7 @@ class ApiService {
   // ✅ EDIT LOAD: GET /api/v1/my-items/{id}
   async getItemDetails(itemId: string | number): Promise<any> {
     const requestParams = this.withLangParams();
-    const response = await fetch(
+    const response = await this.request(
       `${API_BASE_URL}/items/${itemId}${this.buildQuery(requestParams)}`,
       {
         method: "GET",
@@ -1568,7 +1618,7 @@ class ApiService {
 
 
   async getUserShops(): Promise<Shop[]> {
-    const response = await fetch(`${API_BASE_URL}/my-shops`, {
+    const response = await this.request(`${API_BASE_URL}/my-shops`, {
       headers: this.getHeaders(true),
     });
 
@@ -1578,7 +1628,7 @@ class ApiService {
   }
 
   async getUserFavorites(): Promise<Item[]> {
-    const response = await fetch(`${API_BASE_URL}/my/saved-items`, {
+    const response = await this.request(`${API_BASE_URL}/my/saved-items`, {
       headers: this.getHeaders(true),
     });
 
@@ -1588,7 +1638,7 @@ class ApiService {
   }
 
   async toggleSaveItem(itemId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/items/${itemId}/save`, {
+    const response = await this.request(`${API_BASE_URL}/items/${itemId}/save`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({}),
@@ -1603,7 +1653,7 @@ class ApiService {
   }
 
   async getFavoriteShops(): Promise<Shop[]> {
-    const response = await fetch(`${API_BASE_URL}/shops/favorites`, {
+    const response = await this.request(`${API_BASE_URL}/shops/favorites`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1612,7 +1662,7 @@ class ApiService {
   }
 
   async toggleShopFavorite(shopId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/shops/${shopId}/favorite`, {
+    const response = await this.request(`${API_BASE_URL}/shops/${shopId}/favorite`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({}),
@@ -1622,7 +1672,7 @@ class ApiService {
   }
 
   async getUserBookings(): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/bookings/my`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/my`, {
       headers: this.getHeaders(true),
     });
 
@@ -1632,7 +1682,7 @@ class ApiService {
   }
 
   async getMyActionSubmissions(): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/my/action-submissions`, {
+    const response = await this.request(`${API_BASE_URL}/my/action-submissions`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1641,7 +1691,7 @@ class ApiService {
   }
 
   async getReceivedActionSubmissions(): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/seller/action-submissions`, {
+    const response = await this.request(`${API_BASE_URL}/seller/action-submissions`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1650,7 +1700,7 @@ class ApiService {
   }
 
   async createVisitBooking(payload: BookingPayloadVisit): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/visit`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/visit`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1664,7 +1714,7 @@ class ApiService {
     if (params.item_id) sp.append('item_id', String(params.item_id));
     if (params.booking_id) sp.append('booking_id', String(params.booking_id));
 
-    const response = await fetch(`${API_BASE_URL}/bookings/visit-status?${sp.toString()}`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/visit-status?${sp.toString()}`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1672,7 +1722,7 @@ class ApiService {
   }
 
   async createStayBooking(payload: BookingPayloadStay): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/stay`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/stay`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1686,7 +1736,7 @@ class ApiService {
     if (params.item_id) sp.append('item_id', String(params.item_id));
     if (params.booking_id) sp.append('booking_id', String(params.booking_id));
 
-    const response = await fetch(`${API_BASE_URL}/bookings/stay-status?${sp.toString()}`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/stay-status?${sp.toString()}`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1694,7 +1744,7 @@ class ApiService {
   }
 
   async getBookingsForMyItems(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/for-my-items`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/for-my-items`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1702,7 +1752,7 @@ class ApiService {
   }
 
   async bookingAccept(bookingId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/accept`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/${bookingId}/accept`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
     });
@@ -1711,7 +1761,7 @@ class ApiService {
   }
 
   async bookingReject(bookingId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/reject`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/${bookingId}/reject`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
     });
@@ -1720,7 +1770,7 @@ class ApiService {
   }
 
   async bookingCancel(bookingId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
     });
@@ -1729,7 +1779,7 @@ class ApiService {
   }
 
   async bookingComplete(bookingId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/complete`, {
+    const response = await this.request(`${API_BASE_URL}/bookings/${bookingId}/complete`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
     });
@@ -1743,7 +1793,7 @@ class ApiService {
     rating: number;
     comment?: string;
   }): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/reviews`, {
+    const response = await this.request(`${API_BASE_URL}/reviews`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1753,7 +1803,7 @@ class ApiService {
   }
 
   async reportItem(itemId: number, payload: { reason?: string; message?: string } = {}): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/items/${itemId}/report`, {
+    const response = await this.request(`${API_BASE_URL}/items/${itemId}/report`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1763,7 +1813,7 @@ class ApiService {
   }
 
   async getItemActions(itemId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/items/${itemId}/actions`, {
+    const response = await this.request(`${API_BASE_URL}/items/${itemId}/actions`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1775,7 +1825,7 @@ class ApiService {
     variant?: 'sent' | 'received'
   ): Promise<ActionSubmission> {
     const getSubmission = async (path: string) => {
-      const response = await fetch(`${API_BASE_URL}${path}`, {
+      const response = await this.request(`${API_BASE_URL}${path}`, {
         headers: this.getHeaders(true),
       });
       if (!response.ok) throw new Error(await this.readError(response));
@@ -1801,7 +1851,7 @@ class ApiService {
   }
 
   async createActionSubmission(payload: ActionSubmissionPayload): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/action-submissions`, {
+    const response = await this.request(`${API_BASE_URL}/action-submissions`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1811,7 +1861,7 @@ class ApiService {
   }
 
   async cancelActionSubmission(submissionId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/my/action-submissions/${submissionId}/cancel`, {
+    const response = await this.request(`${API_BASE_URL}/my/action-submissions/${submissionId}/cancel`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
     });
@@ -1823,7 +1873,7 @@ class ApiService {
     submissionId: number,
     payload: { status: 'accepted' | 'rejected'; reason?: string }
   ): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/seller/action-submissions/${submissionId}/status`, {
+    const response = await this.request(`${API_BASE_URL}/seller/action-submissions/${submissionId}/status`, {
       method: 'PATCH',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1833,7 +1883,7 @@ class ApiService {
   }
 
   async createJobApplication(payload: any): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/job-applications`, {
+    const response = await this.request(`${API_BASE_URL}/job-applications`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1843,7 +1893,7 @@ class ApiService {
   }
 
   async getMyJobApplications(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/job-applications/my`, {
+    const response = await this.request(`${API_BASE_URL}/job-applications/my`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1851,7 +1901,7 @@ class ApiService {
   }
 
   async getJobApplicationsForMyItems(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/job-applications/for-my-items`, {
+    const response = await this.request(`${API_BASE_URL}/job-applications/for-my-items`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1859,7 +1909,7 @@ class ApiService {
   }
 
   async createOrderRequest(payload: any): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/order-requests`, {
+    const response = await this.request(`${API_BASE_URL}/order-requests`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1869,7 +1919,7 @@ class ApiService {
   }
 
   async getMyOrderRequests(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/order-requests/my`, {
+    const response = await this.request(`${API_BASE_URL}/order-requests/my`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1877,7 +1927,7 @@ class ApiService {
   }
 
   async getOrderRequestsForMyItems(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/order-requests/for-my-items`, {
+    const response = await this.request(`${API_BASE_URL}/order-requests/for-my-items`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1887,7 +1937,7 @@ class ApiService {
   // --- DASHBOARD SUMMARY ---
 
   async getDashboardSummary(): Promise<DashboardSummary> {
-    const response = await fetch(`${API_BASE_URL}/dashboard/summary`, {
+    const response = await this.request(`${API_BASE_URL}/dashboard/summary`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1898,7 +1948,7 @@ class ApiService {
   // --- CHAT ENDPOINTS ---
   
   async getConversations(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/conversations`, {
+    const response = await this.request(`${API_BASE_URL}/conversations`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1906,7 +1956,7 @@ class ApiService {
   }
 
   async startConversation(payload: any): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/conversations/start`, {
+    const response = await this.request(`${API_BASE_URL}/conversations/start`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -1916,7 +1966,7 @@ class ApiService {
   }
 
   async getConversation(conversationId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}`, {
+    const response = await this.request(`${API_BASE_URL}/conversations/${conversationId}`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1930,7 +1980,7 @@ class ApiService {
       delete headers['Content-Type'];
     }
 
-    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages`, {
+    const response = await this.request(`${API_BASE_URL}/conversations/${conversationId}/messages`, {
       method: 'POST',
       headers,
       body: isFormData ? payload : JSON.stringify(payload),
@@ -1940,7 +1990,7 @@ class ApiService {
   }
 
   async markConversationRead(conversationId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/read`, {
+    const response = await this.request(`${API_BASE_URL}/conversations/${conversationId}/read`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({}),
@@ -1950,7 +2000,7 @@ class ApiService {
   }
 
   async blockUser(userId: number, action: 'block' | 'unblock' = 'block'): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/block`, {
+    const response = await this.request(`${API_BASE_URL}/users/${userId}/block`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({ action }),
@@ -1960,7 +2010,7 @@ class ApiService {
   }
 
   async getBlockStatus(userId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/block-status`, {
+    const response = await this.request(`${API_BASE_URL}/users/${userId}/block-status`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1968,7 +2018,7 @@ class ApiService {
   }
 
   async getBlockedUsers(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/me/blocked-users`, {
+    const response = await this.request(`${API_BASE_URL}/me/blocked-users`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1978,7 +2028,7 @@ class ApiService {
   // --- WALLET ENDPOINTS ---
 
   async getWallet(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/wallet`, {
+    const response = await this.request(`${API_BASE_URL}/wallet`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1986,7 +2036,7 @@ class ApiService {
   }
 
   async getWalletTransactions(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/wallet/transactions`, {
+    const response = await this.request(`${API_BASE_URL}/wallet/transactions`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -1994,7 +2044,7 @@ class ApiService {
   }
 
   async walletPurchase(payload: any): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/wallet/purchase`, {
+    const response = await this.request(`${API_BASE_URL}/wallet/purchase`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2006,7 +2056,7 @@ class ApiService {
   // --- PROMOTION ENDPOINTS ---
 
   async promoteMyItem(itemId: number, payload: any): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/my-items/${itemId}/promote`, {
+    const response = await this.request(`${API_BASE_URL}/my-items/${itemId}/promote`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2016,7 +2066,7 @@ class ApiService {
   }
 
   async promoteMyShop(shopId: number, payload: any): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/my-shops/${shopId}/promote`, {
+    const response = await this.request(`${API_BASE_URL}/my-shops/${shopId}/promote`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2028,7 +2078,7 @@ class ApiService {
   // --- NOTIFICATION ENDPOINTS ---
 
   async getUnreadNotificationCount(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/notifications/unread-count`, {
+    const response = await this.request(`${API_BASE_URL}/notifications/unread-count`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -2036,7 +2086,7 @@ class ApiService {
   }
 
   async getNotifications(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/notifications`, {
+    const response = await this.request(`${API_BASE_URL}/notifications`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -2044,7 +2094,7 @@ class ApiService {
   }
 
   async markNotificationRead(id: number | string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+    const response = await this.request(`${API_BASE_URL}/notifications/${id}/read`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({}),
@@ -2054,7 +2104,7 @@ class ApiService {
   }
 
   async markAllNotificationsRead(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+    const response = await this.request(`${API_BASE_URL}/notifications/read-all`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({}),
@@ -2064,7 +2114,7 @@ class ApiService {
   }
 
   async saveDeviceToken(payload: { token: string; platform?: string }): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/save-device-token`, {
+    const response = await this.request(`${API_BASE_URL}/save-device-token`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2078,7 +2128,7 @@ class ApiService {
     purchaseToken: string;
     purchaseType?: 'product' | 'subscription';
   }): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/google-play/verify`, {
+    const response = await this.request(`${API_BASE_URL}/google-play/verify`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify({
@@ -2094,7 +2144,7 @@ class ApiService {
   // --- PAYMENTS ---
 
   async getPaymentGateways(platform: 'android' | 'ios' | 'web'): Promise<PaymentGateway[]> {
-    const response = await fetch(`${API_BASE_URL}/payment-gateways`, {
+    const response = await this.request(`${API_BASE_URL}/payment-gateways`, {
       headers: {
         ...this.getPublicHeaders(),
         'X-Platform': platform,
@@ -2102,11 +2152,30 @@ class ApiService {
     });
     if (!response.ok) throw new Error(await this.readError(response));
     const data = await response.json();
-    return (data?.data ?? data) as PaymentGateway[];
+    const list = (data?.data ?? data) as Array<
+      PaymentGateway & { public_config_json?: string | null }
+    >;
+    return list.map((gateway) => {
+      let publicConfig = gateway.public_config ?? null;
+      if (!publicConfig && gateway.public_config_json) {
+        try {
+          publicConfig = JSON.parse(gateway.public_config_json);
+        } catch {
+          publicConfig = null;
+        }
+      } else if (typeof publicConfig === 'string') {
+        try {
+          publicConfig = JSON.parse(publicConfig);
+        } catch {
+          publicConfig = null;
+        }
+      }
+      return { ...gateway, public_config: publicConfig };
+    });
   }
 
   async createPaymentIntent(payload: PaymentIntentPayload): Promise<PaymentIntentResponse> {
-    const response = await fetch(`${API_BASE_URL}/payments/create-intent`, {
+    const response = await this.request(`${API_BASE_URL}/payments/create-intent`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2116,7 +2185,7 @@ class ApiService {
   }
 
   async initPayment(payload: PaymentInitPayload): Promise<PaymentInitResponse> {
-    const response = await fetch(`${API_BASE_URL}/payments/init`, {
+    const response = await this.request(`${API_BASE_URL}/payments/init`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2126,7 +2195,7 @@ class ApiService {
   }
 
   async confirmPayment(payload: PaymentConfirmPayload): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/payments/confirm`, {
+    const response = await this.request(`${API_BASE_URL}/payments/confirm`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2136,7 +2205,7 @@ class ApiService {
   }
 
   async verifyGooglePlay(payload: GooglePlayVerifyPayload): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/google-play/verify`, {
+    const response = await this.request(`${API_BASE_URL}/google-play/verify`, {
       method: 'POST',
       headers: this.getHeaders(true),
       body: JSON.stringify(payload),
@@ -2148,7 +2217,7 @@ class ApiService {
   // --- VERIFICATION (KYC) ---
 
   async getUserVerificationFields(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/verification/user/fields`, {
+    const response = await this.request(`${API_BASE_URL}/verification/user/fields`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -2159,7 +2228,7 @@ class ApiService {
     const token = localStorage.getItem('auth_token');
     if (!token) throw new Error('Not logged in');
 
-    const response = await fetch(`${API_BASE_URL}/verification/user/submit`, {
+    const response = await this.request(`${API_BASE_URL}/verification/user/submit`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -2172,7 +2241,7 @@ class ApiService {
   }
 
   async getShopVerificationFields(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/verification/shop/fields`, {
+    const response = await this.request(`${API_BASE_URL}/verification/shop/fields`, {
       headers: this.getHeaders(true),
     });
     if (!response.ok) throw new Error(await this.readError(response));
@@ -2183,7 +2252,7 @@ class ApiService {
     const token = localStorage.getItem('auth_token');
     if (!token) throw new Error('Not logged in');
 
-    const response = await fetch(`${API_BASE_URL}/verification/shop/submit`, {
+    const response = await this.request(`${API_BASE_URL}/verification/shop/submit`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -2205,7 +2274,7 @@ class ApiService {
     }
 
     // ✅ FIXED: Changed endpoint from '/items' to '/additem' to match Laravel
-    const response = await fetch(`${API_BASE_URL}/additem`, { 
+    const response = await this.request(`${API_BASE_URL}/additem`, { 
       method: 'POST',
       headers: headers,
       body: payload instanceof FormData ? payload : JSON.stringify(payload),
@@ -2228,7 +2297,7 @@ class ApiService {
     }
 
     // ✅ FIXED: Endpoint changed to '/my-items/' to match your Laravel route
-    const response = await fetch(`${API_BASE_URL}/my-items/${itemId}`, {
+    const response = await this.request(`${API_BASE_URL}/my-items/${itemId}`, {
       method: method, 
       headers: headers,
       body: payload instanceof FormData ? payload : JSON.stringify(payload),
@@ -2240,7 +2309,7 @@ class ApiService {
 
   async deleteMyItem(itemId: number): Promise<any> {
     // This looks correct based on your route: Route::delete('my-items/{item}')
-    const response = await fetch(`${API_BASE_URL}/my-items/${itemId}`, {
+    const response = await this.request(`${API_BASE_URL}/my-items/${itemId}`, {
       method: 'DELETE',
       headers: this.getHeaders(true),
     });
@@ -2257,7 +2326,7 @@ class ApiService {
       delete headers['Content-Type'];
     }
 
-    const response = await fetch(`${API_BASE_URL}/addshop`, {
+    const response = await this.request(`${API_BASE_URL}/addshop`, {
       method: 'POST',
       headers: headers,
       body: payload instanceof FormData ? payload : JSON.stringify(payload),
@@ -2280,7 +2349,7 @@ class ApiService {
       // payload.append('_method', 'PATCH'); 
     }
 
-    const response = await fetch(`${API_BASE_URL}/my-shops/${shopId}`, {
+    const response = await this.request(`${API_BASE_URL}/my-shops/${shopId}`, {
       method: 'PATCH', // Or 'POST' if using the _method trick above
       headers: headers,
       // 2. Send FormData raw, otherwise stringify JSON
@@ -2292,7 +2361,7 @@ class ApiService {
   }
 
   async deleteShop(shopId: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/my-shops/${shopId}`, {
+    const response = await this.request(`${API_BASE_URL}/my-shops/${shopId}`, {
       method: 'DELETE',
       headers: this.getHeaders(true),
     });
@@ -2399,7 +2468,7 @@ export const apiRequest = async <T>({
     ...headers,
   };
 
-  const token = auth ? localStorage.getItem('auth_token') : null;
+  const token = auth ? getStoredToken() : null;
   if (token) {
     (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
@@ -2412,7 +2481,7 @@ export const apiRequest = async <T>({
     requestBody = JSON.stringify(body);
   }
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method,
     headers: requestHeaders,
     body: requestBody,

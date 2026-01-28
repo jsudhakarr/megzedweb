@@ -140,6 +140,10 @@ export default function CoinPackages() {
     setSelectedPack(pack);
     resetCheckoutState();
     setShowGatewayModal(true);
+    if (!token && !authLoading) {
+      setCheckoutStatus("error");
+      setCheckoutMessage("Please sign in to continue with payment.");
+    }
     if (!gatewaysLoading && gateways.length === 0 && !gatewaysError) {
       loadGateways();
     }
@@ -155,6 +159,21 @@ export default function CoinPackages() {
     gatewayLabelOverrides[gateway.code] || gateway.name || gateway.code;
 
   const getGatewayIcon = (gateway: PaymentGateway) => gatewayIconMap[gateway.code];
+  const getRazorpayKey = (
+    gateway: PaymentGateway,
+    intent: Record<string, unknown>
+  ): string | undefined => {
+    const publicConfig = gateway.public_config as Record<string, string | undefined> | null;
+    return (
+      (intent.razorpay_key_id as string | undefined) ||
+      (intent.key_id as string | undefined) ||
+      (intent.key as string | undefined) ||
+      (intent.public_key as string | undefined) ||
+      publicConfig?.key_id ||
+      publicConfig?.key ||
+      publicConfig?.public_key
+    );
+  };
 
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
@@ -192,14 +211,15 @@ export default function CoinPackages() {
           throw new Error("Razorpay SDK not loaded. Please refresh the page.");
         }
 
+        const razorpayKey = getRazorpayKey(gateway, intent as Record<string, unknown>);
+        if (!razorpayKey) {
+          setCheckoutStatus("error");
+          setCheckoutMessage("Razorpay is not configured. Please contact admin.");
+          return;
+        }
+
         const options = {
-          key:
-            (intent as any).razorpay_key_id ||
-            (intent as any).key_id ||
-            (intent as any).key ||
-            (intent as any).public_key ||
-            (gateway.public_config?.key_id as string | undefined) ||
-            (gateway.public_config?.key as string | undefined),
+          key: razorpayKey,
           amount:
             (intent as any).amount_paise ??
             (intent as any).amount ??
@@ -478,6 +498,16 @@ export default function CoinPackages() {
                   Preparing your secure checkout...
                 </div>
               )}
+              {!token && !authLoading && (
+                <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
+                  Please sign in to continue with payment.
+                </div>
+              )}
+              {checkoutMessage && !selectedGateway && (
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  {checkoutMessage}
+                </div>
+              )}
 
               {gatewaysLoading ? (
                 <div className="flex items-center gap-3 text-slate-400">
@@ -499,9 +529,9 @@ export default function CoinPackages() {
                       key={gateway.code}
                       type="button"
                       onClick={() => startCheckout(gateway, selectedPack)}
-                      disabled={authLoading}
+                      disabled={authLoading || !token}
                       className={`rounded-xl border border-slate-200 px-4 py-3 text-left transition ${
-                        authLoading
+                        authLoading || !token
                           ? "cursor-not-allowed opacity-60"
                           : "hover:border-slate-300 hover:bg-slate-50"
                       }`}

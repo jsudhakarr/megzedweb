@@ -9,6 +9,33 @@ export type ApiClientOptions = Omit<RequestInit, 'body'> & {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://api.megzed.com/api/v1';
 const DEFAULT_TIMEOUT_MS = 15000;
+let handlingUnauthorized = false;
+
+const getStoredToken = () => {
+  const token = localStorage.getItem('auth_token');
+  return token && token.trim().length > 0 ? token : null;
+};
+
+const handleUnauthorized = () => {
+  if (handlingUnauthorized) return;
+  handlingUnauthorized = true;
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user');
+  window.dispatchEvent(
+    new CustomEvent('auth:logout', {
+      detail: {
+        reason: 'unauthorized',
+        message: 'Session expired. Please login again.',
+      },
+    })
+  );
+  if (window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+  window.setTimeout(() => {
+    handlingUnauthorized = false;
+  }, 1500);
+};
 
 const toSnippet = (value: string, length = 200) => {
   const normalized = value.replace(/\s+/g, ' ').trim();
@@ -65,7 +92,7 @@ export const apiClient = {
     requestHeaders.set('Accept', 'application/json');
 
     if (auth) {
-      const token = localStorage.getItem('auth_token');
+      const token = getStoredToken();
       if (token) {
         requestHeaders.set('Authorization', `Bearer ${token}`);
       }
@@ -89,6 +116,10 @@ export const apiClient = {
         body: requestBody,
         signal: controller.signal,
       });
+
+      if (response.status === 401) {
+        handleUnauthorized();
+      }
 
       const text = await response.text();
       const bodySnippet = text ? toSnippet(text) : undefined;
