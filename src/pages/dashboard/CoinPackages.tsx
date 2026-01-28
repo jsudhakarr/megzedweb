@@ -31,6 +31,8 @@ const toNum = (v: any, d = 0) => {
   return d;
 };
 
+const isDev = Boolean(import.meta.env?.DEV);
+
 declare global {
   interface Window {
     Razorpay?: any;
@@ -165,15 +167,31 @@ export default function CoinPackages() {
   ): string | undefined => {
     const publicConfig = gateway.public_config as Record<string, string | undefined> | null;
     return (
+      (intent.key as string | undefined) ||
       (intent.razorpay_key_id as string | undefined) ||
       (intent.key_id as string | undefined) ||
-      (intent.key as string | undefined) ||
       (intent.public_key as string | undefined) ||
       publicConfig?.key_id ||
       publicConfig?.key ||
       publicConfig?.public_key
     );
   };
+
+  const getFriendlyApiError = (error: any, fallback: string) => {
+    const rawMessage = error?.message;
+    if (isDev && rawMessage) {
+      console.error("Payment API error:", rawMessage);
+    }
+    if (typeof rawMessage === "string" && rawMessage.toLowerCase().includes("unauthenticated")) {
+      return "Please sign in to continue with payment.";
+    }
+    return fallback;
+  };
+
+  const getRazorpayOrderId = (intent: Record<string, unknown>): string | undefined =>
+    (intent.razorpay_order_id as string | undefined) ||
+    (intent.order_id as string | undefined) ||
+    (intent.orderId as string | undefined);
 
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
@@ -218,33 +236,42 @@ export default function CoinPackages() {
           return;
         }
 
+        const razorpayOrderId = getRazorpayOrderId(intent as Record<string, unknown>);
+        if (!razorpayOrderId) {
+          setCheckoutStatus("error");
+          setCheckoutMessage("Unable to start Razorpay checkout. Please try again.");
+          return;
+        }
+
         const options = {
           key: razorpayKey,
           amount:
-            (intent as any).amount_paise ??
             (intent as any).amount ??
+            (intent as any).amount_paise ??
             Math.round(amount * 100),
           currency,
           name: "Megzed",
           description: pack.name,
-          order_id:
-            (intent as any).razorpay_order_id ||
-            (intent as any).order_id ||
-            (intent as any).orderId,
+          order_id: razorpayOrderId,
           handler: async (response: any) => {
             setCheckoutStatus("confirming");
             try {
               await apiService.confirmPayment({
                 gateway_code: gateway.code,
                 transaction_id: (intent as any).transaction_id,
-                payload: response,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
               });
               setCheckoutStatus("success");
               setCheckoutMessage("Payment confirmed. Coins will be credited shortly.");
             } catch (confirmError: any) {
               setCheckoutStatus("error");
               setCheckoutMessage(
-                confirmError?.message || "Payment confirmation failed. Please try again."
+                getFriendlyApiError(
+                  confirmError,
+                  "Payment confirmation failed. Please try again."
+                )
               );
             }
           },
@@ -289,12 +316,9 @@ export default function CoinPackages() {
       }
     } catch (checkoutError: any) {
       setCheckoutStatus("error");
-      const rawMessage = checkoutError?.message || "Unable to start checkout.";
-      const friendlyMessage =
-        typeof rawMessage === "string" && rawMessage.toLowerCase().includes("unauthenticated")
-          ? "Please sign in to continue with payment."
-          : rawMessage;
-      setCheckoutMessage(friendlyMessage);
+      setCheckoutMessage(
+        getFriendlyApiError(checkoutError, "Unable to start checkout. Please try again.")
+      );
     }
   };
 
@@ -318,7 +342,10 @@ export default function CoinPackages() {
     } catch (confirmError: any) {
       setCheckoutStatus("awaiting");
       setCheckoutMessage(
-        confirmError?.message || "Payment not confirmed yet. Please try again later."
+        getFriendlyApiError(
+          confirmError,
+          "Payment not confirmed yet. Please try again later."
+        )
       );
     }
   };
