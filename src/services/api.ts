@@ -67,14 +67,20 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
   return response;
 };
 
+type QueryParamPrimitive = string | number | boolean;
+
+interface QueryParamObject {
+  [key: string]: QueryParamValue;
+}
+
+interface QueryParamArray extends Array<QueryParamValue> {}
+
 type QueryParamValue =
-  | string
-  | number
-  | boolean
+  | QueryParamPrimitive
   | null
   | undefined
-  | QueryParamValue[]
-  | Record<string, QueryParamValue>;
+  | QueryParamArray
+  | QueryParamObject;
 type QueryParams = Record<string, QueryParamValue>;
 
 // --- Interfaces ---
@@ -391,11 +397,6 @@ class ApiService {
   private extractToken(response: any): string | null {
     const token = response.token || response.access_token;
     return typeof token === 'string' && token.length > 0 ? token : null;
-  }
-
-  private normalizeApiRoute(route: string): string {
-    if (route.startsWith('http')) return route;
-    return `${API_BASE_URL}${route.startsWith('/') ? '' : '/'}${route}`;
   }
 
   private buildQuery(params?: QueryParams) {
@@ -736,7 +737,7 @@ class ApiService {
 
   // ---------------- PUBLIC ----------------
 
-  async getCategories(params?: Record<string, string | number | boolean>): Promise<Category[]> {
+  async getCategories(params?: QueryParams): Promise<Category[]> {
     const requestParams = this.withLangParams(params);
     const onlyLangParam =
       !requestParams ||
@@ -922,7 +923,7 @@ class ApiService {
   }
 
   async searchItemsIndex(
-    params?: Record<string, string | number | boolean>,
+    params?: QueryParams,
     options?: { signal?: AbortSignal }
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
@@ -1185,7 +1186,7 @@ class ApiService {
     return this.getFrontWebSections();
   }
 
-  async getSliders(params?: Record<string, string | number | boolean>): Promise<Slider[]> {
+  async getSliders(params?: QueryParams): Promise<Slider[]> {
     const response = await this.request(
       `${API_BASE_URL}/sliders${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
@@ -1196,7 +1197,7 @@ class ApiService {
   }
 
   async getPublicUsersHighlights(
-    params?: Record<string, string | number | boolean>
+    params?: QueryParams
   ): Promise<PublicUser[]> {
     const response = await this.request(
       `${API_BASE_URL}/users/public${this.buildQuery(params)}`,
@@ -1210,7 +1211,7 @@ class ApiService {
   }
 
   async getPublicUsersVerified(
-    params?: Record<string, string | number | boolean>
+    params?: QueryParams
   ): Promise<PublicUser[]> {
     const response = await this.request(
       `${API_BASE_URL}/users/public/verified${this.buildQuery(params)}`,
@@ -1224,7 +1225,7 @@ class ApiService {
   }
 
   async getPublicUsersTopRated(
-    params?: Record<string, string | number | boolean>
+    params?: QueryParams
   ): Promise<PublicUser[]> {
     const response = await this.request(
       `${API_BASE_URL}/users/public/top-rated${this.buildQuery(params)}`,
@@ -1238,7 +1239,7 @@ class ApiService {
   }
 
   async getPublicUsersIndex(
-    params?: Record<string, string | number | boolean>
+    params?: QueryParams
   ): Promise<PublicUser[]> {
     const response = await this.request(
       `${API_BASE_URL}/users/public${this.buildQuery(params)}`,
@@ -1249,7 +1250,7 @@ class ApiService {
     return this.normalizeListResponse<PublicUser>(data);
   }
 
-  async getShopsVerified(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
+  async getShopsVerified(params?: QueryParams): Promise<Shop[]> {
     const response = await this.request(
       `${API_BASE_URL}/shops/verified${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
@@ -1259,7 +1260,7 @@ class ApiService {
     return this.normalizeListResponse<Shop>(data);
   }
 
-  async getShopsTopRated(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
+  async getShopsTopRated(params?: QueryParams): Promise<Shop[]> {
     const response = await this.request(
       `${API_BASE_URL}/shops/top-rated${this.buildQuery(params)}`,
       { headers: this.getHeaders() }
@@ -1269,7 +1270,7 @@ class ApiService {
     return this.normalizeListResponse<Shop>(data);
   }
 
-  async getShopsIndex(params?: Record<string, string | number | boolean>): Promise<Shop[]> {
+  async getShopsIndex(params?: QueryParams): Promise<Shop[]> {
     const response = await this.request(`${API_BASE_URL}/shops${this.buildQuery(params)}`, {
       headers: this.getHeaders(),
     });
@@ -1292,7 +1293,7 @@ class ApiService {
     return this.normalizeListResponse<Item>(data);
   }
 
-  async getItemsFeatured(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+  async getItemsFeatured(params?: QueryParams): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
     const response = await this.request(
       `${API_BASE_URL}/items/featured${this.buildQuery(requestParams)}`,
@@ -1303,7 +1304,7 @@ class ApiService {
     return this.normalizeListResponse<Item>(data);
   }
 
-  async getItemsMostViewed(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+  async getItemsMostViewed(params?: QueryParams): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
     const response = await this.request(
       `${API_BASE_URL}/items/most-viewed${this.buildQuery(requestParams)}`,
@@ -1315,7 +1316,7 @@ class ApiService {
   }
 
   async getItemsMostFavorited(
-    params?: Record<string, string | number | boolean>
+    params?: QueryParams
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
     const response = await this.request(
@@ -1327,7 +1328,7 @@ class ApiService {
     return this.normalizeListResponse<Item>(data);
   }
 
-  async getItemsMostLiked(params?: Record<string, string | number | boolean>): Promise<Item[]> {
+  async getItemsMostLiked(params?: QueryParams): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
     const response = await this.request(
       `${API_BASE_URL}/items/most-liked${this.buildQuery(requestParams)}`,
@@ -1340,7 +1341,7 @@ class ApiService {
 
   async getItemsByCategory(
     categoryId: string | number,
-    params?: Record<string, string | number | boolean>
+    params?: QueryParams
   ): Promise<Item[]> {
     const requestParams = this.withLangParams(params);
     const response = await this.request(
