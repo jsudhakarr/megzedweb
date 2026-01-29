@@ -2200,18 +2200,25 @@ class ApiService {
       (error as { status?: number }).status = response.status;
       throw error;
     }
-    return response.json();
+    const json = await response.json();
+return (json?.data ?? json) as PaymentInitResponse;
+
   }
 
-  async confirmPayment(payload: PaymentConfirmPayload): Promise<any> {
-    const response = await this.request(`${API_BASE_URL}/payments/confirm`, {
-      method: 'POST',
-      headers: this.getHeaders(true),
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) throw new Error(await this.readError(response));
-    return response.json();
-  }
+  async confirmPayment(input: any) {
+  const { gateway_code, transaction_id, payload, ...rest } = input || {};
+
+  // ✅ Backend usually validates fields at TOP LEVEL.
+  // Some frontend code sends them inside payload. Flatten both.
+  const body = {
+    gateway_code,
+    transaction_id,
+    ...(payload || {}),
+    ...rest,
+  };
+
+  return this.post("/payments/confirm", body);
+}
 
   async verifyGooglePlay(payload: GooglePlayVerifyPayload): Promise<any> {
     const response = await this.request(`${API_BASE_URL}/google-play/verify`, {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react"; // Kept Loader for UI state
+import { Loader2, Sparkles } from "lucide-react";
 import { useAppSettings } from "../../contexts/AppSettingsContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiService } from "../../services/api";
@@ -8,7 +8,6 @@ import type { CoinPackage } from "../../types/wallet";
 import type { PaymentGateway } from "../../types/payments";
 
 // --- Asset Imports ---
-// Adjust the path "../.." based on where this file is located inside src/
 import coinIcon from "../../assets/icons/coin.png";
 import moneyBagIcon from "../../assets/icons/money-bag.png";
 import verifiedIcon from "../../assets/icons/storeverified.png";
@@ -24,6 +23,7 @@ const toInt = (v: any, d = 0) => {
   if (typeof v === "string") return parseInt(v, 10) || d;
   return d;
 };
+
 const toNum = (v: any, d = 0) => {
   if (v == null) return d;
   if (typeof v === "number") return v;
@@ -39,7 +39,13 @@ declare global {
   }
 }
 
-type CheckoutStatus = "idle" | "creating" | "awaiting" | "confirming" | "success" | "error";
+type CheckoutStatus =
+  | "idle"
+  | "creating"
+  | "awaiting"
+  | "confirming"
+  | "success"
+  | "error";
 
 const allowedGatewayCodes = new Set([
   "razorpay",
@@ -76,19 +82,19 @@ const gatewayIconMap: Record<string, { src: string; alt: string }> = {
 
 const loadRazorpayCheckoutScript = () =>
   new Promise<void>((resolve, reject) => {
-    if (window.Razorpay) {
-      resolve();
-      return;
-    }
+    if (window.Razorpay) return resolve();
 
-    const existingScript = document.querySelector<HTMLScriptElement>(
+    const existing = document.querySelector<HTMLScriptElement>(
       'script[data-razorpay-checkout="true"]'
     );
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener("error", () => reject(new Error("Razorpay SDK failed to load.")), {
-        once: true,
-      });
+
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("Razorpay SDK failed to load.")),
+        { once: true }
+      );
       return;
     }
 
@@ -101,6 +107,34 @@ const loadRazorpayCheckoutScript = () =>
     document.body.appendChild(script);
   });
 
+function getApiErrorMessage(err: any, fallback: string) {
+  const data = err?.response?.data ?? err?.data;
+  const msg =
+    data?.message ||
+    err?.message ||
+    (typeof data === "string" ? data : null) ||
+    null;
+
+  // Laravel validation { errors: { field: ["msg"] } }
+  const errors = data?.errors;
+  if (errors && typeof errors === "object") {
+    const firstKey = Object.keys(errors)[0];
+    const firstVal = firstKey ? errors[firstKey] : null;
+    if (Array.isArray(firstVal) && typeof firstVal[0] === "string") {
+      return firstVal[0];
+    }
+  }
+
+  if (typeof msg === "string" && msg.trim()) return msg;
+
+  // unauthenticated
+  if (typeof err?.message === "string" && err.message.toLowerCase().includes("unauthenticated")) {
+    return "Please sign in to continue with payment.";
+  }
+
+  return fallback;
+}
+
 export default function CoinPackages() {
   const { settings } = useAppSettings();
   const { token, loading: authLoading } = useAuth();
@@ -109,14 +143,19 @@ export default function CoinPackages() {
   const [loading, setLoading] = useState(true);
   const [packs, setPacks] = useState<CoinPackage[]>([]);
   const [error, setError] = useState<string | null>(null);
+
   const [gateways, setGateways] = useState<PaymentGateway[]>([]);
   const [gatewaysLoading, setGatewaysLoading] = useState(false);
   const [gatewaysError, setGatewaysError] = useState<string | null>(null);
+
   const [selectedPack, setSelectedPack] = useState<CoinPackage | null>(null);
   const [selectedGateway, setSelectedGateway] = useState<PaymentGateway | null>(null);
   const [checkoutStatus, setCheckoutStatus] = useState<CheckoutStatus>("idle");
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
-  const [intentData, setIntentData] = useState<Record<string, unknown> | null>(null);
+
+  // init response saved here
+  const [intentData, setIntentData] = useState<Record<string, any> | null>(null);
+
   const [showGatewayModal, setShowGatewayModal] = useState(false);
 
   const load = async () => {
@@ -153,8 +192,8 @@ export default function CoinPackages() {
 
   const availableGateways = useMemo(() => {
     return gateways
-      .filter((gateway) => gateway.code !== "google_play")
-      .filter((gateway) => allowedGatewayCodes.has(gateway.code))
+      .filter((g) => g.code !== "google_play")
+      .filter((g) => allowedGatewayCodes.has(g.code))
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }, [gateways]);
 
@@ -169,6 +208,7 @@ export default function CoinPackages() {
     setSelectedPack(pack);
     resetCheckoutState();
     setShowGatewayModal(true);
+
     if (!token && !authLoading) {
       setCheckoutStatus("error");
       setCheckoutMessage("Please sign in to continue with payment.");
@@ -189,175 +229,159 @@ export default function CoinPackages() {
 
   const getGatewayIcon = (gateway: PaymentGateway) => gatewayIconMap[gateway.code];
 
-  const getFriendlyApiError = (error: any, fallback: string) => {
-    const rawMessage = error?.message;
-    if (isDev && rawMessage) {
-      console.error("Payment API error:", rawMessage);
-    }
-    if (typeof rawMessage === "string" && rawMessage.toLowerCase().includes("unauthenticated")) {
-      return "Please sign in to continue with payment.";
-    }
-    return fallback;
-  };
-
   const startCheckout = async (gateway: PaymentGateway, pack: CoinPackage) => {
     setSelectedGateway(gateway);
+
     if (!token) {
-      if (authLoading) {
-        setCheckoutStatus("idle");
-        setCheckoutMessage("Finishing sign-in. Please try again in a moment.");
-      } else {
-        setCheckoutStatus("error");
-        setCheckoutMessage("Please sign in to continue with payment.");
-      }
+      setCheckoutStatus("error");
+      setCheckoutMessage(authLoading ? "Finishing sign-in. Try again." : "Please sign in to continue.");
       return;
     }
 
     setCheckoutStatus("creating");
     setCheckoutMessage(null);
-    try {
-      let intent: Record<string, unknown>;
-      try {
-        intent = (await apiService.initPayment({
-          gateway_code: gateway.code,
-          package_id: pack.id,
-          platform: "web",
-        })) as Record<string, unknown>;
-      } catch (initError: any) {
-        const status = initError?.status as number | undefined;
-        if (gateway.code === "razorpay" && (status === 422 || status === 500)) {
-          setCheckoutStatus("error");
-          setCheckoutMessage("Razorpay is not configured. Please contact support.");
-          return;
-        }
-        throw initError;
-      }
-      setIntentData(intent as Record<string, unknown>);
 
+    try {
+      // 1) init payment
+      const intent = (await apiService.initPayment({
+        gateway_code: gateway.code,
+        package_id: pack.id,
+        platform: "web",
+      })) as Record<string, any>;
+
+      if (isDev) console.log("PAYMENT INIT:", intent);
+
+      setIntentData(intent);
+
+      // 2) Razorpay web checkout
       if (gateway.code === "razorpay") {
         await loadRazorpayCheckoutScript();
-        const razorpayConstructor = window.Razorpay;
-        if (!razorpayConstructor) {
-          throw new Error("Razorpay SDK not available.");
-        }
 
-        const razorpayKey = (intent as any).razorpay_key_id as string | undefined;
-        const razorpayOrderId = (intent as any).razorpay_order_id as string | undefined;
+        const RazorpayCtor = window.Razorpay;
+        if (!RazorpayCtor) throw new Error("Razorpay SDK not available.");
+
+        const razorpayKey = intent?.razorpay_key_id;
+        const razorpayOrderId = intent?.razorpay_order_id || intent?.gateway_order_id;
+
         if (!razorpayKey || !razorpayOrderId) {
           setCheckoutStatus("error");
           setCheckoutMessage("Razorpay is not configured. Please contact support.");
           return;
         }
 
-        const amountPaise = toNum((intent as any).amount_paise);
-        const currency = (intent as any).currency?.toString();
-        if (!amountPaise || !currency) {
-          setCheckoutStatus("error");
-          setCheckoutMessage("Unable to start Razorpay checkout. Please try again.");
-          return;
-        }
+        const amountPaise = toNum(intent?.amount_paise);
+        const currency = (intent?.currency || "INR")?.toString();
 
         const options = {
           key: razorpayKey,
           amount: amountPaise,
-          currency: currency,
+          currency,
           name: "Megzed",
           description: pack.name,
           order_id: razorpayOrderId,
+
           handler: async (response: any) => {
             setCheckoutStatus("confirming");
+            setCheckoutMessage(null);
+
+            const finalOrderId = response?.razorpay_order_id || razorpayOrderId;
+
             try {
+              // ✅ IMPORTANT:
+              // Send razorpay fields as payload (apiService.confirmPayment FLATTENS them to top-level)
               await apiService.confirmPayment({
-                gateway_code: gateway.code,
-                transaction_id: (intent as any).transaction_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
+                gateway_code: "razorpay",
+                transaction_id: intent?.transaction_id,
+                payload: {
+                  razorpay_payment_id: response?.razorpay_payment_id,
+                  razorpay_order_id: finalOrderId,
+                  razorpay_signature: response?.razorpay_signature,
+                  // optional extra (some backends like it):
+                  gateway_order_id: finalOrderId,
+                },
               });
+
               setCheckoutStatus("success");
               setCheckoutMessage("Payment confirmed. Coins will be credited shortly.");
             } catch (confirmError: any) {
+              const msg = getApiErrorMessage(confirmError, "Payment confirmation failed. Please try again.");
               setCheckoutStatus("error");
-              setCheckoutMessage(
-                getFriendlyApiError(
-                  confirmError,
-                  "Payment confirmation failed. Please try again."
-                )
-              );
+              setCheckoutMessage(msg);
             }
           },
+
           modal: {
             ondismiss: () => {
               setCheckoutStatus("awaiting");
-              setCheckoutMessage("Checkout closed. You can try again or check status.");
+              setCheckoutMessage("Checkout closed. You can try again.");
             },
           },
-          prefill: (intent as any).prefill,
+
+          prefill: intent?.prefill,
         };
 
-        const checkout = new razorpayConstructor(options);
+        const checkout = new RazorpayCtor(options);
         checkout.open();
+
         setCheckoutStatus("awaiting");
         setCheckoutMessage("Complete payment in the Razorpay checkout window.");
-      } else if (
-        gateway.code === "upi_manual" ||
-        gateway.code === "bank_transfer" ||
-        gateway.code === "manual"
-      ) {
+        return;
+      }
+
+      // 3) Manual gateways
+      if (gateway.code === "upi_manual" || gateway.code === "bank_transfer" || gateway.code === "manual") {
         setCheckoutStatus("awaiting");
         setCheckoutMessage(
-          ((intent as any).instructions as string | undefined) ||
+          intent?.instructions ||
             gateway.instructions ||
             "Please follow the instructions to complete the manual payment."
         );
-      } else {
-        const checkoutUrl =
-          (intent as any).checkout_url ||
-          (intent as any).payment_url ||
-          (intent as any).redirect_url;
-        if (checkoutUrl) {
-          window.open(checkoutUrl as string, "_blank", "noopener,noreferrer");
-        }
-        setCheckoutStatus("awaiting");
-        setCheckoutMessage(
-          checkoutUrl
-            ? "Complete the payment in the opened tab. We will confirm it when the gateway sends the webhook."
-            : "Payment initiated. We will confirm it when the gateway sends the webhook."
-        );
+        return;
       }
-    } catch (checkoutError: any) {
-      setCheckoutStatus("error");
+
+      // 4) Other redirect gateways
+      const checkoutUrl = intent?.checkout_url || intent?.payment_url || intent?.redirect_url;
+      if (checkoutUrl) window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+
+      setCheckoutStatus("awaiting");
       setCheckoutMessage(
-        getFriendlyApiError(checkoutError, "Unable to start checkout. Please try again.")
+        checkoutUrl
+          ? "Complete the payment in the opened tab. We will confirm it when the gateway sends the webhook."
+          : "Payment initiated. We will confirm it when the gateway sends the webhook."
       );
+    } catch (err: any) {
+      const msg = getApiErrorMessage(err, "Unable to start checkout. Please try again.");
+      setCheckoutStatus("error");
+      setCheckoutMessage(msg);
+      if (isDev) console.error("Payment API error:", err);
     }
   };
 
+  // For non-razorpay gateways / webhook based
   const handleCheckStatus = async () => {
     if (!selectedGateway || !intentData) return;
+
     if (!token) {
       setCheckoutStatus("error");
       setCheckoutMessage("Please sign in to check payment status.");
       return;
     }
+
     setCheckoutStatus("confirming");
     setCheckoutMessage(null);
+
     try {
       await apiService.confirmPayment({
         gateway_code: selectedGateway.code,
-        transaction_id: intentData.transaction_id as string | number,
+        transaction_id: intentData.transaction_id,
         payload: {},
       });
+
       setCheckoutStatus("success");
       setCheckoutMessage("Payment confirmed. Coins will be credited shortly.");
-    } catch (confirmError: any) {
+    } catch (err: any) {
       setCheckoutStatus("awaiting");
-      setCheckoutMessage(
-        getFriendlyApiError(
-          confirmError,
-          "Payment not confirmed yet. Please try again later."
-        )
-      );
+      setCheckoutMessage(getApiErrorMessage(err, "Payment not confirmed yet. Please try again later."));
     }
   };
 
@@ -370,12 +394,7 @@ export default function CoinPackages() {
             className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200"
             style={{ backgroundColor: `${primaryColor}10` }}
           >
-            {/* Money Bag Icon for Store Header */}
-            <img 
-              src={moneyBagIcon} 
-              alt="Store" 
-              className="w-10 h-10 object-contain drop-shadow-sm" 
-            />
+            <img src={moneyBagIcon} alt="Store" className="w-10 h-10 object-contain drop-shadow-sm" />
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -386,8 +405,7 @@ export default function CoinPackages() {
             </p>
           </div>
         </div>
-        
-        {/* Trust Badge using storeverified.png */}
+
         <div className="hidden md:flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-50 border border-slate-100 shadow-sm">
           <img src={verifiedIcon} alt="Verified" className="w-5 h-5 object-contain" />
           <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">
@@ -406,7 +424,7 @@ export default function CoinPackages() {
         <div className="p-6 rounded-2xl bg-red-50 border border-red-100 text-center">
           <p className="text-red-600 font-bold mb-2">Something went wrong</p>
           <p className="text-red-500 text-sm mb-4">{error}</p>
-          <button 
+          <button
             onClick={load}
             className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 transition"
           >
@@ -423,86 +441,72 @@ export default function CoinPackages() {
             const coins = toInt(p.coins);
             const price = toNum(p.price);
             const currency = (p.currency || "INR").toString();
-            const isHighValue = price > 1000; 
+            const isHighValue = price > 1000;
 
             return (
               <div
                 key={String(p.id)}
                 className="group relative bg-white rounded-[2rem] border border-slate-100 p-6 flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden"
               >
-                {/* Decorative Gradient Background */}
-                <div 
+                <div
                   className="absolute top-0 left-0 w-full h-32 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
                   style={{ background: `linear-gradient(to bottom, ${primaryColor}, transparent)` }}
                 />
 
-                {/* Top Section: Icon & Validity */}
                 <div className="relative z-10 flex justify-between items-start mb-4">
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-300 group-hover:bg-white bg-slate-50"
-                  >
-                    {/* Coin Icon for Packages */}
-                    <img 
-                        src={coinIcon} 
-                        alt="Coins" 
-                        className={`object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-110 ${isHighValue ? 'w-9 h-9' : 'w-8 h-8'}`} 
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-300 group-hover:bg-white bg-slate-50">
+                    <img
+                      src={coinIcon}
+                      alt="Coins"
+                      className={`object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-110 ${
+                        isHighValue ? "w-9 h-9" : "w-8 h-8"
+                      }`}
                     />
                   </div>
                   {p.validity_days ? (
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
-                       {toInt(p.validity_days)} Days
+                      {toInt(p.validity_days)} Days
                     </span>
                   ) : null}
                 </div>
 
-                {/* Main Value */}
                 <div className="relative z-10 mb-2">
-                   <div className="text-sm font-bold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                      You Get {isHighValue && <Sparkles className="w-3 h-3 text-amber-400" />}
-                   </div>
-                   <div className="text-4xl font-black text-slate-900 flex items-baseline gap-1">
-                      {coins}
-                      <span className="text-lg font-bold text-slate-500">Coins</span>
-                   </div>
+                  <div className="text-sm font-bold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">
+                    You Get {isHighValue && <Sparkles className="w-3 h-3 text-amber-400" />}
+                  </div>
+                  <div className="text-4xl font-black text-slate-900 flex items-baseline gap-1">
+                    {coins}
+                    <span className="text-lg font-bold text-slate-500">Coins</span>
+                  </div>
                 </div>
 
                 <div className="relative z-10 mb-6 min-h-[40px]">
-                    <h3 className="text-lg font-bold text-slate-700 leading-tight">
-                        {p.name}
-                    </h3>
-                    {p.description && (
-                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                            {p.description}
-                        </p>
-                    )}
+                  <h3 className="text-lg font-bold text-slate-700 leading-tight">{p.name}</h3>
+                  {p.description && (
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{p.description}</p>
+                  )}
                 </div>
 
-                {/* Divider */}
                 <div className="relative z-10 border-t border-slate-100 my-auto"></div>
 
-                {/* Bottom Action Section */}
                 <div className="relative z-10 pt-6 mt-4">
                   <button
                     type="button"
-                    onClick={() => {
-                        handleOpenModal(p);
-                    }}
+                    onClick={() => handleOpenModal(p)}
                     className="w-full relative overflow-hidden rounded-xl py-3.5 px-4 flex items-center justify-between group-active:scale-[0.98] transition-all duration-200"
-                    style={{ 
-                        backgroundColor: primaryColor,
-                        boxShadow: `0 8px 20px -6px ${primaryColor}50`
+                    style={{
+                      backgroundColor: primaryColor,
+                      boxShadow: `0 8px 20px -6px ${primaryColor}50`,
                     }}
                   >
                     <span className="text-white/90 text-sm font-medium flex items-center gap-2">
-                        {/* Wallet Icon for Button */}
-                        <img src={walletIcon} className="w-5 h-5 invert brightness-0 opacity-90" alt="Buy" />
-                        Buy Now
+                      <img src={walletIcon} className="w-5 h-5 invert brightness-0 opacity-90" alt="Buy" />
+                      Buy Now
                     </span>
                     <span className="bg-white/20 px-3 py-1 rounded-lg text-white font-bold text-sm">
-                        {currency} {price}
+                      {currency} {price}
                     </span>
                   </button>
-                  
                 </div>
               </div>
             );
@@ -536,11 +540,13 @@ export default function CoinPackages() {
                   Preparing your secure checkout...
                 </div>
               )}
+
               {!token && !authLoading && (
                 <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
                   Please sign in to continue with payment.
                 </div>
               )}
+
               {checkoutMessage && !selectedGateway && (
                 <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                   {checkoutMessage}
@@ -607,11 +613,12 @@ export default function CoinPackages() {
                         <p className="text-sm font-semibold text-slate-800">
                           {formatGatewayLabel(selectedGateway)}
                         </p>
-                      <p className="text-xs text-slate-500">
-                        Status: {checkoutStatus === "idle" ? "Ready" : checkoutStatus}
-                      </p>
+                        <p className="text-xs text-slate-500">
+                          Status: {checkoutStatus === "idle" ? "Ready" : checkoutStatus}
+                        </p>
                       </div>
                     </div>
+
                     {checkoutStatus === "awaiting" && (
                       <button
                         type="button"
@@ -624,14 +631,10 @@ export default function CoinPackages() {
                   </div>
 
                   {selectedGateway.instructions && (
-                    <p className="mt-3 text-xs text-slate-500">
-                      {selectedGateway.instructions}
-                    </p>
+                    <p className="mt-3 text-xs text-slate-500">{selectedGateway.instructions}</p>
                   )}
 
-                  {checkoutMessage && (
-                    <p className="mt-3 text-sm text-slate-600">{checkoutMessage}</p>
-                  )}
+                  {checkoutMessage && <p className="mt-3 text-sm text-slate-600">{checkoutMessage}</p>}
 
                   {checkoutStatus === "error" && (
                     <button
